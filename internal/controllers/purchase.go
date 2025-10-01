@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -115,7 +116,10 @@ func (c *PurchaseController) ListSuppliers(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, suppliers)
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    suppliers,
+	})
 }
 
 // ===== 采购申请管理 =====
@@ -202,7 +206,10 @@ func (c *PurchaseController) ListPurchaseRequests(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, purchaseRequests)
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    purchaseRequests,
+	})
 }
 
 // SubmitPurchaseRequest 提交采购申请
@@ -337,17 +344,20 @@ func (c *PurchaseController) DeletePurchaseOrder(ctx *gin.Context) {
 func (c *PurchaseController) ListPurchaseOrders(ctx *gin.Context) {
 	var filter dto.PurchaseOrderFilter
 	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		c.utils.RespondBadRequest(ctx, "查询参数无效")
+		c.utils.RespondBadRequest(ctx, "无效的查询参数")
 		return
 	}
 
-	purchaseOrders, err := c.purchaseOrderService.ListPurchaseOrders(ctx.Request.Context(), &filter)
+	result, err := c.purchaseOrderService.ListPurchaseOrders(ctx, &filter)
 	if err != nil {
 		c.utils.RespondInternalError(ctx, "获取采购订单列表失败")
 		return
 	}
 
-	c.utils.RespondOK(ctx, purchaseOrders)
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
 }
 
 // ConfirmPurchaseOrder 确认采购订单

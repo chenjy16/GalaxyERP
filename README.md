@@ -10,39 +10,73 @@ GalaxyERP 是一个全功能的企业资源规划系统，采用前后端分离�
 ## 🛠️ 技术栈
 
 ### 后端技术栈
-- **语言**: Go 1.24+
-- **Web框架**: Gin v1.10.0 (高性能HTTP Web框架)
-- **ORM**: GORM v1.25.12 (Go语言ORM库)
+- **语言**: Go 1.24.0
+- **Web框架**: Gin v1.9.1 (高性能HTTP Web框架)
+- **ORM**: GORM v1.31.0 (Go语言ORM库)
 - **数据库**: PostgreSQL / SQLite (开发环境)
-- **认证**: JWT v5.2.1 (JSON Web Token)
-- **配置管理**: Viper v1.19.0
-- **日志**: Zap v1.27.0 (高性能日志库)
-- **API文档**: Swagger/OpenAPI 3.0
-- **中间件**: CORS, 认证中间件
+- **认证**: JWT v5.3.0 (JSON Web Token)
+- **配置管理**: Viper v1.17.0
+- **日志**: Zap v1.26.0 (高性能日志库)
+- **密码加密**: bcrypt (golang.org/x/crypto v0.42.0)
+- **数据验证**: go-playground/validator v10.17.0
+- **中间件**: CORS, 认证中间件, 日志中间件
 - **数据库驱动**: 
-  - PostgreSQL: `gorm.io/driver/postgres`
-  - SQLite: `gorm.io/driver/sqlite`
+  - PostgreSQL: `gorm.io/driver/postgres v1.6.0`
+  - SQLite: `glebarez/sqlite v1.11.0`
 
 ### 前端技术栈
-- **框架**: Next.js 15.1.3 (React全栈框架)
-- **语言**: TypeScript 5.7.2
-- **UI组件库**: Ant Design 5.22.6
-- **图标库**: Ant Design Icons 5.5.1
+- **框架**: Next.js 14.1.0 (React全栈框架)
+- **语言**: TypeScript 5.4.0
+- **UI组件库**: Ant Design 5.13.0
+- **图标库**: Ant Design Icons 5.2.6
 - **状态管理**: React Context + Hooks
 - **HTTP客户端**: Fetch API
-- **样式**: Tailwind CSS 3.4.1
+- **日期处理**: Day.js 1.11.18
 - **构建工具**: Webpack (Next.js内置)
-- **包管理**: npm/yarn
-- **开发工具**: ESLint, PostCSS
+- **包管理**: npm
+- **开发工具**: ESLint 8.57.0, TypeScript
 
 ### 开发工具
 - **版本控制**: Git
 - **构建工具**: Make
 - **代码格式化**: gofmt, Prettier
-- **API测试**: Postman
 - **数据库迁移**: GORM AutoMigrate
 - **环境管理**: 多环境配置 (dev/test/prod)
 - **依赖管理**: Go Modules, npm
+
+## 📁 项目结构
+
+```
+galaxyErp/
+├── cmd/                    # 应用程序入口
+│   └── server/            # 服务器启动程序
+├── configs/               # 配置文件
+│   ├── config.yaml       # 基础配置
+│   ├── dev.yaml          # 开发环境配置
+│   ├── test.yaml         # 测试环境配置
+│   └── prod.yaml         # 生产环境配置
+├── frontend/              # 前端应用
+│   ├── app/              # Next.js 应用页面
+│   ├── components/       # React 组件
+│   ├── contexts/         # React Context
+│   ├── services/         # API 服务
+│   ├── types/            # TypeScript 类型定义
+│   └── lib/              # 工具库
+├── internal/              # 后端核心代码
+│   ├── auth/             # 认证模块
+│   ├── controllers/      # 控制器层
+│   ├── dto/              # 数据传输对象
+│   ├── middleware/       # 中间件
+│   ├── models/           # 数据模型
+│   ├── repositories/     # 数据访问层
+│   ├── routes/           # 路由定义
+│   ├── services/         # 业务逻辑层
+│   └── utils/            # 工具函数
+├── sql/                   # SQL 脚本
+├── go.mod                # Go 模块依赖
+├── Makefile              # 构建脚本
+└── README.md             # 项目文档
+```
 
 ## 📋 核心功能模块
 
@@ -152,10 +186,7 @@ cd galaxyErp
 # 安装 Go 依赖
 go mod tidy
 
-# 创建环境配置文件
-cp .env.example .env
-
-# 运行数据库迁移
+# 运行数据库迁移 (使用 SQLite，无需额外配置)
 make migrate
 
 # 启动后端服务 (默认端口: 8080)
@@ -169,19 +200,21 @@ cd frontend
 
 # 安装前端依赖
 npm install
-# 或使用 yarn
-yarn install
 
 # 启动前端开发服务器 (默认端口: 3000)
 npm run dev
-# 或使用 yarn
-yarn dev
 ```
 
 ### 4. 访问系统
 - **前端界面**: http://localhost:3000
 - **后端API**: http://localhost:8080
-- **API文档**: http://localhost:8080/api/docs
+
+### 5. 默认登录信息
+开发环境已配置自动登录功能，如需手动登录请使用：
+- **用户名**: `admin`
+- **密码**: `password`
+
+> 💡 **开发提示**: 开发环境下前端会自动使用默认账户登录，无需手动输入登录信息。生产环境请务必修改默认密码！
 
 ## ⚙️ 配置说明
 
@@ -197,7 +230,7 @@ yarn dev
 
 ### 📝 环境变量配置
 
-在项目根目录创建 `.env` 文件：
+开发环境使用默认配置，无需额外设置。生产环境需要配置环境变量：
 
 ```env
 # 服务器配置
@@ -206,7 +239,7 @@ SERVER_PORT=8080
 # JWT 密钥 (生产环境请使用强密钥)
 JWT_SECRET=your_super_secret_jwt_key_here
 
-# 生产环境数据库配置 (仅生产环境需要)
+# 生产环境数据库配置
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=galaxyerp_user
@@ -215,19 +248,23 @@ DB_NAME=galaxyerp_prod
 DB_SSLMODE=require
 ```
 
+> 📌 **注意**: 开发环境使用 SQLite 数据库，配置文件位于 `configs/dev.yaml`，无需额外配置即可运行。
+
 ## 🏃‍♂️ 运行应用
 
 ### 开发模式 (推荐)
 
 ```bash
-# 后端服务 (使用 SQLite，无需额外配置)
+# 1. 后端服务 (使用 SQLite，无需额外配置)
 make migrate    # 运行数据库迁移
-make run        # 启动后端服务
+make run        # 启动后端服务 (http://localhost:8080)
 
-# 前端服务 (新终端窗口)
+# 2. 前端服务 (新终端窗口)
 cd frontend
-npm run dev     # 启动前端开发服务器
+npm run dev     # 启动前端开发服务器 (http://localhost:3000)
 ```
+
+访问 http://localhost:3000 即可使用系统，开发环境会自动登录。
 
 ### 测试环境
 
@@ -260,15 +297,16 @@ npm start       # 启动生产服务器
 
 ## 📚 API 文档
 
-### 在线文档
-- **Swagger UI**: http://localhost:8080/api/docs (服务器运行时可访问)
-- **API 文档**: [docs/API.md](docs/API.md)
-- **Postman 集合**: [docs/Galaxy_ERP_API.postman_collection.json](docs/Galaxy_ERP_API.postman_collection.json)
-
 ### API 基础信息
 - **基础URL**: `http://localhost:8080/api/v1`
 - **认证方式**: JWT Bearer Token
 - **内容类型**: `application/json`
+
+### 测试API
+可以使用以下方式测试API：
+- **curl 命令**: 参考下方API端点示例
+- **Postman**: 导入API端点进行测试
+- **前端界面**: 通过Web界面直接操作
 
 ### 已实现的API端点
 
@@ -865,29 +903,23 @@ journalctl -u galaxy-erp -f
 
 我们欢迎所有形式的贡献！请遵循以下步骤：
 
-1. **Fork 项目** - 点击右上角的 Fork 按钮
-2. **创建分支** - `git checkout -b feature/新功能名称`
-3. **提交更改** - `git commit -m '添加某某功能'`
-4. **推送分支** - `git push origin feature/新功能名称`
-5. **提交 PR** - 创建 Pull Request
+1. **Fork** 本仓库
+2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开一个 **Pull Request**
 
 ### 开发规范
 
-- 遵循 Go 语言编码规范
-- 前端代码使用 TypeScript 和 ESLint
-- 提交信息使用中文，格式清晰
-- 添加必要的测试用例
-- 更新相关文档
-
-## 📞 技术支持
-
-- **问题反馈**: [GitHub Issues](https://github.com/galaxyerp/galaxyErp/issues)
-- **功能建议**: [GitHub Discussions](https://github.com/galaxyerp/galaxyErp/discussions)
-- **邮件联系**: support@galaxyerp.com
+- **Go代码**: 遵循 `gofmt` 格式化标准
+- **TypeScript代码**: 遵循 ESLint 配置
+- **提交信息**: 使用清晰的提交信息描述更改
+- **测试**: 为新功能添加相应的测试用例
 
 ## 📄 许可证
 
-本项目基于 [MIT 许可证](LICENSE) 开源，详情请查看 LICENSE 文件。
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
 
 ## 🙏 致谢
 

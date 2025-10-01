@@ -50,12 +50,13 @@ import { Supplier, PurchaseOrder, PurchaseRequest } from '@/types/api';
 import SupplierService from '@/services/supplier';
 import PurchaseOrderService from '@/services/purchaseOrder';
 import PurchaseRequestService from '@/services/purchaseRequest';
+import { withAuth } from '@/contexts/AuthContext';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
-export default function PurchasePage() {
+function PurchasePage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'supplier' | 'order' | 'request'>('supplier');
   const [form] = Form.useForm();
@@ -692,3 +693,5 @@ export default function PurchasePage() {
     </div>
   );
 }
+
+export default withAuth(PurchasePage);

@@ -16,7 +16,7 @@ type SupplierService interface {
 	GetSupplier(ctx context.Context, id uint) (*dto.SupplierResponse, error)
 	UpdateSupplier(ctx context.Context, id uint, req *dto.SupplierUpdateRequest) (*dto.SupplierResponse, error)
 	DeleteSupplier(ctx context.Context, id uint) error
-	ListSuppliers(ctx context.Context, filter *dto.SupplierFilter) ([]*dto.SupplierResponse, error)
+	ListSuppliers(ctx context.Context, filter *dto.SupplierFilter) (*dto.PaginatedResponse[dto.SupplierResponse], error)
 }
 
 // SupplierServiceImpl 供应商服务实现
@@ -103,27 +103,39 @@ func (s *SupplierServiceImpl) DeleteSupplier(ctx context.Context, id uint) error
 }
 
 // ListSuppliers 获取供应商列表
-func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, filter *dto.SupplierFilter) ([]*dto.SupplierResponse, error) {
-	offset := 0
-	limit := 100
+func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, filter *dto.SupplierFilter) (*dto.PaginatedResponse[dto.SupplierResponse], error) {
+	page := 1
+	limit := 10
 	if filter != nil {
-		if filter.Page > 0 && filter.PageSize > 0 {
-			offset = (filter.Page - 1) * filter.PageSize
+		if filter.Page > 0 {
+			page = filter.Page
+		}
+		if filter.PageSize > 0 {
 			limit = filter.PageSize
 		}
 	}
+	
+	offset := (page - 1) * limit
 
-	suppliers, _, err := s.supplierRepo.List(ctx, offset, limit)
+	suppliers, total, err := s.supplierRepo.List(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("获取供应商列表失败: %w", err)
 	}
 
-	var responses []*dto.SupplierResponse
+	var responses []dto.SupplierResponse
 	for _, supplier := range suppliers {
-		responses = append(responses, s.convertToSupplierResponse(supplier))
+		responses = append(responses, *s.convertToSupplierResponse(supplier))
 	}
 
-	return responses, nil
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
+	return &dto.PaginatedResponse[dto.SupplierResponse]{
+		Data:       responses,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
 }
 
 // convertToSupplierResponse 转换为供应商响应
@@ -151,7 +163,7 @@ type PurchaseRequestService interface {
 	GetPurchaseRequest(ctx context.Context, id uint) (*dto.PurchaseRequestResponse, error)
 	UpdatePurchaseRequest(ctx context.Context, id uint, req *dto.PurchaseRequestUpdateRequest) (*dto.PurchaseRequestResponse, error)
 	DeletePurchaseRequest(ctx context.Context, id uint) error
-	ListPurchaseRequests(ctx context.Context, filter *dto.PurchaseSearchRequest) ([]*dto.PurchaseRequestResponse, error)
+	ListPurchaseRequests(ctx context.Context, filter *dto.PurchaseSearchRequest) (*dto.PaginatedResponse[dto.PurchaseRequestResponse], error)
 	SubmitPurchaseRequest(ctx context.Context, id uint) error
 	ApprovePurchaseRequest(ctx context.Context, id uint, userID uint) error
 	RejectPurchaseRequest(ctx context.Context, id uint, userID uint, reason string) error
@@ -244,27 +256,39 @@ func (s *PurchaseRequestServiceImpl) DeletePurchaseRequest(ctx context.Context, 
 }
 
 // ListPurchaseRequests 获取采购申请列表
-func (s *PurchaseRequestServiceImpl) ListPurchaseRequests(ctx context.Context, filter *dto.PurchaseSearchRequest) ([]*dto.PurchaseRequestResponse, error) {
-	offset := 0
-	limit := 100
+func (s *PurchaseRequestServiceImpl) ListPurchaseRequests(ctx context.Context, filter *dto.PurchaseSearchRequest) (*dto.PaginatedResponse[dto.PurchaseRequestResponse], error) {
+	page := 1
+	limit := 10
 	if filter != nil {
-		if filter.Page > 0 && filter.PageSize > 0 {
-			offset = (filter.Page - 1) * filter.PageSize
+		if filter.Page > 0 {
+			page = filter.Page
+		}
+		if filter.PageSize > 0 {
 			limit = filter.PageSize
 		}
 	}
+	
+	offset := (page - 1) * limit
 
-	purchaseRequests, _, err := s.purchaseRequestRepo.List(ctx, offset, limit)
+	purchaseRequests, total, err := s.purchaseRequestRepo.List(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("获取采购申请列表失败: %w", err)
 	}
 
-	var responses []*dto.PurchaseRequestResponse
+	var responses []dto.PurchaseRequestResponse
 	for _, purchaseRequest := range purchaseRequests {
-		responses = append(responses, s.convertToPurchaseRequestResponse(purchaseRequest))
+		responses = append(responses, *s.convertToPurchaseRequestResponse(purchaseRequest))
 	}
 
-	return responses, nil
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
+	return &dto.PaginatedResponse[dto.PurchaseRequestResponse]{
+		Data:       responses,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
 }
 
 // SubmitPurchaseRequest 提交采购申请
@@ -358,7 +382,7 @@ type PurchaseOrderService interface {
 	GetPurchaseOrder(ctx context.Context, id uint) (*dto.PurchaseOrderResponse, error)
 	UpdatePurchaseOrder(ctx context.Context, id uint, req *dto.PurchaseOrderUpdateRequest) (*dto.PurchaseOrderResponse, error)
 	DeletePurchaseOrder(ctx context.Context, id uint) error
-	ListPurchaseOrders(ctx context.Context, filter *dto.PurchaseOrderFilter) ([]*dto.PurchaseOrderResponse, error)
+	ListPurchaseOrders(ctx context.Context, filter *dto.PurchaseOrderFilter) (*dto.PaginatedResponse[dto.PurchaseOrderResponse], error)
 	ConfirmPurchaseOrder(ctx context.Context, id uint) error
 	CancelPurchaseOrder(ctx context.Context, id uint) error
 }
@@ -462,27 +486,39 @@ func (s *PurchaseOrderServiceImpl) DeletePurchaseOrder(ctx context.Context, id u
 }
 
 // ListPurchaseOrders 获取采购订单列表
-func (s *PurchaseOrderServiceImpl) ListPurchaseOrders(ctx context.Context, filter *dto.PurchaseOrderFilter) ([]*dto.PurchaseOrderResponse, error) {
-	offset := 0
-	limit := 100
+func (s *PurchaseOrderServiceImpl) ListPurchaseOrders(ctx context.Context, filter *dto.PurchaseOrderFilter) (*dto.PaginatedResponse[dto.PurchaseOrderResponse], error) {
+	page := 1
+	limit := 10
 	if filter != nil {
-		if filter.Page > 0 && filter.PageSize > 0 {
-			offset = (filter.Page - 1) * filter.PageSize
+		if filter.Page > 0 {
+			page = filter.Page
+		}
+		if filter.PageSize > 0 {
 			limit = filter.PageSize
 		}
 	}
+	
+	offset := (page - 1) * limit
 
-	purchaseOrders, _, err := s.purchaseOrderRepo.List(ctx, offset, limit)
+	purchaseOrders, total, err := s.purchaseOrderRepo.List(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("获取采购订单列表失败: %w", err)
 	}
 
-	var responses []*dto.PurchaseOrderResponse
+	var responses []dto.PurchaseOrderResponse
 	for _, purchaseOrder := range purchaseOrders {
-		responses = append(responses, s.convertToPurchaseOrderResponse(purchaseOrder))
+		responses = append(responses, *s.convertToPurchaseOrderResponse(purchaseOrder))
 	}
 
-	return responses, nil
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
+	return &dto.PaginatedResponse[dto.PurchaseOrderResponse]{
+		Data:       responses,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
 }
 
 // ConfirmPurchaseOrder 确认采购订单

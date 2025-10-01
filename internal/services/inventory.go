@@ -17,7 +17,7 @@ type ItemService interface {
 	GetItem(ctx context.Context, id uint) (*dto.ItemResponse, error)
 	UpdateItem(ctx context.Context, id uint, req *dto.ItemUpdateRequest) (*dto.ItemResponse, error)
 	DeleteItem(ctx context.Context, id uint) error
-	GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error)
+	GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ItemResponse], error)
 	SearchItems(ctx context.Context, req *dto.ItemSearchRequest) (*dto.BaseResponse, error)
 }
 
@@ -132,11 +132,11 @@ func (s *ItemServiceImpl) DeleteItem(ctx context.Context, id uint) error {
 }
 
 // GetItems 获取物料列表
-func (s *ItemServiceImpl) GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error) {
+func (s *ItemServiceImpl) GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ItemResponse], error) {
 	offset := req.GetOffset()
 	limit := req.GetLimit()
 
-	items, _, err := s.itemRepo.List(ctx, offset, limit)
+	items, total, err := s.itemRepo.List(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("获取物料列表失败: %w", err)
 	}
@@ -147,10 +147,12 @@ func (s *ItemServiceImpl) GetItems(ctx context.Context, req *dto.PaginationReque
 		itemResponses[i] = *s.toItemResponse(item)
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "获取物料列表成功",
-		Data:    itemResponses,
+	return &dto.PaginatedResponse[dto.ItemResponse]{
+		Data:       itemResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
 	}, nil
 }
 
@@ -202,7 +204,7 @@ type StockService interface {
 	GetStock(ctx context.Context, id uint) (*dto.StockResponse, error)
 	UpdateStock(ctx context.Context, id uint, quantity float64) (*dto.StockResponse, error)
 	DeleteStock(ctx context.Context, id uint) error
-	GetStocks(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error)
+	GetStocks(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.StockResponse], error)
 	GetByItemID(ctx context.Context, itemID uint) (*dto.BaseResponse, error)
 	AdjustStock(ctx context.Context, req *dto.StockAdjustmentCreateRequest) (*dto.StockAdjustmentResponse, error)
 }
@@ -278,11 +280,11 @@ func (s *StockServiceImpl) DeleteStock(ctx context.Context, id uint) error {
 }
 
 // GetStocks 获取库存列表
-func (s *StockServiceImpl) GetStocks(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error) {
+func (s *StockServiceImpl) GetStocks(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.StockResponse], error) {
 	offset := req.GetOffset()
 	limit := req.GetLimit()
 
-	stocks, _, err := s.stockRepo.List(ctx, offset, limit)
+	stocks, total, err := s.stockRepo.List(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("获取库存列表失败: %w", err)
 	}
@@ -293,10 +295,12 @@ func (s *StockServiceImpl) GetStocks(ctx context.Context, req *dto.PaginationReq
 		stockResponses[i] = *s.toStockResponse(stock)
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "获取库存列表成功",
-		Data:    stockResponses,
+	return &dto.PaginatedResponse[dto.StockResponse]{
+		Data:        stockResponses,
+		Total:       total,
+		Page:        req.Page,
+		Limit:       req.PageSize,
+		TotalPages:  int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
 	}, nil
 }
 
@@ -328,14 +332,50 @@ func (s *StockServiceImpl) AdjustStock(ctx context.Context, req *dto.StockAdjust
 
 // toStockResponse 转换为库存响应格式
 func (s *StockServiceImpl) toStockResponse(stock *models.Stock) *dto.StockResponse {
-	return &dto.StockResponse{
-		ID:        stock.ID,
-		Quantity:  stock.Quantity,
-		// TODO: 需要实现预留数量和可用数量逻辑
-		// ReservedQty:  0,
-		// AvailableQty: stock.Quantity,
-		UpdatedAt: stock.UpdatedAt,
+	response := &dto.StockResponse{
+		ID:           stock.ID,
+		Quantity:     stock.Quantity,
+		ReservedQty:  0, // TODO: 需要实现预留数量逻辑
+		AvailableQty: stock.Quantity, // 暂时设为总数量
+		UpdatedAt:    stock.UpdatedAt,
 	}
+
+	// 填充Item信息
+	if stock.Item.ID != 0 {
+		response.Item = dto.ItemResponse{
+			ID:          stock.Item.ID,
+			Code:        stock.Item.Code,
+			Name:        stock.Item.Name,
+			Description: stock.Item.Description,
+			Type:        stock.Item.Category, // 暂时使用Category字段作为Type
+			MinStock:    0, // TODO: 从Item模型获取
+			MaxStock:    0, // TODO: 从Item模型获取
+			UnitCost:    stock.Item.Cost,
+			SalePrice:   stock.Item.Price,
+			IsActive:    stock.Item.IsActive,
+			CreatedAt:   stock.Item.CreatedAt,
+			UpdatedAt:   stock.Item.UpdatedAt,
+		}
+	}
+
+	// 填充Warehouse信息
+	if stock.Warehouse.ID != 0 {
+		response.Warehouse = dto.WarehouseResponse{
+			ID:          stock.Warehouse.ID,
+			Name:        stock.Warehouse.Name,
+			Code:        stock.Warehouse.Code,
+			Address:     stock.Warehouse.Address,
+			Description: stock.Warehouse.Description,
+			IsActive:    stock.Warehouse.IsActive,
+			CreatedAt:   stock.Warehouse.CreatedAt,
+			UpdatedAt:   stock.Warehouse.UpdatedAt,
+		}
+	}
+
+	// Location字段暂时留空，因为当前数据库结构中没有location_id
+	response.Location = dto.LocationResponse{}
+
+	return response
 }
 
 // WarehouseService 仓库服务接口
@@ -344,7 +384,7 @@ type WarehouseService interface {
 	GetWarehouse(ctx context.Context, id uint) (*dto.WarehouseResponse, error)
 	UpdateWarehouse(ctx context.Context, id uint, req *dto.WarehouseUpdateRequest) (*dto.WarehouseResponse, error)
 	DeleteWarehouse(ctx context.Context, id uint) error
-	GetWarehouses(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error)
+	GetWarehouses(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.WarehouseResponse], error)
 }
 
 // WarehouseServiceImpl 仓库服务实现
@@ -439,21 +479,23 @@ func (s *WarehouseServiceImpl) DeleteWarehouse(ctx context.Context, id uint) err
 }
 
 // GetWarehouses 获取仓库列表
-func (s *WarehouseServiceImpl) GetWarehouses(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error) {
-	warehouses, _, err := s.warehouseRepo.List(ctx, req.GetOffset(), req.GetLimit())
+func (s *WarehouseServiceImpl) GetWarehouses(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.WarehouseResponse], error) {
+	warehouses, total, err := s.warehouseRepo.List(ctx, req.GetOffset(), req.GetLimit())
 	if err != nil {
 		return nil, fmt.Errorf("获取仓库列表失败: %w", err)
 	}
 
-	var warehouseResponses []*dto.WarehouseResponse
-	for _, warehouse := range warehouses {
-		warehouseResponses = append(warehouseResponses, s.toWarehouseResponse(warehouse))
+	warehouseResponses := make([]dto.WarehouseResponse, len(warehouses))
+	for i, warehouse := range warehouses {
+		warehouseResponses[i] = *s.toWarehouseResponse(warehouse)
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "获取仓库列表成功",
-		Data:    warehouseResponses,
+	return &dto.PaginatedResponse[dto.WarehouseResponse]{
+		Data:       warehouseResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
 	}, nil
 }
 

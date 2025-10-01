@@ -30,7 +30,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        let token = localStorage.getItem('auth_token');
+        
+        // 开发环境自动登录
+        if (!token && process.env.NODE_ENV === 'development') {
+          try {
+            console.log('开发环境：尝试自动登录...');
+            const response = await AuthService.login({
+              username: 'admin',
+              password: 'password'
+            });
+            setUser(response.user);
+            localStorage.setItem('user', JSON.stringify(response.user));
+            console.log('开发环境：自动登录成功');
+            return;
+          } catch (error) {
+            console.log('开发环境：自动登录失败，继续正常流程');
+          }
+        }
+        
         if (token) {
           // 先设置 token 到 API 客户端
           const { apiClient } = await import('@/lib/api');

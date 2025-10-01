@@ -66,7 +66,19 @@ class ApiClient {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const jsonResponse = await response.json();
+      
+      // 处理新的API响应格式 {success: true, data: [...]}
+      if (jsonResponse && typeof jsonResponse === 'object' && 'success' in jsonResponse) {
+        if (!jsonResponse.success) {
+          throw new Error(jsonResponse.message || 'API request failed');
+        }
+        // 返回data字段，如果没有data字段则返回整个响应
+        return jsonResponse.data !== undefined ? jsonResponse.data : jsonResponse;
+      }
+      
+      // 兼容旧的响应格式
+      return jsonResponse;
     } catch (error) {
       console.error('API request failed:', error);
       throw error;

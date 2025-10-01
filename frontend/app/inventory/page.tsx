@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { ProductService } from '@/services/product';
 import { InventoryService } from '@/services/inventory';
 import { WarehouseService } from '@/services/warehouse';
+import { withAuth } from '@/contexts/AuthContext';
 import { 
   Product, 
   Stock, 
@@ -67,7 +68,7 @@ const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
-export default function InventoryPage() {
+function InventoryPage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'product' | 'inbound' | 'outbound' | 'warehouse' | 'movement'>('product');
   const [form] = Form.useForm();
@@ -117,7 +118,7 @@ export default function InventoryPage() {
         limit,
         search: search || undefined
       });
-      setProducts(response.data);
+      setProducts(response.data || []);
       setProductsPagination({
         current: response.page,
         pageSize: response.limit,
@@ -126,6 +127,7 @@ export default function InventoryPage() {
     } catch (error) {
       console.error('加载产品数据失败:', error);
       message.error('加载产品数据失败');
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -140,7 +142,7 @@ export default function InventoryPage() {
         limit,
         search: search || undefined
       });
-      setStocks(response.data);
+      setStocks(response.data || []);
       setStocksPagination({
         current: response.page,
         pageSize: response.limit,
@@ -149,6 +151,7 @@ export default function InventoryPage() {
     } catch (error) {
       console.error('加载库存数据失败:', error);
       message.error('加载库存数据失败');
+      setStocks([]);
     } finally {
       setLoading(false);
     }
@@ -163,7 +166,7 @@ export default function InventoryPage() {
         limit,
         search: search || undefined
       });
-      setStockMovements(response.data);
+      setStockMovements(response.data || []);
       setMovementsPagination({
         current: response.page,
         pageSize: response.limit,
@@ -172,6 +175,7 @@ export default function InventoryPage() {
     } catch (error) {
       console.error('加载库存移动数据失败:', error);
       message.error('加载库存移动数据失败');
+      setStockMovements([]);
     } finally {
       setLoading(false);
     }
@@ -186,7 +190,7 @@ export default function InventoryPage() {
         limit,
         search: search || undefined
       });
-      setWarehouses(response.data);
+      setWarehouses(response.data || []);
       setWarehousesPagination({
         current: response.page,
         pageSize: response.limit,
@@ -195,6 +199,7 @@ export default function InventoryPage() {
     } catch (error) {
       console.error('加载仓库数据失败:', error);
       message.error('加载仓库数据失败');
+      setWarehouses([]);
     } finally {
       setLoading(false);
     }
@@ -602,10 +607,10 @@ export default function InventoryPage() {
   };
 
   // 计算统计数据
-  const totalProducts = products.length;
-  const lowStockProducts = stocks.filter(s => s.quantity < s.reorderLevel).length;
-  const totalWarehouse = warehouses.length;
-  const totalMovements = stockMovements.length;
+  const totalProducts = products?.length || 0;
+  const lowStockProducts = stocks?.filter(s => s.quantity < s.reorderLevel)?.length || 0;
+  const totalWarehouse = warehouses?.length || 0;
+  const totalMovements = stockMovements?.length || 0;
 
   // 定义Tabs的items
   const tabItems = [
@@ -658,7 +663,7 @@ export default function InventoryPage() {
           </div>
           <Table 
             columns={productColumns} 
-            dataSource={products}
+            dataSource={products || []}
             loading={loading}
             pagination={{
               current: productsPagination.current,
@@ -722,7 +727,7 @@ export default function InventoryPage() {
           </div>
           <Table 
             columns={warehouseColumns} 
-            dataSource={warehouses}
+            dataSource={warehouses || []}
             loading={loading}
             pagination={{
               current: warehousesPagination.current,
@@ -788,7 +793,7 @@ export default function InventoryPage() {
           </div>
           <Table 
             columns={movementColumns} 
-            dataSource={stockMovements}
+            dataSource={stockMovements || []}
             loading={loading}
             pagination={{
               current: movementsPagination.current,
@@ -872,3 +877,5 @@ export default function InventoryPage() {
     </div>
   );
 }
+
+export default withAuth(InventoryPage);

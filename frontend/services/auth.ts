@@ -4,7 +4,7 @@ import { LoginRequest, RegisterRequest, AuthResponse, User } from '@/types/api';
 export class AuthService {
   // 用户登录
   static async login(credentials: LoginRequest): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/users/login', credentials);
+    const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
     
     // 保存 token
     if (response.token) {
@@ -16,7 +16,7 @@ export class AuthService {
 
   // 用户注册
   static async register(userData: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/users/register', userData);
+    const response = await apiClient.post<AuthResponse>('/auth/register', userData);
     
     // 保存 token
     if (response.token) {
@@ -28,7 +28,7 @@ export class AuthService {
 
   // 获取当前用户信息
   static async getCurrentUser(): Promise<User> {
-    return apiClient.get<User>('/users/profile');
+    return apiClient.get<User>('/auth/me');
   }
 
   // 用户登出

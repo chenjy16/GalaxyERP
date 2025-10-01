@@ -73,45 +73,18 @@ func (r *ItemRepositoryImpl) Delete(ctx context.Context, id uint) error {
 
 // List 获取物料列表
 func (r *ItemRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Item, int64, error) {
-	var legacyItems []*models.LegacyItem
+	var items []*models.Item
 	var total int64
 	
 	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.LegacyItem{}).Count(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Model(&models.Item{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	
 	// 获取分页数据
-	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&legacyItems).Error
+	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&items).Error
 	if err != nil {
 		return nil, 0, err
-	}
-	
-	// 转换为新的模型格式
-	items := make([]*models.Item, len(legacyItems))
-	for i, legacyItem := range legacyItems {
-		var deletedAt gorm.DeletedAt
-		if legacyItem.DeletedAt != nil {
-			deletedAt = gorm.DeletedAt{Time: *legacyItem.DeletedAt, Valid: true}
-		}
-		
-		items[i] = &models.Item{
-			BaseModel: models.BaseModel{
-				ID:        legacyItem.ID,
-				CreatedAt: legacyItem.CreatedAt,
-				UpdatedAt: legacyItem.UpdatedAt,
-				DeletedAt: deletedAt,
-			},
-			Code:         legacyItem.Code,
-			Name:         legacyItem.Name,
-			Description:  legacyItem.Description,
-			Category:     legacyItem.Category,
-			Unit:         legacyItem.Unit,
-			Cost:         legacyItem.Cost,
-			Price:        legacyItem.Price,
-			ReorderLevel: legacyItem.ReorderLevel,
-			IsActive:     legacyItem.IsActive,
-		}
 	}
 	
 	return items, total, nil
