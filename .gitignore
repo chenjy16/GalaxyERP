@@ -1,0 +1,61 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories
+vendor/
+go-workspace/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Database
+*.sql.gz
+*.sqlite3
+
+# Build outputs
+bin/
+dist/
+build/
+
+# Node.js dependencies
+node_modules/
+
+# Next.js build outputs and cache
+.next/
+out/
+
+# Frontend dependencies and cache
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.production.local
+
+# Package manager lock files (optional, comment out if you want to include them)
+# package-lock.json
+# yarn.lock

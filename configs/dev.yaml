@@ -1,0 +1,18 @@
+# Development configuration for GalaxyERP
+
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+
+database:
+  # Using SQLite for development, no connection details needed
+  type: "sqlite"
+  file: "galaxyerp.db"
+
+jwt:
+  secret: "galaxyerp_secret_key"
+  expiry: 168 # hours (7 days)
+
+logging:
+  level: "debug"
+  format: "console" # json, console

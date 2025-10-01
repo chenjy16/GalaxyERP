@@ -1,0 +1,21 @@
+# Production configuration for GalaxyERP
+
+server:
+  port: "8080"
+  mode: "release" # debug, release, test
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "galaxyerp"
+  password: "galaxyerp"
+  dbname: "galaxyerp"
+  sslmode: "require"
+
+jwt:
+  secret: "galaxyerp_secret_key"
+  expiry: 24 # hours
+
+logging:
+  level: "info"
+  format: "json" # json, console

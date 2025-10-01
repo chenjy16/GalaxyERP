@@ -1,0 +1,19 @@
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "galaxyerp"
+  password: "galaxyerp"
+  dbname: "galaxyerp"
+  sslmode: "disable"
+
+jwt:
+  secret: "galaxyerp_secret_key"
+  expiry: 168 # hours (7 days)
+
+logging:
+  level: "info"
+  format: "json" # json, console

@@ -1,0 +1,21 @@
+# Test configuration for GalaxyERP
+
+server:
+  port: "8080"
+  mode: "test" # debug, release, test
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "galaxyerp_test"
+  password: "galaxyerp_test"
+  dbname: "galaxyerp_test"
+  sslmode: "disable"
+
+jwt:
+  secret: "galaxyerp_test_secret_key"
+  expiry: 1 # hours
+
+logging:
+  level: "info"
+  format: "json" # json, console
