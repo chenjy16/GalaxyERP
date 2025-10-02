@@ -515,14 +515,8 @@ func (c *InventoryController) ListStockMovements(ctx *gin.Context) {
 	} else if movementType != "" {
 		result, err = c.movementService.GetMovementsByType(ctx, movementType, page, limit)
 	} else {
-		// 如果没有筛选条件，返回空列表或实现通用列表方法
-		result = &dto.PaginatedResponse[dto.MovementResponse]{
-			Data:       []dto.MovementResponse{},
-			Total:      0,
-			Page:       page,
-			Limit:      limit,
-			TotalPages: 0,
-		}
+		// 如果没有筛选条件，返回所有库存移动记录
+		result, err = c.movementService.ListMovements(ctx, page, limit)
 	}
 
 	if err != nil {

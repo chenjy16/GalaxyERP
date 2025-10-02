@@ -5,7 +5,9 @@ import { withAuth } from '@/contexts/AuthContext';
 import { CustomerService } from '@/services/customer';
 import { QuotationService } from '@/services/quotation';
 import { SalesOrderService } from '@/services/salesOrder';
+import { QuotationVersionService, QuotationVersion, QuotationVersionHistoryResponse } from '@/services/quotationVersion';
 import { Customer, Quotation, SalesOrder } from '@/types/api';
+import dayjs from 'dayjs';
 import { 
   Card, 
   Tabs, 
@@ -25,6 +27,7 @@ import {
   Avatar,
   Tooltip,
   Dropdown,
+  Checkbox,
   message
 } from 'antd';
 import { 
@@ -44,7 +47,11 @@ import {
   ExportOutlined,
   ImportOutlined,
   BarChartOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  BranchesOutlined,
+  HistoryOutlined,
+  SwapOutlined,
+  RollbackOutlined
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -55,6 +62,19 @@ function SalesPage() {
   const [modalType, setModalType] = useState<'customer' | 'quote' | 'order'>('customer');
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [viewingRecord, setViewingRecord] = useState<any>(null);
+  
+  // 版本管理相关状态
+  const [versionModalVisible, setVersionModalVisible] = useState(false);
+  const [versionHistoryVisible, setVersionHistoryVisible] = useState(false);
+  const [compareModalVisible, setCompareModalVisible] = useState(false);
+  const [currentQuotationId, setCurrentQuotationId] = useState<number | null>(null);
+  const [versions, setVersions] = useState<QuotationVersionHistoryResponse[]>([]);
+  const [selectedVersions, setSelectedVersions] = useState<number[]>([]);
+  const [compareResult, setCompareResult] = useState<any>(null);
+  const [versionForm] = Form.useForm();
   
   // 数据状态
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -130,7 +150,311 @@ function SalesPage() {
     loadSalesOrders();
   }, []);
 
+  // 创建记录
+  const handleCreate = async (values: any) => {
+    try {
+      setLoading(true);
+      let response;
+      
+      switch (modalType) {
+        case 'customer':
+          response = await CustomerService.createCustomer(values);
+          message.success('客户创建成功');
+          loadCustomers();
+          break;
+        case 'quote':
+          response = await QuotationService.createQuotation(values);
+          message.success('报价单创建成功');
+          loadQuotations();
+          break;
+        case 'order':
+          response = await SalesOrderService.createSalesOrder(values);
+          message.success('销售订单创建成功');
+          loadSalesOrders();
+          break;
+      }
+      
+      setIsModalVisible(false);
+      form.resetFields();
+      setEditingRecord(null);
+    } catch (error) {
+      message.error(`创建失败: ${error}`);
+      console.error('Create error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 更新记录
+  const handleUpdate = async (values: any) => {
+    try {
+      setLoading(true);
+      let response;
+      
+      switch (modalType) {
+        case 'customer':
+          response = await CustomerService.updateCustomer(editingRecord.id, values);
+          message.success('客户更新成功');
+          loadCustomers();
+          break;
+        case 'quote':
+          response = await QuotationService.updateQuotation(editingRecord.id, values);
+          message.success('报价单更新成功');
+          loadQuotations();
+          break;
+        case 'order':
+          response = await SalesOrderService.updateSalesOrder(editingRecord.id, values);
+          message.success('销售订单更新成功');
+          loadSalesOrders();
+          break;
+      }
+      
+      setIsModalVisible(false);
+      form.resetFields();
+      setEditingRecord(null);
+    } catch (error) {
+      message.error(`更新失败: ${error}`);
+      console.error('Update error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 删除记录
+  const handleDelete = async (record: any, type: 'customer' | 'quote' | 'order') => {
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定要删除这条${type === 'customer' ? '客户' : type === 'quote' ? '报价单' : '销售订单'}记录吗？`,
+      okText: '确定',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          setLoading(true);
+          
+          switch (type) {
+            case 'customer':
+              await CustomerService.deleteCustomer(record.id);
+              message.success('客户删除成功');
+              loadCustomers();
+              break;
+            case 'quote':
+              await QuotationService.deleteQuotation(record.id);
+              message.success('报价单删除成功');
+              loadQuotations();
+              break;
+            case 'order':
+              await SalesOrderService.deleteSalesOrder(record.id);
+              message.success('销售订单删除成功');
+              loadSalesOrders();
+              break;
+          }
+        } catch (error) {
+          message.error(`删除失败: ${error}`);
+          console.error('Delete error:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  // 查看详情
+  const handleView = (record: any) => {
+    setViewingRecord(record);
+    setViewModalVisible(true);
+  };
+
+  // 编辑记录
+  const handleEdit = (record: any, type: 'customer' | 'quote' | 'order') => {
+    setEditingRecord(record);
+    setModalType(type);
+    
+    // 根据不同类型处理表单数据
+    let formData = { ...record };
+    if (type === 'order') {
+      // 销售订单编辑时，需要处理客户ID和日期格式
+      formData = {
+        ...record,
+        customerId: record.customer?.id || record.customerId,
+        orderDate: record.orderDate ? dayjs(record.orderDate) : null,
+        deliveryDate: record.deliveryDate ? dayjs(record.deliveryDate) : null,
+        totalAmount: record.grandTotal || record.totalAmount
+      };
+    } else if (type === 'quote') {
+      // 报价单编辑时，需要处理客户ID和日期格式
+      formData = {
+        ...record,
+        customerId: record.customer?.id || record.customerId,
+        validTill: record.validTill ? dayjs(record.validTill) : null,
+        totalAmount: record.grandTotal || record.totalAmount
+      };
+    }
+    
+    form.setFieldsValue(formData);
+    setIsModalVisible(true);
+  };
+
+  // 版本管理相关函数
+  const handleVersionManagement = (quotationId: number) => {
+    setCurrentQuotationId(quotationId);
+    loadVersionHistory(quotationId);
+    setVersionHistoryVisible(true);
+  };
+
+  const loadVersionHistory = async (quotationId: number) => {
+    try {
+      setLoading(true);
+      const history = await QuotationVersionService.getVersionHistory(quotationId);
+      setVersions(history);
+    } catch (error) {
+      message.error('加载版本历史失败');
+      console.error('Error loading version history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateVersion = async (values: any) => {
+    if (!currentQuotationId) return;
+    
+    try {
+      setLoading(true);
+      await QuotationVersionService.createVersion({
+        quotation_id: currentQuotationId,
+        version_name: values.version_name,
+        change_reason: values.change_reason
+      });
+      message.success('版本创建成功');
+      setVersionModalVisible(false);
+      versionForm.resetFields();
+      loadVersionHistory(currentQuotationId);
+    } catch (error) {
+      message.error('创建版本失败');
+      console.error('Error creating version:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetActiveVersion = async (quotationId: number, versionNumber: number) => {
+    try {
+      setLoading(true);
+      await QuotationVersionService.setActiveVersion(quotationId, versionNumber);
+      message.success('版本激活成功');
+      loadVersionHistory(quotationId);
+    } catch (error) {
+      message.error('激活版本失败');
+      console.error('Error setting active version:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRollbackVersion = async (quotationId: number, versionId: number) => {
+    Modal.confirm({
+      title: '确认回滚',
+      content: '确定要回滚到此版本吗？这将覆盖当前版本的数据。',
+      okText: '确定',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await QuotationVersionService.rollbackToVersion({
+            quotation_id: quotationId,
+            version_id: versionId,
+            reason: '手动回滚'
+          });
+          message.success('版本回滚成功');
+          loadVersionHistory(quotationId);
+          loadQuotations(); // 刷新报价单列表
+        } catch (error) {
+          message.error('回滚版本失败');
+          console.error('Error rolling back version:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleDeleteVersion = async (versionId: number) => {
+    Modal.confirm({
+      title: '确认删除',
+      content: '确定要删除此版本吗？此操作不可撤销。',
+      okText: '确定',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await QuotationVersionService.deleteVersion(versionId);
+          message.success('版本删除成功');
+          if (currentQuotationId) {
+            loadVersionHistory(currentQuotationId);
+          }
+        } catch (error) {
+          message.error('删除版本失败');
+          console.error('Error deleting version:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleCompareVersions = async () => {
+    if (selectedVersions.length !== 2) {
+      message.warning('请选择两个版本进行比较');
+      return;
+    }
+
+    if (!currentQuotationId) {
+      message.error('未找到报价单ID');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await QuotationVersionService.compareVersions({
+        quotation_id: currentQuotationId,
+        from_version_id: selectedVersions[0],
+        to_version_id: selectedVersions[1]
+      });
+      setCompareResult(response);
+      setCompareModalVisible(true);
+    } catch (error) {
+      message.error('版本比较失败');
+      console.error('Error comparing versions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVersionSelection = (versionId: number, checked: boolean) => {
+    if (checked) {
+      if (selectedVersions.length >= 2) {
+        message.warning('最多只能选择两个版本进行比较');
+        return;
+      }
+      setSelectedVersions([...selectedVersions, versionId]);
+    } else {
+      setSelectedVersions(selectedVersions.filter(id => id !== versionId));
+    }
+  };
+
+  // 处理客户下拉菜单点击
+  const handleCustomerMenuClick = (key: string, record: any) => {
+    switch (key) {
+      case 'view':
+        handleView(record);
+        break;
+      case 'edit':
+        handleEdit(record, 'customer');
+        break;
+      case 'delete':
+        handleDelete(record, 'customer');
+        break;
+    }
+  };
 
   const customerColumns = [
     {
@@ -226,6 +550,7 @@ function SalesPage() {
                 danger: true,
               },
             ],
+            onClick: ({ key }) => handleCustomerMenuClick(key, record),
           }}
           trigger={['click']}
         >
@@ -244,24 +569,27 @@ function SalesPage() {
     },
     {
       title: '客户',
-      dataIndex: 'customerName',
-      key: 'customerName',
-      render: (text: any, record: any) => {
-        // Fix: Properly handle customer object rendering
-        if (typeof text === 'object' && text !== null) {
-          return text.name || text.id || '-';
+      key: 'customer',
+      render: (record: Quotation) => {
+        // 正确处理客户对象显示
+        if (record.customer && typeof record.customer === 'object') {
+          return (
+            <div>
+              <Text strong>{record.customer.name}</Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {record.customer.code}
+              </Text>
+            </div>
+          );
         }
-        // Also check if record has a customer object
-        if (record.customer && typeof record.customer === 'object' && record.customer !== null) {
-          return record.customer.name || record.customer.id || '-';
-        }
-        return text || '-';
+        return <Text type="secondary">-</Text>;
       }
     },
     {
       title: '总金额',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
+      dataIndex: 'grandTotal',
+      key: 'grandTotal',
       render: (amount: number) => (
         <Text strong style={{ color: '#52c41a' }}>
           ¥{amount ? amount.toLocaleString() : '0.00'}
@@ -286,15 +614,29 @@ function SalesPage() {
     },
     {
       title: '有效期至',
-      dataIndex: 'validUntil',
-      key: 'validUntil',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      dataIndex: 'validTill',
+      key: 'validTill',
+      render: (date: string) => {
+        if (!date) return '-';
+        try {
+          return new Date(date).toLocaleDateString();
+        } catch {
+          return '-';
+        }
+      },
     },
     {
       title: '创建日期',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      dataIndex: 'date',
+      key: 'date',
+      render: (date: string) => {
+        if (!date) return '-';
+        try {
+          return new Date(date).toLocaleDateString();
+        } catch {
+          return '-';
+        }
+      },
     },
     {
       title: '操作',
@@ -302,13 +644,16 @@ function SalesPage() {
       render: (record: any) => (
         <Space>
           <Tooltip title="查看">
-            <Button type="text" icon={<EyeOutlined />} size="small" />
+            <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => handleView(record)} />
           </Tooltip>
           <Tooltip title="编辑">
-            <Button type="text" icon={<EditOutlined />} size="small" />
+            <Button type="text" icon={<EditOutlined />} size="small" onClick={() => handleEdit(record, 'quote')} />
+          </Tooltip>
+          <Tooltip title="版本管理">
+            <Button type="text" icon={<BranchesOutlined />} size="small" onClick={() => handleVersionManagement(record.id)} />
           </Tooltip>
           <Tooltip title="删除">
-            <Button type="text" icon={<DeleteOutlined />} size="small" danger />
+            <Button type="text" icon={<DeleteOutlined />} size="small" danger onClick={() => handleDelete(record, 'quote')} />
           </Tooltip>
         </Space>
       ),
@@ -324,18 +669,21 @@ function SalesPage() {
     },
     {
       title: '客户',
-      dataIndex: 'customerName',
-      key: 'customerName',
-      render: (text: any, record: any) => {
-        // Fix: Properly handle customer object rendering
-        if (typeof text === 'object' && text !== null) {
-          return text.name || text.id || '-';
+      key: 'customer',
+      render: (record: SalesOrder) => {
+        // 正确处理客户对象显示
+        if (record.customer && typeof record.customer === 'object') {
+          return (
+            <div>
+              <Text strong>{record.customer.name}</Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {record.customer.code}
+              </Text>
+            </div>
+          );
         }
-        // Also check if record has a customer object
-        if (record.customer && typeof record.customer === 'object' && record.customer !== null) {
-          return record.customer.name || record.customer.id || '-';
-        }
-        return text || '-';
+        return <Text type="secondary">-</Text>;
       }
     },
     {
@@ -382,13 +730,13 @@ function SalesPage() {
       render: (record: any) => (
         <Space>
           <Tooltip title="查看">
-            <Button type="text" icon={<EyeOutlined />} size="small" />
+            <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => handleView(record)} />
           </Tooltip>
           <Tooltip title="编辑">
-            <Button type="text" icon={<EditOutlined />} size="small" />
+            <Button type="text" icon={<EditOutlined />} size="small" onClick={() => handleEdit(record, 'order')} />
           </Tooltip>
           <Tooltip title="删除">
-            <Button type="text" icon={<DeleteOutlined />} size="small" danger />
+            <Button type="text" icon={<DeleteOutlined />} size="small" danger onClick={() => handleDelete(record, 'order')} />
           </Tooltip>
         </Space>
       ),
@@ -397,15 +745,20 @@ function SalesPage() {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
-      console.log('Form values:', values);
-      message.success(`${modalType === 'customer' ? '客户' : modalType === 'quote' ? '报价' : '订单'}创建成功！`);
-      setIsModalVisible(false);
-      form.resetFields();
+      if (editingRecord) {
+        handleUpdate(values);
+      } else {
+        handleCreate(values);
+      }
+    }).catch(info => {
+      console.log('Validate Failed:', info);
     });
   };
 
   const showModal = (type: 'customer' | 'quote' | 'order') => {
     setModalType(type);
+    setEditingRecord(null);
+    form.resetFields();
     setIsModalVisible(true);
   };
 
@@ -669,7 +1022,11 @@ function SalesPage() {
 
       {/* 模态框 */}
       <Modal
-        title={modalType === 'customer' ? '新建客户' : modalType === 'quote' ? '新建报价' : '新建订单'}
+        title={
+          editingRecord 
+            ? `编辑${modalType === 'customer' ? '客户' : modalType === 'quote' ? '报价' : '订单'}`
+            : `新建${modalType === 'customer' ? '客户' : modalType === 'quote' ? '报价' : '订单'}`
+        }
         open={isModalVisible}
         onOk={handleModalOk}
         onCancel={() => {
@@ -795,7 +1152,7 @@ function SalesPage() {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    name="validUntil"
+                    name="validTill"
                     label="有效期至"
                     rules={[{ required: true, message: '请选择有效期' }]}
                   >
@@ -803,8 +1160,32 @@ function SalesPage() {
                   </Form.Item>
                 </Col>
               </Row>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="status"
+                    label="状态"
+                  >
+                    <Select placeholder="请选择状态">
+                      <Option value="draft">草稿</Option>
+                      <Option value="submitted">已提交</Option>
+                      <Option value="accepted">已接受</Option>
+                      <Option value="rejected">已拒绝</Option>
+                      <Option value="expired">已过期</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="subject"
+                    label="主题"
+                  >
+                    <Input placeholder="请输入报价主题" />
+                  </Form.Item>
+                </Col>
+              </Row>
               <Form.Item
-                name="description"
+                name="notes"
                 label="备注"
               >
                 <Input.TextArea placeholder="请输入备注" rows={3} />
@@ -843,6 +1224,25 @@ function SalesPage() {
               <Row gutter={16}>
                 <Col span={12}>
                   <Form.Item
+                    name="orderDate"
+                    label="订单日期"
+                    rules={[{ required: true, message: '请选择订单日期' }]}
+                  >
+                    <DatePicker style={{ width: '100%' }} placeholder="请选择订单日期" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="deliveryDate"
+                    label="交付日期"
+                  >
+                    <DatePicker style={{ width: '100%' }} placeholder="请选择交付日期" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
                     name="totalAmount"
                     label="总金额"
                     rules={[{ required: true, message: '请输入总金额' }]}
@@ -852,10 +1252,16 @@ function SalesPage() {
                 </Col>
                 <Col span={12}>
                   <Form.Item
-                    name="deliveryDate"
-                    label="交付日期"
+                    name="status"
+                    label="状态"
                   >
-                    <DatePicker style={{ width: '100%' }} placeholder="请选择交付日期" />
+                    <Select placeholder="请选择状态">
+                      <Option value="pending">待处理</Option>
+                      <Option value="confirmed">已确认</Option>
+                      <Option value="shipped">已发货</Option>
+                      <Option value="delivered">已交付</Option>
+                      <Option value="cancelled">已取消</Option>
+                    </Select>
                   </Form.Item>
                 </Col>
               </Row>
@@ -868,6 +1274,283 @@ function SalesPage() {
             </>
           )}
         </Form>
+      </Modal>
+
+      {/* 详情查看模态框 */}
+      <Modal
+        title="详情信息"
+        open={viewModalVisible}
+        onCancel={() => setViewModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setViewModalVisible(false)}>
+            关闭
+          </Button>
+        ]}
+        width={800}
+      >
+        {viewingRecord && (
+          <div>
+            {Object.entries(viewingRecord).map(([key, value]) => (
+              <Row key={key} style={{ marginBottom: 8 }}>
+                <Col span={6}>
+                  <Text strong>{key}:</Text>
+                </Col>
+                <Col span={18}>
+                  <Text>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</Text>
+                </Col>
+              </Row>
+            ))}
+          </div>
+        )}
+      </Modal>
+
+      {/* 版本历史模态框 */}
+      <Modal
+        title="版本历史管理"
+        open={versionHistoryVisible}
+        onCancel={() => {
+          setVersionHistoryVisible(false);
+          setSelectedVersions([]);
+        }}
+        footer={[
+          <Button key="create" type="primary" onClick={() => setVersionModalVisible(true)}>
+            创建新版本
+          </Button>,
+          <Button 
+            key="compare" 
+            onClick={handleCompareVersions}
+            disabled={selectedVersions.length !== 2}
+          >
+            比较版本 ({selectedVersions.length}/2)
+          </Button>,
+          <Button key="close" onClick={() => {
+            setVersionHistoryVisible(false);
+            setSelectedVersions([]);
+          }}>
+            关闭
+          </Button>
+        ]}
+        width={1000}
+      >
+        <Table
+          dataSource={versions.map(version => ({ ...version, key: version.id }))}
+          columns={[
+            {
+              title: '选择',
+              key: 'select',
+              width: 60,
+              render: (record: any) => (
+                <Checkbox
+                  checked={selectedVersions.includes(record.id)}
+                  onChange={(e) => handleVersionSelection(record.id, e.target.checked)}
+                  disabled={!selectedVersions.includes(record.id) && selectedVersions.length >= 2}
+                />
+              ),
+            },
+            {
+              title: '版本号',
+              dataIndex: 'version_number',
+              key: 'version_number',
+              render: (versionNumber: number, record: any) => (
+                <Space>
+                  <Text strong>v{versionNumber}</Text>
+                  {record.is_active && <Tag color="green">当前版本</Tag>}
+                </Space>
+              ),
+            },
+            {
+              title: '版本名称',
+              dataIndex: 'version_name',
+              key: 'version_name',
+              render: (name: string) => name || '-',
+            },
+            {
+              title: '变更原因',
+              dataIndex: 'change_reason',
+              key: 'change_reason',
+              render: (reason: string) => reason || '-',
+            },
+            {
+              title: '创建时间',
+              dataIndex: 'created_at',
+              key: 'created_at',
+              render: (date: string) => {
+                if (!date) return '-';
+                try {
+                  const dateObj = new Date(date);
+                  return isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString();
+                } catch (error) {
+                  return '-';
+                }
+              },
+            },
+            {
+              title: '创建者',
+              dataIndex: 'creator_name',
+              key: 'creator_name',
+              render: (name: string) => name || '-',
+            },
+            {
+              title: '操作',
+              key: 'action',
+              render: (record: any) => (
+                <Space>
+                  {!record.is_active && (
+                    <Tooltip title="设为当前版本">
+                      <Button 
+                        type="text" 
+                        icon={<SwapOutlined />} 
+                        size="small" 
+                        onClick={() => handleSetActiveVersion(currentQuotationId!, record.version_number)}
+                      />
+                    </Tooltip>
+                  )}
+                  <Tooltip title="回滚到此版本">
+                    <Button 
+                      type="text" 
+                      icon={<RollbackOutlined />} 
+                      size="small" 
+                      onClick={() => handleRollbackVersion(currentQuotationId!, record.id)}
+                    />
+                  </Tooltip>
+                  {!record.is_active && (
+                    <Tooltip title="删除版本">
+                      <Button 
+                        type="text" 
+                        icon={<DeleteOutlined />} 
+                        size="small" 
+                        danger 
+                        onClick={() => handleDeleteVersion(record.id)}
+                      />
+                    </Tooltip>
+                  )}
+                </Space>
+              ),
+            },
+          ]}
+          pagination={false}
+          loading={loading}
+        />
+      </Modal>
+
+      {/* 创建版本模态框 */}
+      <Modal
+        title="创建新版本"
+        open={versionModalVisible}
+        onCancel={() => {
+          setVersionModalVisible(false);
+          versionForm.resetFields();
+        }}
+        onOk={() => versionForm.submit()}
+        confirmLoading={loading}
+      >
+        <Form
+          form={versionForm}
+          layout="vertical"
+          onFinish={handleCreateVersion}
+        >
+          <Form.Item
+            name="version_name"
+            label="版本名称"
+            rules={[{ max: 100, message: '版本名称不能超过100个字符' }]}
+          >
+            <Input placeholder="请输入版本名称（可选）" />
+          </Form.Item>
+          <Form.Item
+            name="change_reason"
+            label="变更原因"
+            rules={[{ max: 500, message: '变更原因不能超过500个字符' }]}
+          >
+            <Input.TextArea 
+              placeholder="请输入变更原因（可选）" 
+              rows={4}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 版本比较结果模态框 */}
+      <Modal
+        title="版本比较结果"
+        open={compareModalVisible}
+        onCancel={() => {
+          setCompareModalVisible(false);
+          setCompareResult(null);
+          setSelectedVersions([]);
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setCompareModalVisible(false);
+            setCompareResult(null);
+            setSelectedVersions([]);
+          }}>
+            关闭
+          </Button>
+        ]}
+        width={800}
+      >
+        {compareResult && (
+          <div>
+            <Table
+              dataSource={compareResult.map((item: any, index: number) => ({ ...item, key: index }))}
+              columns={[
+                {
+                  title: '字段名称',
+                  dataIndex: 'field_name',
+                  key: 'field_name',
+                  width: 150,
+                },
+                {
+                  title: '变更类型',
+                  dataIndex: 'change_type',
+                  key: 'change_type',
+                  width: 100,
+                  render: (type: string) => {
+                    const colorMap: { [key: string]: string } = {
+                      'added': 'green',
+                      'modified': 'orange',
+                      'deleted': 'red'
+                    };
+                    const textMap: { [key: string]: string } = {
+                      'added': '新增',
+                      'modified': '修改',
+                      'deleted': '删除'
+                    };
+                    return <Tag color={colorMap[type]}>{textMap[type] || type}</Tag>;
+                  },
+                },
+                {
+                  title: '原值',
+                  dataIndex: 'old_value',
+                  key: 'old_value',
+                  render: (value: any) => (
+                    <Text code style={{ wordBreak: 'break-all' }}>
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}
+                    </Text>
+                  ),
+                },
+                {
+                  title: '新值',
+                  dataIndex: 'new_value',
+                  key: 'new_value',
+                  render: (value: any) => (
+                    <Text code style={{ wordBreak: 'break-all' }}>
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}
+                    </Text>
+                  ),
+                },
+                {
+                  title: '说明',
+                  dataIndex: 'description',
+                  key: 'description',
+                  render: (desc: string) => desc || '-',
+                },
+              ]}
+              pagination={false}
+              size="small"
+            />
+          </div>
+        )}
       </Modal>
     </div>
   );

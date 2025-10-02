@@ -73,33 +73,40 @@ type QuotationItemRequest struct {
 
 // QuotationUpdateRequest 报价单更新请求
 type QuotationUpdateRequest struct {
+	CustomerID   *uint                  `json:"customer_id,omitempty"`
 	Title        string                 `json:"title,omitempty" binding:"omitempty,max=200"`
 	Description  string                 `json:"description,omitempty"`
 	ValidUntil   *time.Time             `json:"valid_until,omitempty"`
 	PaymentTerms string                 `json:"payment_terms,omitempty"`
 	Notes        string                 `json:"notes,omitempty"`
+	TotalAmount  *float64               `json:"total_amount,omitempty"`
 	Items        []QuotationItemRequest `json:"items,omitempty"`
 }
 
 // QuotationResponse 报价单响应
 type QuotationResponse struct {
-	ID             uint                    `json:"id"`
-	Number         string                  `json:"number"`
-	Title          string                  `json:"title"`
-	Description    string                  `json:"description,omitempty"`
-	Status         string                  `json:"status"`
-	ValidUntil     time.Time               `json:"valid_until"`
-	PaymentTerms   string                  `json:"payment_terms,omitempty"`
-	Notes          string                  `json:"notes,omitempty"`
-	SubTotal       float64                 `json:"sub_total"`
-	DiscountAmount float64                 `json:"discount_amount"`
-	TaxAmount      float64                 `json:"tax_amount"`
-	TotalAmount    float64                 `json:"total_amount"`
-	Customer       CustomerResponse        `json:"customer"`
-	Items          []QuotationItemResponse `json:"items"`
-	CreatedBy      UserResponse            `json:"created_by"`
-	CreatedAt      time.Time               `json:"created_at"`
-	UpdatedAt      time.Time               `json:"updated_at"`
+	ID               uint                    `json:"id"`
+	Number           string                  `json:"number"`
+	QuotationNumber  string                  `json:"quotationNumber"`  // 前端期望的字段名
+	Title            string                  `json:"title"`
+	Subject          string                  `json:"subject"`          // 前端期望的字段名
+	Description      string                  `json:"description,omitempty"`
+	Status           string                  `json:"status"`
+	ValidUntil       time.Time               `json:"valid_until"`
+	ValidTill        time.Time               `json:"validTill"`        // 前端期望的字段名
+	Date             time.Time               `json:"date"`             // 前端期望的字段名
+	PaymentTerms     string                  `json:"payment_terms,omitempty"`
+	Notes            string                  `json:"notes,omitempty"`
+	SubTotal         float64                 `json:"sub_total"`
+	DiscountAmount   float64                 `json:"discount_amount"`
+	TaxAmount        float64                 `json:"tax_amount"`
+	TotalAmount      float64                 `json:"total_amount"`
+	GrandTotal       float64                 `json:"grand_total"`      // 前端期望的字段名
+	Customer         CustomerResponse        `json:"customer"`
+	Items            []QuotationItemResponse `json:"items"`
+	CreatedBy        UserResponse            `json:"created_by"`
+	CreatedAt        time.Time               `json:"created_at"`
+	UpdatedAt        time.Time               `json:"updated_at"`
 }
 
 // QuotationItemResponse 报价单项目响应
@@ -143,12 +150,14 @@ type SalesOrderItemRequest struct {
 // SalesOrderUpdateRequest 销售订单更新请求
 type SalesOrderUpdateRequest struct {
 	CustomerID      *uint                   `json:"customer_id,omitempty"`
+	OrderDate       *time.Time              `json:"order_date,omitempty"`
 	DeliveryDate    *time.Time              `json:"delivery_date,omitempty"`
 	ExpectedDate    *time.Time              `json:"expected_date,omitempty"`
 	Status          *string                 `json:"status,omitempty"`
 	PaymentTerms    string                  `json:"payment_terms,omitempty"`
 	ShippingAddress string                  `json:"shipping_address,omitempty"`
 	Notes           *string                 `json:"notes,omitempty"`
+	TotalAmount     *float64                `json:"total_amount,omitempty"`
 	Items           []SalesOrderItemRequest `json:"items,omitempty"`
 }
 
@@ -156,7 +165,10 @@ type SalesOrderUpdateRequest struct {
 type SalesOrderResponse struct {
 	ID              uint                     `json:"id"`
 	Number          string                   `json:"number"`
+	OrderNumber     string                   `json:"orderNumber"`     // 前端期望的字段名
 	Status          string                   `json:"status"`
+	OrderDate       time.Time                `json:"orderDate"`       // 前端期望的订单日期字段
+	DeliveryDate    time.Time                `json:"deliveryDate"`    // 前端期望的交付日期字段
 	ExpectedDate    time.Time                `json:"expected_date"`
 	PaymentTerms    string                   `json:"payment_terms,omitempty"`
 	ShippingAddress string                   `json:"shipping_address,omitempty"`
@@ -360,3 +372,128 @@ type CreateSalesOrderRequest = SalesOrderCreateRequest
 type UpdateSalesOrderRequest = SalesOrderUpdateRequest
 type CreateSalesOrderItemRequest = SalesOrderItemRequest
 type UpdateSalesOrderItemRequest = SalesOrderItemRequest
+
+// QuotationTemplateCreateRequest 报价单模板创建请求
+type QuotationTemplateCreateRequest struct {
+	Name         string                              `json:"name" binding:"required,max=100"`
+	Description  string                              `json:"description,omitempty"`
+	IsDefault    bool                                `json:"is_default,omitempty"`
+	ValidityDays int                                 `json:"validity_days" binding:"required,min=1"`
+	Terms        string                              `json:"terms,omitempty"`
+	Notes        string                              `json:"notes,omitempty"`
+	DiscountRate float64                             `json:"discount_rate,omitempty" binding:"min=0,max=100"`
+	TaxRate      float64                             `json:"tax_rate,omitempty" binding:"min=0,max=100"`
+	CreatedBy    uint                                `json:"created_by" binding:"required"`
+	Items        []QuotationTemplateItemCreateRequest `json:"items" binding:"required,min=1"`
+}
+
+// QuotationTemplateUpdateRequest 报价单模板更新请求
+type QuotationTemplateUpdateRequest struct {
+	Name         string                              `json:"name,omitempty" binding:"omitempty,max=100"`
+	Description  string                              `json:"description,omitempty"`
+	IsDefault    bool                                `json:"is_default,omitempty"`
+	IsActive     bool                                `json:"is_active,omitempty"`
+	ValidityDays int                                 `json:"validity_days,omitempty" binding:"omitempty,min=1"`
+	Terms        string                              `json:"terms,omitempty"`
+	Notes        string                              `json:"notes,omitempty"`
+	DiscountRate float64                             `json:"discount_rate,omitempty" binding:"min=0,max=100"`
+	TaxRate      float64                             `json:"tax_rate,omitempty" binding:"min=0,max=100"`
+	Items        []QuotationTemplateItemCreateRequest `json:"items,omitempty"`
+}
+
+// QuotationTemplateItemCreateRequest 报价单模板项目创建请求
+type QuotationTemplateItemCreateRequest struct {
+	ItemID       uint    `json:"item_id" binding:"required"`
+	Description  string  `json:"description,omitempty"`
+	Quantity     float64 `json:"quantity" binding:"required,gt=0"`
+	Rate         float64 `json:"rate" binding:"required,gt=0"`
+	DiscountRate float64 `json:"discount_rate,omitempty" binding:"min=0,max=100"`
+	TaxRate      float64 `json:"tax_rate,omitempty" binding:"min=0,max=100"`
+	SortOrder    int     `json:"sort_order,omitempty"`
+}
+
+// QuotationTemplateResponse 报价单模板响应
+type QuotationTemplateResponse struct {
+	ID           uint                              `json:"id"`
+	Name         string                            `json:"name"`
+	Description  string                            `json:"description,omitempty"`
+	IsDefault    bool                              `json:"is_default"`
+	IsActive     bool                              `json:"is_active"`
+	ValidityDays int                               `json:"validity_days"`
+	Terms        string                            `json:"terms,omitempty"`
+	Notes        string                            `json:"notes,omitempty"`
+	DiscountRate float64                           `json:"discount_rate"`
+	TaxRate      float64                           `json:"tax_rate"`
+	Items        []QuotationTemplateItemResponse   `json:"items,omitempty"`
+	CreatedAt    time.Time                         `json:"created_at"`
+	UpdatedAt    time.Time                         `json:"updated_at"`
+}
+
+// QuotationTemplateItemResponse 报价单模板项目响应
+type QuotationTemplateItemResponse struct {
+	ID           uint    `json:"id"`
+	ItemID       uint    `json:"item_id"`
+	Description  string  `json:"description,omitempty"`
+	Quantity     float64 `json:"quantity"`
+	Rate         float64 `json:"rate"`
+	DiscountRate float64 `json:"discount_rate"`
+	TaxRate      float64 `json:"tax_rate"`
+	SortOrder    int     `json:"sort_order"`
+}
+
+// CreateQuotationFromTemplateRequest 从模板创建报价单请求
+type CreateQuotationFromTemplateRequest struct {
+	TemplateID uint `json:"template_id" binding:"required"`
+	CustomerID uint `json:"customer_id" binding:"required"`
+}
+
+// QuotationVersionCreateRequest 创建报价单版本请求
+type QuotationVersionCreateRequest struct {
+	QuotationID   uint   `json:"quotation_id" binding:"required"`
+	VersionName   string `json:"version_name,omitempty" binding:"max=100"`
+	ChangeReason  string `json:"change_reason,omitempty" binding:"max=500"`
+}
+
+// QuotationVersionResponse 报价单版本响应
+type QuotationVersionResponse struct {
+	ID            uint      `json:"id"`
+	QuotationID   uint      `json:"quotation_id"`
+	VersionNumber int       `json:"version_number"`
+	VersionName   string    `json:"version_name,omitempty"`
+	ChangeReason  string    `json:"change_reason,omitempty"`
+	IsActive      bool      `json:"is_active"`
+	CreatedBy     uint      `json:"created_by"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// QuotationVersionComparisonResponse 报价单版本比较响应
+type QuotationVersionComparisonResponse struct {
+	FieldName   string      `json:"field_name"`
+	OldValue    interface{} `json:"old_value"`
+	NewValue    interface{} `json:"new_value"`
+	ChangeType  string      `json:"change_type"` // added, modified, deleted
+	Description string      `json:"description,omitempty"`
+}
+
+// QuotationVersionHistoryResponse 报价单版本历史响应
+type QuotationVersionHistoryResponse struct {
+	QuotationID    uint                                  `json:"quotation_id"`
+	Versions       []QuotationVersionResponse            `json:"versions"`
+	Comparisons    []QuotationVersionComparisonResponse  `json:"comparisons,omitempty"`
+	TotalVersions  int                                   `json:"total_versions"`
+	CurrentVersion int                                   `json:"current_version"`
+}
+
+// QuotationVersionCompareRequest 报价单版本比较请求
+type QuotationVersionCompareRequest struct {
+	QuotationID    uint `json:"quotation_id" binding:"required"`
+	FromVersionID  uint `json:"from_version_id" binding:"required"`
+	ToVersionID    uint `json:"to_version_id" binding:"required"`
+}
+
+// QuotationVersionRollbackRequest 报价单版本回滚请求
+type QuotationVersionRollbackRequest struct {
+	QuotationID uint   `json:"quotation_id" binding:"required"`
+	VersionID   uint   `json:"version_id" binding:"required"`
+	Reason      string `json:"reason,omitempty" binding:"max=500"`
+}

@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/galaxyerp/galaxyErp/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,7 +13,9 @@ type SalesController struct {
 	customerService     services.CustomerService
 	salesOrderService   services.SalesOrderService
 	quotationService    services.QuotationService
+	templateService     services.QuotationTemplateService
 	salesInvoiceService services.SalesInvoiceService
+	versionService      services.QuotationVersionService
 	utils               *ControllerUtils
 }
 
@@ -20,13 +24,17 @@ func NewSalesController(
 	customerService services.CustomerService,
 	salesOrderService services.SalesOrderService,
 	quotationService services.QuotationService,
+	templateService services.QuotationTemplateService,
 	salesInvoiceService services.SalesInvoiceService,
+	versionService services.QuotationVersionService,
 ) *SalesController {
 	return &SalesController{
 		customerService:     customerService,
 		salesOrderService:   salesOrderService,
 		quotationService:    quotationService,
+		templateService:     templateService,
 		salesInvoiceService: salesInvoiceService,
+		versionService:      versionService,
 		utils:               NewControllerUtils(),
 	}
 }
@@ -219,7 +227,16 @@ func (c *SalesController) CreateSalesOrder(ctx *gin.Context) {
 		return
 	}
 
-	order, err := c.salesOrderService.CreateSalesOrder(ctx.Request.Context(), &req)
+	// 从上下文获取用户ID
+	userID := utils.GetUserIDFromContext(ctx)
+	// 添加调试日志
+	fmt.Printf("DEBUG: userID from context: %d\n", userID)
+	if userID == 0 {
+		c.utils.RespondUnauthorized(ctx, "用户未认证")
+		return
+	}
+
+	order, err := c.salesOrderService.CreateSalesOrder(ctx.Request.Context(), &req, userID)
 	if err != nil {
 		c.utils.RespondInternalError(ctx, "创建销售订单失败")
 		return
@@ -402,6 +419,199 @@ func (c *SalesController) CreateQuotation(ctx *gin.Context) {
 	}
 
 	c.utils.RespondCreated(ctx, quotation)
+}
+
+// ==================== 报价单版本管理 ====================
+
+// CreateQuotationVersion 创建报价单版本
+// @Summary 创建报价单版本
+// @Description 为报价单创建新版本
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param request body dto.QuotationVersionCreateRequest true "版本创建请求"
+// @Success 201 {object} dto.QuotationVersionResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-versions [post]
+func (c *SalesController) CreateQuotationVersion(ctx *gin.Context) {
+	var req dto.QuotationVersionCreateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	version, err := c.versionService.CreateVersion(ctx.Request.Context(), &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "创建版本失败")
+		return
+	}
+
+	c.utils.RespondCreated(ctx, version)
+}
+
+// GetQuotationVersion 获取报价单版本
+// @Summary 获取报价单版本
+// @Description 根据ID获取报价单版本信息
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param id path int true "版本ID"
+// @Success 200 {object} dto.QuotationVersionResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-versions/{id} [get]
+func (c *SalesController) GetQuotationVersion(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	version, err := c.versionService.GetVersion(ctx.Request.Context(), id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取版本失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, version)
+}
+
+// SetActiveQuotationVersion 设置活跃版本
+// @Summary 设置活跃版本
+// @Description 将指定版本设置为活跃版本
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param quotation_id path int true "报价单ID"
+// @Param version_number path int true "版本号"
+// @Success 200 {object} dto.BaseResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotations/{quotation_id}/versions/{version_number}/set-active [put]
+func (c *SalesController) SetActiveQuotationVersion(ctx *gin.Context) {
+	quotationID, ok := c.utils.ParseIDParam(ctx, "quotation_id")
+	if !ok {
+		return
+	}
+
+	versionNumber, ok := c.utils.ParseIDParam(ctx, "version_number")
+	if !ok {
+		return
+	}
+
+	err := c.versionService.SetActiveVersion(ctx.Request.Context(), quotationID, int(versionNumber))
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "设置活跃版本失败")
+		return
+	}
+
+	c.utils.RespondSuccess(ctx, "设置活跃版本成功")
+}
+
+// CompareQuotationVersions 比较报价单版本
+// @Summary 比较报价单版本
+// @Description 比较两个报价单版本的差异
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param request body dto.QuotationVersionCompareRequest true "版本比较请求"
+// @Success 200 {object} dto.QuotationVersionComparisonResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-versions/compare [post]
+func (c *SalesController) CompareQuotationVersions(ctx *gin.Context) {
+	var req dto.QuotationVersionCompareRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	comparison, err := c.versionService.CompareVersions(ctx.Request.Context(), &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "比较版本失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, comparison)
+}
+
+// GetQuotationVersionHistory 获取报价单版本历史
+// @Summary 获取报价单版本历史
+// @Description 获取指定报价单的版本历史记录
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param quotation_id path int true "报价单ID"
+// @Success 200 {object} dto.QuotationVersionHistoryResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotations/{quotation_id}/version-history [get]
+func (c *SalesController) GetQuotationVersionHistory(ctx *gin.Context) {
+	quotationID, ok := c.utils.ParseIDParam(ctx, "quotation_id")
+	if !ok {
+		return
+	}
+
+	history, err := c.versionService.GetVersionHistory(ctx.Request.Context(), quotationID)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取版本历史失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, history)
+}
+
+// RollbackQuotationVersion 回滚报价单版本
+// @Summary 回滚报价单版本
+// @Description 将报价单回滚到指定版本
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param request body dto.QuotationVersionRollbackRequest true "版本回滚请求"
+// @Success 200 {object} dto.QuotationVersionResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-versions/rollback [post]
+func (c *SalesController) RollbackQuotationVersion(ctx *gin.Context) {
+	var req dto.QuotationVersionRollbackRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	version, err := c.versionService.RollbackToVersion(ctx.Request.Context(), &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "回滚版本失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, version)
+}
+
+// DeleteQuotationVersion 删除报价单版本
+// @Summary 删除报价单版本
+// @Description 删除指定的报价单版本
+// @Tags 报价单版本
+// @Accept json
+// @Produce json
+// @Param id path int true "版本ID"
+// @Success 200 {object} dto.BaseResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-versions/{id} [delete]
+func (c *SalesController) DeleteQuotationVersion(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	err := c.versionService.DeleteVersion(ctx.Request.Context(), id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "删除版本失败")
+		return
+	}
+
+	c.utils.RespondSuccess(ctx, "删除版本成功")
 }
 
 // GetQuotation 获取报价单
@@ -604,6 +814,66 @@ func (c *SalesController) GetSalesInvoice(ctx *gin.Context) {
 	c.utils.RespondOK(ctx, invoice)
 }
 
+// AddInvoicePayment 为销售发票添加付款记录
+// @Summary 为销售发票添加付款记录
+// @Description 为销售发票添加付款记录
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Param payment body dto.InvoicePaymentCreateRequest true "付款信息"
+// @Success 200 {object} dto.SalesInvoiceResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id}/payments [post]
+func (c *SalesController) AddInvoicePayment(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	var req dto.InvoicePaymentCreateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	invoice, err := c.salesInvoiceService.AddPayment(ctx, id, &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "添加付款记录失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, invoice)
+}
+
+// GetInvoicePayments 获取销售发票的付款记录
+// @Summary 获取销售发票的付款记录
+// @Description 获取销售发票的所有付款记录
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Success 200 {array} dto.InvoicePaymentResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id}/payments [get]
+func (c *SalesController) GetInvoicePayments(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	payments, err := c.salesInvoiceService.GetPayments(id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取付款记录失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, payments)
+}
+
 // UpdateSalesInvoice 更新销售发票
 // @Summary 更新销售发票
 // @Description 更新销售发票信息
@@ -743,4 +1013,238 @@ func (c *SalesController) CancelSalesInvoice(ctx *gin.Context) {
 	}
 
 	c.utils.RespondOK(ctx, invoice)
+}
+
+// ==================== 报价单模板管理 ====================
+
+// CreateQuotationTemplate 创建报价单模板
+// @Summary 创建报价单模板
+// @Description 创建新的报价单模板
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param template body dto.QuotationTemplateCreateRequest true "模板信息"
+// @Success 201 {object} dto.QuotationTemplateResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates [post]
+func (c *SalesController) CreateQuotationTemplate(ctx *gin.Context) {
+	var req dto.QuotationTemplateCreateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	template, err := c.templateService.CreateTemplate(ctx.Request.Context(), &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "创建模板失败")
+		return
+	}
+
+	c.utils.RespondCreated(ctx, template)
+}
+
+// GetQuotationTemplate 获取报价单模板
+// @Summary 获取报价单模板
+// @Description 根据ID获取报价单模板信息
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param id path int true "模板ID"
+// @Success 200 {object} dto.QuotationTemplateResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/{id} [get]
+func (c *SalesController) GetQuotationTemplate(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	template, err := c.templateService.GetTemplate(ctx.Request.Context(), id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取模板失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, template)
+}
+
+// UpdateQuotationTemplate 更新报价单模板
+// @Summary 更新报价单模板
+// @Description 更新报价单模板信息
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param id path int true "模板ID"
+// @Param template body dto.QuotationTemplateUpdateRequest true "模板信息"
+// @Success 200 {object} dto.BaseResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/{id} [put]
+func (c *SalesController) UpdateQuotationTemplate(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	var req dto.QuotationTemplateUpdateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	if err := c.templateService.UpdateTemplate(ctx.Request.Context(), id, &req); err != nil {
+		c.utils.RespondInternalError(ctx, "更新模板失败")
+		return
+	}
+
+	c.utils.RespondSuccess(ctx, "更新模板成功")
+}
+
+// DeleteQuotationTemplate 删除报价单模板
+// @Summary 删除报价单模板
+// @Description 删除报价单模板
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param id path int true "模板ID"
+// @Success 200 {object} dto.BaseResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/{id} [delete]
+func (c *SalesController) DeleteQuotationTemplate(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	if err := c.templateService.DeleteTemplate(ctx.Request.Context(), id); err != nil {
+		c.utils.RespondInternalError(ctx, "删除模板失败")
+		return
+	}
+
+	c.utils.RespondSuccess(ctx, "删除模板成功")
+}
+
+// ListQuotationTemplates 获取报价单模板列表
+// @Summary 获取报价单模板列表
+// @Description 获取报价单模板列表
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Success 200 {object} dto.PaginatedResponse[dto.QuotationTemplateResponse]
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates [get]
+func (c *SalesController) ListQuotationTemplates(ctx *gin.Context) {
+	req := c.utils.ParsePaginationParams(ctx)
+
+	templates, err := c.templateService.ListTemplates(ctx.Request.Context(), req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取模板列表失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, templates)
+}
+
+// GetActiveQuotationTemplates 获取活跃的报价单模板
+// @Summary 获取活跃的报价单模板
+// @Description 获取所有活跃的报价单模板
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Success 200 {array} dto.QuotationTemplateResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/active [get]
+func (c *SalesController) GetActiveQuotationTemplates(ctx *gin.Context) {
+	templates, err := c.templateService.GetActiveTemplates(ctx.Request.Context())
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取活跃模板失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, templates)
+}
+
+// GetDefaultQuotationTemplate 获取默认报价单模板
+// @Summary 获取默认报价单模板
+// @Description 获取默认的报价单模板
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.QuotationTemplateResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/default [get]
+func (c *SalesController) GetDefaultQuotationTemplate(ctx *gin.Context) {
+	template, err := c.templateService.GetDefaultTemplate(ctx.Request.Context())
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取默认模板失败")
+		return
+	}
+
+	if template == nil {
+		c.utils.RespondNotFound(ctx, "未找到默认模板")
+		return
+	}
+
+	c.utils.RespondOK(ctx, template)
+}
+
+// SetDefaultQuotationTemplate 设置默认报价单模板
+// @Summary 设置默认报价单模板
+// @Description 设置指定模板为默认模板
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param id path int true "模板ID"
+// @Success 200 {object} dto.BaseResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/{id}/set-default [post]
+func (c *SalesController) SetDefaultQuotationTemplate(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	if err := c.templateService.SetAsDefault(ctx.Request.Context(), id); err != nil {
+		c.utils.RespondInternalError(ctx, "设置默认模板失败")
+		return
+	}
+
+	c.utils.RespondSuccess(ctx, "设置默认模板成功")
+}
+
+// CreateQuotationFromTemplate 从模板创建报价单
+// @Summary 从模板创建报价单
+// @Description 使用指定模板创建新的报价单
+// @Tags 报价单模板
+// @Accept json
+// @Produce json
+// @Param request body dto.CreateQuotationFromTemplateRequest true "创建请求"
+// @Success 201 {object} dto.QuotationResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/quotation-templates/create-quotation [post]
+func (c *SalesController) CreateQuotationFromTemplate(ctx *gin.Context) {
+	var req dto.CreateQuotationFromTemplateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	quotation, err := c.templateService.CreateQuotationFromTemplate(ctx.Request.Context(), req.TemplateID, req.CustomerID)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "从模板创建报价单失败")
+		return
+	}
+
+	c.utils.RespondCreated(ctx, quotation)
 }

@@ -114,6 +114,7 @@ type SalesOrderRepository interface {
 	Delete(ctx context.Context, id uint) error
 	List(ctx context.Context, offset, limit int) ([]*models.SalesOrder, int64, error)
 	GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesOrder, int64, error)
+	CreateItem(ctx context.Context, item *models.SalesOrderItem) error
 }
 
 // SalesOrderRepositoryImpl 销售订单仓储实现
@@ -136,7 +137,12 @@ func (r *SalesOrderRepositoryImpl) Create(ctx context.Context, order *models.Sal
 // GetByID 根据ID获取销售订单
 func (r *SalesOrderRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.SalesOrder, error) {
 	var order models.SalesOrder
-	err := r.db.WithContext(ctx).Preload("Customer").Preload("Items").Preload("Items.Product").First(&order, id).Error
+	err := r.db.WithContext(ctx).
+		Preload("Customer").
+		Preload("CreatedByUser").
+		Preload("Items").
+		Preload("Items.Item").
+		First(&order, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -305,6 +311,11 @@ func (r *SalesOrderRepositoryImpl) GetByCustomerID(ctx context.Context, customer
 	}
 
 	return orders, total, nil
+}
+
+// CreateItem 创建销售订单项目
+func (r *SalesOrderRepositoryImpl) CreateItem(ctx context.Context, item *models.SalesOrderItem) error {
+	return r.db.WithContext(ctx).Create(item).Error
 }
 
 // ==================== 销售发票仓储 ====================
@@ -528,4 +539,242 @@ func (r *SalesInvoiceRepositoryImpl) GetNextInvoiceNumber(ctx context.Context) (
 	}
 
 	return fmt.Sprintf("%s-%06d", prefix, monthlyCount+1), nil
+}
+
+// QuotationTemplateRepository 报价单模板仓储接口
+type QuotationTemplateRepository interface {
+	Create(ctx context.Context, template *models.QuotationTemplate) error
+	GetByID(ctx context.Context, id uint) (*models.QuotationTemplate, error)
+	Update(ctx context.Context, template *models.QuotationTemplate) error
+	Delete(ctx context.Context, id uint) error
+	List(ctx context.Context, offset, limit int) ([]*models.QuotationTemplate, int64, error)
+	GetActiveTemplates(ctx context.Context) ([]*models.QuotationTemplate, error)
+	GetDefaultTemplate(ctx context.Context) (*models.QuotationTemplate, error)
+	SetAsDefault(ctx context.Context, id uint) error
+}
+
+// QuotationTemplateRepositoryImpl 报价单模板仓储实现
+type QuotationTemplateRepositoryImpl struct {
+	db *gorm.DB
+}
+
+// NewQuotationTemplateRepository 创建报价单模板仓储实例
+func NewQuotationTemplateRepository(db *gorm.DB) QuotationTemplateRepository {
+	return &QuotationTemplateRepositoryImpl{
+		db: db,
+	}
+}
+
+// Create 创建模板
+func (r *QuotationTemplateRepositoryImpl) Create(ctx context.Context, template *models.QuotationTemplate) error {
+	return r.db.WithContext(ctx).Create(template).Error
+}
+
+// GetByID 根据ID获取模板
+func (r *QuotationTemplateRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.QuotationTemplate, error) {
+	var template models.QuotationTemplate
+	err := r.db.WithContext(ctx).
+		Preload("Items").
+		Preload("Items.Item").
+		First(&template, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &template, nil
+}
+
+// Update 更新模板
+func (r *QuotationTemplateRepositoryImpl) Update(ctx context.Context, template *models.QuotationTemplate) error {
+	return r.db.WithContext(ctx).Save(template).Error
+}
+
+// Delete 删除模板
+func (r *QuotationTemplateRepositoryImpl) Delete(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Delete(&models.QuotationTemplate{}, id).Error
+}
+
+// List 获取模板列表
+func (r *QuotationTemplateRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.QuotationTemplate, int64, error) {
+	var templates []*models.QuotationTemplate
+	var total int64
+
+	// 获取总数
+	if err := r.db.WithContext(ctx).Model(&models.QuotationTemplate{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 获取数据
+	err := r.db.WithContext(ctx).
+		Preload("Items").
+		Preload("Items.Item").
+		Offset(offset).
+		Limit(limit).
+		Order("created_at DESC").
+		Find(&templates).Error
+
+	return templates, total, err
+}
+
+// GetActiveTemplates 获取活跃的模板
+func (r *QuotationTemplateRepositoryImpl) GetActiveTemplates(ctx context.Context) ([]*models.QuotationTemplate, error) {
+	var templates []*models.QuotationTemplate
+	err := r.db.WithContext(ctx).
+		Where("is_active = ?", true).
+		Preload("Items").
+		Preload("Items.Item").
+		Order("name ASC").
+		Find(&templates).Error
+	return templates, err
+}
+
+// GetDefaultTemplate 获取默认模板
+func (r *QuotationTemplateRepositoryImpl) GetDefaultTemplate(ctx context.Context) (*models.QuotationTemplate, error) {
+	var template models.QuotationTemplate
+	err := r.db.WithContext(ctx).
+		Where("is_default = ? AND is_active = ?", true, true).
+		Preload("Items").
+		Preload("Items.Item").
+		First(&template).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &template, nil
+}
+
+// SetAsDefault 设置为默认模板
+func (r *QuotationTemplateRepositoryImpl) SetAsDefault(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 先取消所有默认模板
+		if err := tx.Model(&models.QuotationTemplate{}).
+			Where("is_default = ?", true).
+			Update("is_default", false).Error; err != nil {
+			return err
+		}
+
+		// 设置新的默认模板
+		return tx.Model(&models.QuotationTemplate{}).
+			Where("id = ?", id).
+			Update("is_default", true).Error
+	})
+}
+
+
+// QuotationVersionRepository 报价单版本仓储接口
+type QuotationVersionRepository interface {
+	Create(ctx context.Context, version *models.QuotationVersion) error
+	GetByID(ctx context.Context, id uint) (*models.QuotationVersion, error)
+	GetByQuotationID(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error)
+	GetActiveVersion(ctx context.Context, quotationID uint) (*models.QuotationVersion, error)
+	SetActiveVersion(ctx context.Context, quotationID, versionID uint) error
+	GetVersionHistory(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error)
+	GetNextVersionNumber(ctx context.Context, quotationID uint) (int, error)
+	Delete(ctx context.Context, id uint) error
+}
+
+// QuotationVersionRepositoryImpl 报价单版本仓储实现
+type QuotationVersionRepositoryImpl struct {
+	db *gorm.DB
+}
+
+// NewQuotationVersionRepository 创建报价单版本仓储实例
+func NewQuotationVersionRepository(db *gorm.DB) QuotationVersionRepository {
+	return &QuotationVersionRepositoryImpl{
+		db: db,
+	}
+}
+
+// Create 创建报价单版本
+func (r *QuotationVersionRepositoryImpl) Create(ctx context.Context, version *models.QuotationVersion) error {
+	return r.db.WithContext(ctx).Create(version).Error
+}
+
+// GetByID 根据ID获取报价单版本
+func (r *QuotationVersionRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.QuotationVersion, error) {
+	var version models.QuotationVersion
+	err := r.db.WithContext(ctx).
+		Preload("Quotation").
+		First(&version, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+// GetByQuotationID 根据报价单ID获取所有版本
+func (r *QuotationVersionRepositoryImpl) GetByQuotationID(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error) {
+	var versions []*models.QuotationVersion
+	err := r.db.WithContext(ctx).
+		Where("quotation_id = ?", quotationID).
+		Order("version_number DESC").
+		Find(&versions).Error
+	return versions, err
+}
+
+// GetActiveVersion 获取报价单的活跃版本
+func (r *QuotationVersionRepositoryImpl) GetActiveVersion(ctx context.Context, quotationID uint) (*models.QuotationVersion, error) {
+	var version models.QuotationVersion
+	err := r.db.WithContext(ctx).
+		Where("quotation_id = ? AND is_active = ?", quotationID, true).
+		First(&version).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &version, nil
+}
+
+// SetActiveVersion 设置活跃版本
+func (r *QuotationVersionRepositoryImpl) SetActiveVersion(ctx context.Context, quotationID, versionID uint) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 先将所有版本设为非活跃
+		if err := tx.Model(&models.QuotationVersion{}).
+			Where("quotation_id = ?", quotationID).
+			Update("is_active", false).Error; err != nil {
+			return err
+		}
+		
+		// 设置指定版本为活跃
+		return tx.Model(&models.QuotationVersion{}).
+			Where("id = ? AND quotation_id = ?", versionID, quotationID).
+			Update("is_active", true).Error
+	})
+}
+
+// GetVersionHistory 获取版本历史
+func (r *QuotationVersionRepositoryImpl) GetVersionHistory(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error) {
+	var versions []*models.QuotationVersion
+	err := r.db.WithContext(ctx).
+		Where("quotation_id = ?", quotationID).
+		Order("version_number ASC").
+		Find(&versions).Error
+	return versions, err
+}
+
+// GetNextVersionNumber 获取下一个版本号
+func (r *QuotationVersionRepositoryImpl) GetNextVersionNumber(ctx context.Context, quotationID uint) (int, error) {
+	var maxVersion int
+	err := r.db.WithContext(ctx).Model(&models.QuotationVersion{}).
+		Where("quotation_id = ?", quotationID).
+		Select("COALESCE(MAX(version_number), 0)").
+		Scan(&maxVersion).Error
+	if err != nil {
+		return 0, err
+	}
+	return maxVersion + 1, nil
+}
+
+// Delete 删除报价单版本
+func (r *QuotationVersionRepositoryImpl) Delete(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Delete(&models.QuotationVersion{}, id).Error
 }

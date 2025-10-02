@@ -501,7 +501,7 @@ func (s *WarehouseServiceImpl) GetWarehouses(ctx context.Context, req *dto.Pagin
 
 // toWarehouseResponse 转换为仓库响应
 func (s *WarehouseServiceImpl) toWarehouseResponse(warehouse *models.Warehouse) *dto.WarehouseResponse {
-	return &dto.WarehouseResponse{
+	response := &dto.WarehouseResponse{
 		ID:          warehouse.ID,
 		Name:        warehouse.Name,
 		Code:        warehouse.Code,
@@ -511,12 +511,30 @@ func (s *WarehouseServiceImpl) toWarehouseResponse(warehouse *models.Warehouse) 
 		CreatedAt:   warehouse.CreatedAt,
 		UpdatedAt:   warehouse.UpdatedAt,
 	}
+
+	// 填充Manager字段
+	if warehouse.Manager != nil {
+		response.Manager = &dto.UserResponse{
+			ID:        warehouse.Manager.ID,
+			Username:  warehouse.Manager.Username,
+			Email:     warehouse.Manager.Email,
+			FirstName: warehouse.Manager.FirstName,
+			LastName:  warehouse.Manager.LastName,
+			Phone:     warehouse.Manager.Phone,
+			IsActive:  warehouse.Manager.IsActive,
+			CreatedAt: warehouse.Manager.CreatedAt,
+			UpdatedAt: warehouse.Manager.UpdatedAt,
+		}
+	}
+
+	return response
 }
 
 // MovementService 库存移动服务接口
 type MovementService interface {
 	CreateMovement(ctx context.Context, req dto.MovementCreateRequest) (*dto.MovementResponse, error)
 	GetMovementByID(ctx context.Context, id uint) (*dto.MovementResponse, error)
+	ListMovements(ctx context.Context, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error)
 	GetMovementsByItemID(ctx context.Context, itemID uint, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error)
 	GetMovementsByWarehouseID(ctx context.Context, warehouseID uint, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error)
 	GetMovementsByType(ctx context.Context, movementType string, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error)
@@ -602,6 +620,41 @@ func (s *MovementServiceImpl) GetMovementByID(ctx context.Context, id uint) (*dt
 	}
 
 	return s.convertToMovementResponse(movement, item, warehouse), nil
+}
+
+// ListMovements 获取库存移动列表
+func (s *MovementServiceImpl) ListMovements(ctx context.Context, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error) {
+	offset := (page - 1) * limit
+	movements, total, err := s.movementRepo.List(ctx, offset, limit)
+	if err != nil {
+		return nil, fmt.Errorf("获取库存移动列表失败: %w", err)
+	}
+
+	responses := make([]dto.MovementResponse, 0, len(movements))
+	for _, movement := range movements {
+		var item *models.Item
+		var warehouse *models.Warehouse
+
+		if movement.ItemID != nil {
+			item, _ = s.itemRepo.GetByID(ctx, *movement.ItemID)
+		}
+
+		if movement.WarehouseID != nil {
+			warehouse, _ = s.warehouseRepo.GetByID(ctx, *movement.WarehouseID)
+		}
+
+		responses = append(responses, *s.convertToMovementResponse(movement, item, warehouse))
+	}
+
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
+	return &dto.PaginatedResponse[dto.MovementResponse]{
+		Data:       responses,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
 }
 
 // GetMovementsByItemID 根据物料ID获取库存移动列表

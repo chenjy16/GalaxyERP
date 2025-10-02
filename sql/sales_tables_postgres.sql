@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS quotations (
   updated_by INTEGER NULL,
   quotation_number VARCHAR(255) UNIQUE NOT NULL,
   customer_id INTEGER NOT NULL,
+  template_id INTEGER,
   date TIMESTAMP WITH TIME ZONE NOT NULL,
   valid_till TIMESTAMP WITH TIME ZONE NOT NULL,
   status VARCHAR(255) DEFAULT 'Draft',
@@ -67,12 +68,14 @@ CREATE TABLE IF NOT EXISTS quotations (
   terms TEXT,
   notes TEXT,
   CONSTRAINT fk_quotations_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quotations_template FOREIGN KEY (template_id) REFERENCES quotation_templates(id) ON DELETE SET NULL,
   CONSTRAINT fk_quotations_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
   CONSTRAINT fk_quotations_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_quotations_deleted_at ON quotations (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_quotations_quotation_number ON quotations (quotation_number);
 CREATE INDEX IF NOT EXISTS idx_quotations_customer_id ON quotations (customer_id);
+CREATE INDEX IF NOT EXISTS idx_quotations_template_id ON quotations (template_id);
 CREATE INDEX IF NOT EXISTS idx_quotations_status ON quotations (status);
 CREATE INDEX IF NOT EXISTS idx_quotations_date ON quotations (date);
 CREATE INDEX IF NOT EXISTS idx_quotations_valid_till ON quotations (valid_till);
@@ -105,6 +108,92 @@ CREATE TABLE IF NOT EXISTS quotation_items (
 CREATE INDEX IF NOT EXISTS idx_quotation_items_deleted_at ON quotation_items (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_quotation_items_quotation_id ON quotation_items (quotation_id);
 CREATE INDEX IF NOT EXISTS idx_quotation_items_item_id ON quotation_items (item_id);
+
+-- ============================================================================
+-- 报价单模板管理
+-- ============================================================================
+
+-- 报价单模板表
+CREATE TABLE IF NOT EXISTS quotation_templates (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  is_default BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
+  valid_days INTEGER DEFAULT 30,
+  terms TEXT,
+  notes TEXT,
+  discount_rate DECIMAL(5,2) DEFAULT 0,
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  CONSTRAINT fk_quotation_templates_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_quotation_templates_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_deleted_at ON quotation_templates (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_name ON quotation_templates (name);
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_is_default ON quotation_templates (is_default);
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_is_active ON quotation_templates (is_active);
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_created_by ON quotation_templates (created_by);
+
+-- 报价单模板明细表
+CREATE TABLE IF NOT EXISTS quotation_template_items (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  template_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  description VARCHAR(255),
+  quantity DECIMAL(15,4) DEFAULT 1,
+  rate DECIMAL(15,2) DEFAULT 0,
+  discount_rate DECIMAL(5,2) DEFAULT 0,
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
+  CONSTRAINT fk_quotation_template_items_template FOREIGN KEY (template_id) REFERENCES quotation_templates(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quotation_template_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quotation_template_items_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_quotation_template_items_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quotation_template_items_deleted_at ON quotation_template_items (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_quotation_template_items_template_id ON quotation_template_items (template_id);
+CREATE INDEX IF NOT EXISTS idx_quotation_template_items_item_id ON quotation_template_items (item_id);
+CREATE INDEX IF NOT EXISTS idx_quotation_template_items_sort_order ON quotation_template_items (sort_order);
+
+-- ============================================================================
+-- 报价单版本管理
+-- ============================================================================
+
+-- 报价单版本表
+CREATE TABLE IF NOT EXISTS quotation_versions (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  quotation_id INTEGER NOT NULL,
+  version_number INTEGER NOT NULL,
+  version_name VARCHAR(255),
+  version_data JSONB NOT NULL,
+  change_reason TEXT,
+  is_active BOOLEAN DEFAULT false,
+  CONSTRAINT fk_quotation_versions_quotation FOREIGN KEY (quotation_id) REFERENCES quotations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quotation_versions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_quotation_versions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT uk_quotation_versions_quotation_version UNIQUE (quotation_id, version_number)
+);
+CREATE INDEX IF NOT EXISTS idx_quotation_versions_deleted_at ON quotation_versions (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_quotation_versions_quotation_id ON quotation_versions (quotation_id);
+CREATE INDEX IF NOT EXISTS idx_quotation_versions_version_number ON quotation_versions (version_number);
+CREATE INDEX IF NOT EXISTS idx_quotation_versions_is_active ON quotation_versions (is_active);
+CREATE INDEX IF NOT EXISTS idx_quotation_versions_created_by ON quotation_versions (created_by);
+CREATE INDEX IF NOT EXISTS idx_quotation_versions_created_at ON quotation_versions (created_at);
 
 -- ============================================================================
 -- 销售订单管理

@@ -80,6 +80,7 @@ type PurchaseRequestResponse struct {
 	Description  string                        `json:"description,omitempty"`
 	Priority     string                        `json:"priority"`
 	Status       string                        `json:"status"`
+	Department   string                        `json:"department,omitempty"`
 	RequiredDate time.Time                     `json:"required_date"`
 	TotalAmount  float64                       `json:"total_amount"`
 	Items        []PurchaseRequestItemResponse `json:"items"`

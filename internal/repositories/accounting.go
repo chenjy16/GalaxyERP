@@ -192,6 +192,98 @@ func (r *JournalEntryRepositoryImpl) List(ctx context.Context, offset, limit int
 	return entries, total, nil
 }
 
+// PaymentEntryRepository 付款记录仓储接口
+type PaymentEntryRepository interface {
+	Create(ctx context.Context, payment *models.PaymentEntry) error
+	GetByID(ctx context.Context, id uint) (*models.PaymentEntry, error)
+	Update(ctx context.Context, payment *models.PaymentEntry) error
+	Delete(ctx context.Context, id uint) error
+	List(ctx context.Context, offset, limit int) ([]*models.PaymentEntry, int64, error)
+	GetByParty(ctx context.Context, partyType string, partyID uint, offset, limit int) ([]*models.PaymentEntry, int64, error)
+}
+
+// PaymentEntryRepositoryImpl 付款记录仓储实现
+type PaymentEntryRepositoryImpl struct {
+	db *gorm.DB
+}
+
+// NewPaymentEntryRepository 创建付款记录仓储实例
+func NewPaymentEntryRepository(db *gorm.DB) PaymentEntryRepository {
+	return &PaymentEntryRepositoryImpl{
+		db: db,
+	}
+}
+
+// Create 创建付款记录
+func (r *PaymentEntryRepositoryImpl) Create(ctx context.Context, payment *models.PaymentEntry) error {
+	return r.db.WithContext(ctx).Create(payment).Error
+}
+
+// GetByID 根据ID获取付款记录
+func (r *PaymentEntryRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.PaymentEntry, error) {
+	var payment models.PaymentEntry
+	err := r.db.WithContext(ctx).Preload("BankAccount").Preload("CashAccount").Preload("CostCenter").First(&payment, id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("付款记录不存在")
+		}
+		return nil, err
+	}
+	return &payment, nil
+}
+
+// Update 更新付款记录
+func (r *PaymentEntryRepositoryImpl) Update(ctx context.Context, payment *models.PaymentEntry) error {
+	return r.db.WithContext(ctx).Save(payment).Error
+}
+
+// Delete 删除付款记录
+func (r *PaymentEntryRepositoryImpl) Delete(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Delete(&models.PaymentEntry{}, id).Error
+}
+
+// List 获取付款记录列表
+func (r *PaymentEntryRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.PaymentEntry, int64, error) {
+	var payments []*models.PaymentEntry
+	var total int64
+
+	// 获取总数
+	if err := r.db.WithContext(ctx).Model(&models.PaymentEntry{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 获取分页数据，预加载关联
+	err := r.db.WithContext(ctx).Preload("BankAccount").Preload("CashAccount").Preload("CostCenter").
+		Offset(offset).Limit(limit).Find(&payments).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return payments, total, nil
+}
+
+// GetByParty 根据关联方获取付款记录
+func (r *PaymentEntryRepositoryImpl) GetByParty(ctx context.Context, partyType string, partyID uint, offset, limit int) ([]*models.PaymentEntry, int64, error) {
+	var payments []*models.PaymentEntry
+	var total int64
+
+	// 获取总数
+	if err := r.db.WithContext(ctx).Model(&models.PaymentEntry{}).
+		Where("party_type = ? AND party_id = ?", partyType, partyID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 获取分页数据
+	err := r.db.WithContext(ctx).Preload("BankAccount").Preload("CashAccount").Preload("CostCenter").
+		Where("party_type = ? AND party_id = ?", partyType, partyID).
+		Offset(offset).Limit(limit).Find(&payments).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return payments, total, nil
+}
+
 // GetByDateRange 根据日期范围获取记账凭证
 func (r *JournalEntryRepositoryImpl) GetByDateRange(ctx context.Context, startDate, endDate string, offset, limit int) ([]*models.JournalEntry, int64, error) {
 	var entries []*models.JournalEntry

@@ -19,6 +19,8 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		if path == "/health" ||
 			path == "/api/v1/users/login" ||
 			path == "/api/v1/users/register" ||
+			path == "/api/v1/auth/login" ||
+			path == "/api/v1/auth/register" ||
 			path == "/api/v1/auth/refresh" ||
 			path == "/api/v1/auth/logout" {
 			c.Next()

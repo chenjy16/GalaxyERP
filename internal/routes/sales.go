@@ -38,6 +38,29 @@ func RegisterSalesRoutes(router *gin.RouterGroup, container *container.Container
 		quotations.DELETE("/:id", container.SalesController.DeleteQuotation)
 		quotations.GET("/", container.SalesController.ListQuotations)
 		quotations.GET("/search", container.SalesController.SearchQuotations)
+		
+		// 报价单版本管理
+		quotations.POST("/:id/versions", container.SalesController.CreateQuotationVersion)
+		quotations.GET("/:id/versions/:versionNumber", container.SalesController.GetQuotationVersion)
+		quotations.PUT("/:id/versions/:versionNumber/set-active", container.SalesController.SetActiveQuotationVersion)
+		quotations.POST("/:id/versions/compare", container.SalesController.CompareQuotationVersions)
+		quotations.GET("/:id/versions", container.SalesController.GetQuotationVersionHistory)
+		quotations.POST("/:id/versions/:versionNumber/rollback", container.SalesController.RollbackQuotationVersion)
+		quotations.DELETE("/:id/versions/:versionNumber", container.SalesController.DeleteQuotationVersion)
+	}
+
+	// 报价单模板管理
+	quotationTemplates := router.Group("/quotation-templates")
+	{
+		quotationTemplates.POST("/", container.SalesController.CreateQuotationTemplate)
+		quotationTemplates.GET("/:id", container.SalesController.GetQuotationTemplate)
+		quotationTemplates.PUT("/:id", container.SalesController.UpdateQuotationTemplate)
+		quotationTemplates.DELETE("/:id", container.SalesController.DeleteQuotationTemplate)
+		quotationTemplates.GET("/", container.SalesController.ListQuotationTemplates)
+		quotationTemplates.GET("/active", container.SalesController.GetActiveQuotationTemplates)
+		quotationTemplates.GET("/default", container.SalesController.GetDefaultQuotationTemplate)
+		quotationTemplates.PUT("/:id/set-default", container.SalesController.SetDefaultQuotationTemplate)
+		quotationTemplates.POST("/:id/create-quotation", container.SalesController.CreateQuotationFromTemplate)
 	}
 
 	// 销售发票管理
@@ -50,5 +73,22 @@ func RegisterSalesRoutes(router *gin.RouterGroup, container *container.Container
 		invoices.GET("/", container.SalesController.ListSalesInvoices)
 		invoices.PUT("/:id/submit", container.SalesController.SubmitSalesInvoice)
 		invoices.PUT("/:id/cancel", container.SalesController.CancelSalesInvoice)
+		// 发票付款管理
+		invoices.POST("/:id/payments", container.SalesController.AddInvoicePayment)
+		invoices.GET("/:id/payments", container.SalesController.GetInvoicePayments)
+	}
+
+	// 发货单管理
+	deliveryNotes := router.Group("/delivery-notes")
+	{
+		deliveryNotes.POST("/", container.DeliveryNoteController.Create)
+		deliveryNotes.GET("/:id", container.DeliveryNoteController.GetByID)
+		deliveryNotes.PUT("/:id", container.DeliveryNoteController.Update)
+		deliveryNotes.DELETE("/:id", container.DeliveryNoteController.Delete)
+		deliveryNotes.GET("/", container.DeliveryNoteController.List)
+		deliveryNotes.PATCH("/:id/status", container.DeliveryNoteController.UpdateStatus)
+		deliveryNotes.POST("/from-sales-order", container.DeliveryNoteController.CreateFromSalesOrder)
+		deliveryNotes.GET("/statistics", container.DeliveryNoteController.GetStatistics)
+		deliveryNotes.GET("/trend", container.DeliveryNoteController.GetDeliveryTrend)
 	}
 }

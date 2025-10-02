@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -23,19 +24,23 @@ type SalesInvoiceService interface {
 	CancelSalesInvoice(ctx *gin.Context, id uint) (*dto.SalesInvoiceResponse, error)
 	ListSalesInvoices(req *dto.SalesInvoiceListRequest) (*dto.PaginatedResponse[dto.SalesInvoiceResponse], error)
 	DeleteSalesInvoice(ctx *gin.Context, id uint) error
+	AddPayment(ctx *gin.Context, invoiceID uint, req *dto.InvoicePaymentCreateRequest) (*dto.SalesInvoiceResponse, error)
+	GetPayments(invoiceID uint) ([]dto.InvoicePaymentResponse, error)
 }
 
 // SalesInvoiceServiceImpl 销售发票服务实现
 type SalesInvoiceServiceImpl struct {
-	db         *gorm.DB
-	repository repositories.SalesInvoiceRepository
+	db                  *gorm.DB
+	repository          repositories.SalesInvoiceRepository
+	paymentEntryService PaymentEntryService
 }
 
 // NewSalesInvoiceService 创建销售发票服务实例
-func NewSalesInvoiceService(db *gorm.DB) SalesInvoiceService {
+func NewSalesInvoiceService(db *gorm.DB, paymentEntryService PaymentEntryService) SalesInvoiceService {
 	return &SalesInvoiceServiceImpl{
-		db:         db,
-		repository: repositories.NewSalesInvoiceRepository(db),
+		db:                  db,
+		repository:          repositories.NewSalesInvoiceRepository(db),
+		paymentEntryService: paymentEntryService,
 	}
 }
 
@@ -673,4 +678,158 @@ func (s *SalesInvoiceServiceImpl) DeleteSalesInvoice(ctx *gin.Context, id uint) 
 	}
 
 	return s.repository.Delete(nil, id)
+}
+
+// AddPayment 为销售发票添加付款记录
+func (s *SalesInvoiceServiceImpl) AddPayment(ctx *gin.Context, invoiceID uint, req *dto.InvoicePaymentCreateRequest) (*dto.SalesInvoiceResponse, error) {
+	userID := utils.GetUserIDFromContext(ctx)
+	if userID == 0 {
+		return nil, errors.New("用户未认证")
+	}
+
+	// 验证发票是否存在
+	invoice, err := s.repository.GetByID(nil, invoiceID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("销售发票不存在")
+		}
+		return nil, fmt.Errorf("获取销售发票失败: %v", err)
+	}
+
+	// 只有已提交的发票才能添加付款
+	if invoice.DocStatus != "Submitted" {
+		return nil, errors.New("只有已提交的发票才能添加付款")
+	}
+
+	// 创建付款记录
+	payment := &models.InvoicePayment{
+		SalesInvoiceID:  invoiceID,
+		PaymentDate:     req.PaymentDate,
+		Amount:          req.Amount,
+		PaymentMethod:   req.PaymentMethod,
+		Currency:        req.Currency,
+		ExchangeRate:    req.ExchangeRate,
+		ReferenceNumber: req.ReferenceNumber,
+		BankAccountID:   req.BankAccountID,
+		Notes:           req.Notes,
+		Status:          "Pending",
+	}
+
+	// 在事务中创建付款记录并更新发票状态
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 创建 PaymentEntry 记录
+		paymentEntry := &models.PaymentEntry{
+			PaymentType:    "Receive", // 销售发票收款
+			PartyType:      "Customer",
+			PartyID:        invoice.CustomerID,
+			PostingDate:    req.PaymentDate,
+			PaidAmount:     0,           // 我们收到的金额
+			ReceivedAmount: req.Amount,  // 客户支付的金额
+			Currency:       req.Currency,
+			ExchangeRate:   req.ExchangeRate,
+			BankAccountID:  req.BankAccountID,
+			Reference:      req.ReferenceNumber,
+			Remarks:        req.Notes,
+			Status:         "submitted",
+			IsPosted:       true,
+		}
+		
+		// 设置过账时间
+		now := time.Now()
+		paymentEntry.PostedAt = &now
+
+		// 使用 PaymentEntryService 创建付款记录
+		if err := s.paymentEntryService.CreatePaymentEntry(context.Background(), paymentEntry); err != nil {
+			return fmt.Errorf("创建付款记录失败: %v", err)
+		}
+
+		// 设置 InvoicePayment 的 PaymentEntryID
+		payment.PaymentEntryID = &paymentEntry.ID
+
+		// 创建发票付款记录
+		if err := tx.Create(payment).Error; err != nil {
+			return fmt.Errorf("创建发票付款记录失败: %v", err)
+		}
+
+		// 计算已付款总额
+		var totalPaid float64
+		if err := tx.Model(&models.InvoicePayment{}).
+			Where("sales_invoice_id = ?", invoiceID).
+			Select("COALESCE(SUM(amount), 0)").
+			Scan(&totalPaid).Error; err != nil {
+			return fmt.Errorf("计算已付款总额失败: %v", err)
+		}
+
+		// 更新发票付款状态
+		var paymentStatus string
+		if totalPaid >= invoice.GrandTotal {
+			paymentStatus = "Paid"
+		} else if totalPaid > 0 {
+			paymentStatus = "Partially Paid"
+		} else {
+			paymentStatus = "Unpaid"
+		}
+
+		// 更新发票
+		if err := tx.Model(invoice).Updates(map[string]interface{}{
+			"payment_status":     paymentStatus,
+			"paid_amount":        totalPaid,
+			"outstanding_amount": invoice.GrandTotal - totalPaid,
+			"updated_by":         userID,
+			"updated_at":         time.Now(),
+		}).Error; err != nil {
+			return fmt.Errorf("更新发票状态失败: %v", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// 返回更新后的发票信息
+	return s.GetSalesInvoice(invoiceID)
+}
+
+// GetPayments 获取销售发票的付款记录
+func (s *SalesInvoiceServiceImpl) GetPayments(invoiceID uint) ([]dto.InvoicePaymentResponse, error) {
+	// 验证发票是否存在
+	_, err := s.repository.GetByID(nil, invoiceID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("销售发票不存在")
+		}
+		return nil, fmt.Errorf("获取销售发票失败: %v", err)
+	}
+
+	// 获取付款记录
+	var payments []models.InvoicePayment
+	if err := s.db.Where("sales_invoice_id = ?", invoiceID).
+		Order("payment_date DESC, created_at DESC").
+		Find(&payments).Error; err != nil {
+		return nil, fmt.Errorf("获取付款记录失败: %v", err)
+	}
+
+	// 转换为响应格式
+	var responses []dto.InvoicePaymentResponse
+	for _, payment := range payments {
+		responses = append(responses, dto.InvoicePaymentResponse{
+			ID:              payment.ID,
+			SalesInvoiceID:  payment.SalesInvoiceID,
+			PaymentEntryID:  payment.PaymentEntryID,
+			PaymentDate:     payment.PaymentDate,
+			PaymentMethod:   payment.PaymentMethod,
+			Amount:          payment.Amount,
+			Currency:        payment.Currency,
+			ExchangeRate:    payment.ExchangeRate,
+			ReferenceNumber: payment.ReferenceNumber,
+			BankAccountID:   payment.BankAccountID,
+			Notes:           payment.Notes,
+			Status:          payment.Status,
+			CreatedAt:       payment.CreatedAt,
+		})
+	}
+
+	return responses, nil
 }

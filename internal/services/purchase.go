@@ -186,18 +186,41 @@ func (s *PurchaseRequestServiceImpl) CreatePurchaseRequest(ctx context.Context, 
 	// 生成申请编号
 	requestNumber := fmt.Sprintf("PR%s%06d", time.Now().Format("20060102"), time.Now().Unix()%1000000)
 
+	// 创建采购申请明细
+	var items []models.PurchaseRequestItem
+	for _, itemReq := range req.Items {
+		item := models.PurchaseRequestItem{
+			ItemID:        itemReq.ItemID,
+			Quantity:      itemReq.Quantity,
+			EstimatedCost: itemReq.UnitPrice,
+			Notes:         itemReq.Notes,
+		}
+		items = append(items, item)
+	}
+
 	purchaseRequest := &models.PurchaseRequest{
 		RequestNumber: requestNumber,
+		Title:         req.Title,
+		Description:   req.Description,
+		Priority:      req.Priority,
 		RequestDate:   time.Now(),
 		RequiredBy:    req.RequiredDate,
 		Status:        "draft",
+		Items:         items, // GORM 会自动创建关联的明细项
 	}
 
+	// 创建采购申请（包含明细）
 	if err := s.purchaseRequestRepo.Create(ctx, purchaseRequest); err != nil {
 		return nil, fmt.Errorf("创建采购申请失败: %w", err)
 	}
 
-	return s.convertToPurchaseRequestResponse(purchaseRequest), nil
+	// 重新获取完整的采购申请数据（包含明细和关联数据）
+	createdRequest, err := s.purchaseRequestRepo.GetByID(ctx, purchaseRequest.ID)
+	if err != nil {
+		return nil, fmt.Errorf("获取创建的采购申请失败: %w", err)
+	}
+
+	return s.convertToPurchaseRequestResponse(createdRequest), nil
 }
 
 // GetPurchaseRequest 获取采购申请详情
@@ -359,20 +382,47 @@ func (s *PurchaseRequestServiceImpl) RejectPurchaseRequest(ctx context.Context, 
 
 // convertToPurchaseRequestResponse 转换为响应格式
 func (s *PurchaseRequestServiceImpl) convertToPurchaseRequestResponse(purchaseRequest *models.PurchaseRequest) *dto.PurchaseRequestResponse {
+	// 转换采购申请项目
+	var items []dto.PurchaseRequestItemResponse
+	var totalAmount float64
+	for _, item := range purchaseRequest.Items {
+		amount := item.Quantity * item.EstimatedCost
+		totalAmount += amount
+		
+		itemResponse := dto.PurchaseRequestItemResponse{
+			ID:        item.ID,
+			Quantity:  item.Quantity,
+			UnitPrice: item.EstimatedCost,
+			Amount:    amount,
+			Notes:     item.Notes,
+			Item: dto.ItemResponse{
+				ID:          item.ItemID,
+				Name:        item.Description, // 使用描述作为名称
+				Description: item.Description,
+			},
+		}
+		items = append(items, itemResponse)
+	}
+
 	return &dto.PurchaseRequestResponse{
 		ID:           purchaseRequest.ID,
 		Number:       purchaseRequest.RequestNumber,
-		Title:        "",       // 模型中没有Title字段
-		Description:  "",       // 模型中没有Description字段
-		Priority:     "medium", // 默认优先级，模型中没有Priority字段
+		Title:        purchaseRequest.Title,
+		Description:  purchaseRequest.Description,
+		Priority:     purchaseRequest.Priority,
 		Status:       purchaseRequest.Status,
+		Department:   purchaseRequest.Department,
 		RequiredDate: purchaseRequest.RequiredBy,
-		TotalAmount:  0,                                   // 需要计算，模型中没有TotalAmount字段
-		Items:        []dto.PurchaseRequestItemResponse{}, // 需要单独处理
-		CreatedBy:    dto.UserResponse{},                  // 需要单独处理
-		ApprovedBy:   nil,                                 // 需要单独处理
-		CreatedAt:    purchaseRequest.CreatedAt,
-		UpdatedAt:    purchaseRequest.UpdatedAt,
+		TotalAmount:  totalAmount,
+		Items:        items,
+		CreatedBy: dto.UserResponse{
+			ID:        purchaseRequest.CreatedBy,
+			FirstName: "用户", // 临时占位符，实际应该从用户表获取
+			LastName:  "",
+		},
+		ApprovedBy: nil, // 需要单独处理
+		CreatedAt:  purchaseRequest.CreatedAt,
+		UpdatedAt:  purchaseRequest.UpdatedAt,
 	}
 }
 
@@ -410,6 +460,28 @@ func (s *PurchaseOrderServiceImpl) CreatePurchaseOrder(ctx context.Context, req 
 		deliveryDate = req.ExpectedDate
 	}
 
+	// 计算总金额
+	var totalAmount float64
+	var items []models.PurchaseOrderItem
+	
+	for _, itemReq := range req.Items {
+		amount := itemReq.Quantity * itemReq.UnitPrice
+		taxAmount := amount * itemReq.TaxRate / 100
+		totalAmount += amount + taxAmount
+		
+		item := models.PurchaseOrderItem{
+			ItemID:      itemReq.ItemID,
+			Description: itemReq.Notes,
+			Quantity:    itemReq.Quantity,
+			Rate:        itemReq.UnitPrice,
+			Amount:      amount,
+			TaxRate:     itemReq.TaxRate,
+			TaxAmount:   taxAmount,
+			TotalAmount: amount + taxAmount,
+		}
+		items = append(items, item)
+	}
+
 	purchaseOrder := &models.PurchaseOrder{
 		OrderNumber:  orderNumber,
 		SupplierID:   req.SupplierID,
@@ -417,6 +489,9 @@ func (s *PurchaseOrderServiceImpl) CreatePurchaseOrder(ctx context.Context, req 
 		DeliveryDate: deliveryDate,
 		Status:       "draft",
 		Terms:        req.PaymentTerms,
+		TotalAmount:  totalAmount,
+		GrandTotal:   totalAmount,
+		Items:        items,
 	}
 
 	if err := s.purchaseOrderRepo.Create(ctx, purchaseOrder); err != nil {
@@ -431,6 +506,10 @@ func (s *PurchaseOrderServiceImpl) GetPurchaseOrder(ctx context.Context, id uint
 	purchaseOrder, err := s.purchaseOrderRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("获取采购订单失败: %w", err)
+	}
+	
+	if purchaseOrder == nil {
+		return nil, fmt.Errorf("采购订单不存在")
 	}
 
 	return s.convertToPurchaseOrderResponse(purchaseOrder), nil
@@ -528,8 +607,9 @@ func (s *PurchaseOrderServiceImpl) ConfirmPurchaseOrder(ctx context.Context, id 
 		return fmt.Errorf("获取采购订单失败: %w", err)
 	}
 
-	if purchaseOrder.Status != "sent" {
-		return fmt.Errorf("只有已发送的订单才能确认")
+	// 允许从draft或sent状态确认订单
+	if purchaseOrder.Status != "draft" && purchaseOrder.Status != "sent" {
+		return fmt.Errorf("只有草稿或已发送的订单才能确认")
 	}
 
 	purchaseOrder.Status = "confirmed"
@@ -561,6 +641,42 @@ func (s *PurchaseOrderServiceImpl) CancelPurchaseOrder(ctx context.Context, id u
 
 // convertToPurchaseOrderResponse 转换为响应格式
 func (s *PurchaseOrderServiceImpl) convertToPurchaseOrderResponse(purchaseOrder *models.PurchaseOrder) *dto.PurchaseOrderResponse {
+	// 转换采购订单项目
+	items := make([]dto.PurchaseOrderItemResponse, len(purchaseOrder.Items))
+	for i, item := range purchaseOrder.Items {
+		items[i] = dto.PurchaseOrderItemResponse{
+			ID:          item.ID,
+			Quantity:    item.Quantity,
+			UnitPrice:   item.Rate,
+			TaxRate:     item.TaxRate,
+			TaxAmount:   item.TaxAmount,
+			Amount:      item.Amount,
+			ReceivedQty: item.ReceivedQty,
+			Notes:       item.Description,
+			Item:        s.convertToItemResponse(&item.Item),
+		}
+	}
+
+	// 转换供应商信息
+	var supplier *dto.SupplierResponse
+	if purchaseOrder.Supplier.ID != 0 {
+		supplier = &dto.SupplierResponse{
+			BaseModel: dto.BaseModel{
+				ID:        purchaseOrder.Supplier.ID,
+				CreatedAt: purchaseOrder.Supplier.CreatedAt,
+				UpdatedAt: purchaseOrder.Supplier.UpdatedAt,
+			},
+			Name:        purchaseOrder.Supplier.Name,
+			Code:        purchaseOrder.Supplier.Code,
+			ContactName: purchaseOrder.Supplier.ContactPerson,
+			Email:       purchaseOrder.Supplier.Email,
+			Phone:       purchaseOrder.Supplier.Phone,
+			Address:     purchaseOrder.Supplier.Address,
+			CreditLimit: purchaseOrder.Supplier.CreditLimit,
+			IsActive:    purchaseOrder.Supplier.IsActive,
+		}
+	}
+
 	return &dto.PurchaseOrderResponse{
 		BaseModel: dto.BaseModel{
 			ID:        purchaseOrder.ID,
@@ -575,13 +691,40 @@ func (s *PurchaseOrderServiceImpl) convertToPurchaseOrderResponse(purchaseOrder 
 		Status:        purchaseOrder.Status,
 		Currency:      "CNY",
 		ExchangeRate:  1.0,
-		PaymentTerms:  purchaseOrder.Terms,
+		PaymentTerms:  purchaseOrder.Terms, // 使用Terms作为PaymentTerms
 		Terms:         purchaseOrder.Terms,
 		Notes:         purchaseOrder.Notes,
 		SubTotal:      purchaseOrder.TotalAmount,
 		TotalDiscount: purchaseOrder.DiscountAmount,
 		TotalTax:      purchaseOrder.TaxAmount,
 		TotalAmount:   purchaseOrder.GrandTotal,
-		Items:         []dto.PurchaseOrderItemResponse{},
+		Supplier:      supplier,
+		Items:         items,
+	}
+}
+
+// convertToItemResponse 转换为物料响应格式
+func (s *PurchaseOrderServiceImpl) convertToItemResponse(item *models.Item) dto.ItemResponse {
+	if item == nil {
+		return dto.ItemResponse{}
+	}
+	
+	// 需要根据实际的Item模型字段进行映射
+	return dto.ItemResponse{
+		ID:          item.ID,
+		Code:        item.Code,
+		Name:        item.Name,
+		Description: item.Description,
+		Type:        "raw_material", // 默认类型，可以根据实际情况调整
+		MinStock:    0,
+		MaxStock:    0,
+		UnitCost:    item.Cost,
+		SalePrice:   item.Price,
+		IsActive:    true,
+		// Category和Unit需要根据关联关系填充
+		Category:    dto.CategoryResponse{},
+		Unit:        dto.UnitResponse{},
+		CreatedAt:   item.CreatedAt,
+		UpdatedAt:   item.UpdatedAt,
 	}
 }

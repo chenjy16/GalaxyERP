@@ -656,6 +656,26 @@ CREATE TABLE IF NOT EXISTS quotation_items (
   FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- 报价单版本表
+CREATE TABLE IF NOT EXISTS quotation_versions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  quotation_id INTEGER NOT NULL,
+  version_number INTEGER NOT NULL,
+  version_name TEXT,
+  version_data TEXT NOT NULL, -- JSON data stored as TEXT in SQLite
+  change_reason TEXT,
+  is_active INTEGER DEFAULT 0, -- Boolean as INTEGER in SQLite
+  FOREIGN KEY (quotation_id) REFERENCES quotations(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE (quotation_id, version_number)
+);
+
 -- 销售订单表
 CREATE TABLE IF NOT EXISTS sales_orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

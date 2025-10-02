@@ -90,6 +90,7 @@ func main() {
 		&models.Product{},
 		&models.Item{},
 		&models.Warehouse{},
+		&models.Location{},
 		&models.Stock{},
 		&models.StockMovement{},
 		&models.StockTransfer{},

@@ -249,8 +249,8 @@ func (r *WarehouseRepositoryImpl) List(ctx context.Context, offset, limit int) (
 		return nil, 0, err
 	}
 
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&warehouses).Error
+	// 获取分页数据，预加载Manager关联
+	err := r.db.WithContext(ctx).Preload("Manager").Offset(offset).Limit(limit).Find(&warehouses).Error
 	if err != nil {
 		return nil, 0, err
 	}

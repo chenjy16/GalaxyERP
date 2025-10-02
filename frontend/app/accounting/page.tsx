@@ -346,7 +346,14 @@ export default function AccountingPage() {
     setModalType(type);
     setEditingRecord(record);
     setIsModalVisible(true);
-    form.setFieldsValue(record);
+    
+    // 处理日期字段，确保DatePicker组件能正确显示
+    const formData = { ...record };
+    if (record.date) {
+      formData.date = dayjs(record.date);
+    }
+    
+    form.setFieldsValue(formData);
   };
 
   const handleDelete = (type: string, id: number) => {

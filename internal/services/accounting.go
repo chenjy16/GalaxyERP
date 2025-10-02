@@ -497,3 +497,133 @@ func (s *JournalEntryServiceImpl) GetJournalEntriesByDateRange(ctx context.Conte
 	offset := (page - 1) * pageSize
 	return s.journalRepo.GetByDateRange(ctx, startDate, endDate, offset, pageSize)
 }
+
+// PaymentEntryService 付款记录服务接口
+type PaymentEntryService interface {
+	CreatePaymentEntry(ctx context.Context, payment *models.PaymentEntry) error
+	GetPaymentEntry(ctx context.Context, id uint) (*models.PaymentEntry, error)
+	UpdatePaymentEntry(ctx context.Context, payment *models.PaymentEntry) error
+	DeletePaymentEntry(ctx context.Context, id uint) error
+	ListPaymentEntries(ctx context.Context, page, pageSize int) ([]*models.PaymentEntry, int64, error)
+	GetPaymentEntriesByParty(ctx context.Context, partyType string, partyID uint, page, pageSize int) ([]*models.PaymentEntry, int64, error)
+}
+
+// PaymentEntryServiceImpl 付款记录服务实现
+type PaymentEntryServiceImpl struct {
+	paymentRepo repositories.PaymentEntryRepository
+}
+
+// NewPaymentEntryService 创建付款记录服务实例
+func NewPaymentEntryService(paymentRepo repositories.PaymentEntryRepository) PaymentEntryService {
+	return &PaymentEntryServiceImpl{
+		paymentRepo: paymentRepo,
+	}
+}
+
+// CreatePaymentEntry 创建付款记录
+func (s *PaymentEntryServiceImpl) CreatePaymentEntry(ctx context.Context, payment *models.PaymentEntry) error {
+	// 验证必填字段
+	if payment.PaymentType == "" {
+		return errors.New("付款类型不能为空")
+	}
+	if payment.PartyType == "" {
+		return errors.New("关联方类型不能为空")
+	}
+	if payment.PartyID == 0 {
+		return errors.New("关联方ID不能为空")
+	}
+	if payment.PaidAmount < 0 || payment.ReceivedAmount < 0 {
+		return errors.New("付款金额不能为负数")
+	}
+
+	payment.CreatedAt = time.Now()
+	payment.UpdatedAt = time.Now()
+	if payment.Status == "" {
+		payment.Status = "draft"
+	}
+
+	return s.paymentRepo.Create(ctx, payment)
+}
+
+// GetPaymentEntry 获取付款记录
+func (s *PaymentEntryServiceImpl) GetPaymentEntry(ctx context.Context, id uint) (*models.PaymentEntry, error) {
+	if id == 0 {
+		return nil, errors.New("付款记录ID不能为空")
+	}
+	return s.paymentRepo.GetByID(ctx, id)
+}
+
+// UpdatePaymentEntry 更新付款记录
+func (s *PaymentEntryServiceImpl) UpdatePaymentEntry(ctx context.Context, payment *models.PaymentEntry) error {
+	// 检查记录是否存在
+	existing, err := s.paymentRepo.GetByID(ctx, payment.ID)
+	if err != nil {
+		return fmt.Errorf("检查付款记录失败: %w", err)
+	}
+	if existing == nil {
+		return errors.New("付款记录不存在")
+	}
+
+	// 验证必填字段
+	if payment.PaymentType == "" {
+		return errors.New("付款类型不能为空")
+	}
+	if payment.PartyType == "" {
+		return errors.New("关联方类型不能为空")
+	}
+	if payment.PartyID == 0 {
+		return errors.New("关联方ID不能为空")
+	}
+	if payment.PaidAmount < 0 || payment.ReceivedAmount < 0 {
+		return errors.New("付款金额不能为负数")
+	}
+
+	payment.UpdatedAt = time.Now()
+	return s.paymentRepo.Update(ctx, payment)
+}
+
+// DeletePaymentEntry 删除付款记录
+func (s *PaymentEntryServiceImpl) DeletePaymentEntry(ctx context.Context, id uint) error {
+	// 检查记录是否存在
+	payment, err := s.paymentRepo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("检查付款记录失败: %w", err)
+	}
+	if payment == nil {
+		return errors.New("付款记录不存在")
+	}
+
+	return s.paymentRepo.Delete(ctx, id)
+}
+
+// ListPaymentEntries 获取付款记录列表
+func (s *PaymentEntryServiceImpl) ListPaymentEntries(ctx context.Context, page, pageSize int) ([]*models.PaymentEntry, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+	return s.paymentRepo.List(ctx, offset, pageSize)
+}
+
+// GetPaymentEntriesByParty 根据关联方获取付款记录
+func (s *PaymentEntryServiceImpl) GetPaymentEntriesByParty(ctx context.Context, partyType string, partyID uint, page, pageSize int) ([]*models.PaymentEntry, int64, error) {
+	if partyType == "" {
+		return nil, 0, errors.New("关联方类型不能为空")
+	}
+	if partyID == 0 {
+		return nil, 0, errors.New("关联方ID不能为空")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+	return s.paymentRepo.GetByParty(ctx, partyType, partyID, offset, pageSize)
+}

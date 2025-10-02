@@ -32,10 +32,13 @@ type Supplier struct {
 type PurchaseRequest struct {
 	BaseModel
 	RequestNumber string    `json:"request_number" gorm:"uniqueIndex;not null"`
+	Title         string    `json:"title" gorm:"not null"`
+	Description   string    `json:"description,omitempty"`
+	Priority      string    `json:"priority" gorm:"default:'medium'"`
 	RequestDate   time.Time `json:"request_date" gorm:"not null"`
 	RequiredBy    time.Time `json:"required_by" gorm:"not null"`
 	Department    string    `json:"department,omitempty"`
-	Status        string    `json:"status" gorm:"default:'Draft'"`
+	Status        string    `json:"status" gorm:"default:'draft'"`
 	Notes         string    `json:"notes,omitempty"`
 	CreatedBy     uint      `json:"created_by,omitempty"`
 	ApprovedBy    *uint     `json:"approved_by,omitempty"`

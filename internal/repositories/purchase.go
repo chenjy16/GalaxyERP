@@ -245,7 +245,7 @@ func (r *PurchaseOrderRepositoryImpl) Create(ctx context.Context, order *models.
 // GetByID 根据ID获取采购订单
 func (r *PurchaseOrderRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.PurchaseOrder, error) {
 	var order models.PurchaseOrder
-	err := r.db.WithContext(ctx).Preload("Supplier").Preload("Items").Preload("Items.Product").First(&order, id).Error
+	err := r.db.WithContext(ctx).Preload("Supplier").Preload("Items").Preload("Items.Item").First(&order, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

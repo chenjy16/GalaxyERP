@@ -30,7 +30,7 @@ func (u *ControllerUtils) ParseIDParam(ctx *gin.Context, paramName string) (uint
 // BindJSON 绑定JSON请求体
 func (u *ControllerUtils) BindJSON(ctx *gin.Context, req interface{}) bool {
 	if err := ctx.ShouldBindJSON(req); err != nil {
-		u.RespondBadRequest(ctx, "请求参数错误")
+		u.RespondBadRequest(ctx, "请求参数错误: "+err.Error())
 		return false
 	}
 	return true

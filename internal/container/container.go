@@ -18,11 +18,14 @@ type Container struct {
 	StockService        services.StockService
 	WarehouseService    services.WarehouseService
 	MovementService     services.MovementService
-	CustomerService     services.CustomerService
-	SalesOrderService   services.SalesOrderService
-	QuotationService    services.QuotationService
-	SalesInvoiceService services.SalesInvoiceService
-	ProductService      services.ProductService
+	CustomerService         services.CustomerService
+	SalesOrderService       services.SalesOrderService
+	QuotationService        services.QuotationService
+	QuotationTemplateService services.QuotationTemplateService
+	QuotationVersionService services.QuotationVersionService
+	SalesInvoiceService     services.SalesInvoiceService
+	DeliveryNoteService     services.DeliveryNoteServiceInterface
+	ProductService          services.ProductService
 
 	// Purchase Services
 	SupplierService        services.SupplierService
@@ -42,13 +45,15 @@ type Container struct {
 	LeaveService      services.LeaveService
 
 	// Accounting Services
-	AccountService      services.AccountService
-	JournalEntryService services.JournalEntryService
+	AccountService       services.AccountService
+	JournalEntryService  services.JournalEntryService
+	PaymentEntryService  services.PaymentEntryService
 
 	// Controllers
 	UserController       *controllers.UserController
 	InventoryController  *controllers.InventoryController
 	SalesController      *controllers.SalesController
+	DeliveryNoteController *controllers.DeliveryNoteController
 	ProductionController *controllers.ProductionController
 	SystemController     *controllers.SystemController
 	PurchaseController   *controllers.PurchaseController
@@ -83,6 +88,9 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	customerRepo := repositories.NewCustomerRepository(c.DB)
 	salesOrderRepo := repositories.NewSalesOrderRepository(c.DB)
 	quotationRepo := repositories.NewQuotationRepository(c.DB)
+	quotationTemplateRepo := repositories.NewQuotationTemplateRepository(c.DB)
+	quotationVersionRepo := repositories.NewQuotationVersionRepository(c.DB)
+	deliveryNoteRepo := repositories.NewDeliveryNoteRepository(c.DB)
 	productRepo := repositories.NewProductRepository(c.DB)
 
 	// Purchase repositories
@@ -105,6 +113,7 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	// Accounting repositories
 	accountRepo := repositories.NewAccountRepository(c.DB)
 	journalEntryRepo := repositories.NewJournalEntryRepository(c.DB)
+	paymentEntryRepo := repositories.NewPaymentEntryRepository(c.DB)
 
 	// 初始化服务
 	c.UserService = services.NewUserService(userRepo, jwtSecret, jwtExpiryHours)
@@ -113,10 +122,20 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	c.WarehouseService = services.NewWarehouseService(warehouseRepo)
 	c.MovementService = services.NewMovementService(movementRepo, stockRepo, itemRepo, warehouseRepo)
 	c.CustomerService = services.NewCustomerService(customerRepo)
+	c.ProductService = services.NewProductService(productRepo)
+
+	// Accounting services (需要先初始化，因为其他服务可能依赖)
+	c.AccountService = services.NewAccountService(accountRepo)
+	c.JournalEntryService = services.NewJournalEntryService(journalEntryRepo, accountRepo)
+	c.PaymentEntryService = services.NewPaymentEntryService(paymentEntryRepo)
+
+	// Sales services (依赖会计服务)
 	c.SalesOrderService = services.NewSalesOrderService(salesOrderRepo, customerRepo)
 	c.QuotationService = services.NewQuotationService(quotationRepo, customerRepo)
-	c.SalesInvoiceService = services.NewSalesInvoiceService(c.DB)
-	c.ProductService = services.NewProductService(productRepo)
+	c.QuotationTemplateService = services.NewQuotationTemplateService(quotationTemplateRepo, quotationRepo)
+	c.QuotationVersionService = services.NewQuotationVersionService(quotationVersionRepo, quotationRepo)
+	c.SalesInvoiceService = services.NewSalesInvoiceService(c.DB, c.PaymentEntryService)
+	c.DeliveryNoteService = services.NewDeliveryNoteService(deliveryNoteRepo, salesOrderRepo, customerRepo, c.DB)
 
 	// Purchase services
 	c.SupplierService = services.NewSupplierService(supplierRepo)
@@ -134,10 +153,6 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	c.AttendanceService = services.NewAttendanceService(attendanceRepo, employeeRepo)
 	c.PayrollService = services.NewPayrollService(payrollRepo, employeeRepo)
 	c.LeaveService = services.NewLeaveService(leaveRepo, employeeRepo)
-
-	// Accounting services
-	c.AccountService = services.NewAccountService(accountRepo)
-	c.JournalEntryService = services.NewJournalEntryService(journalEntryRepo, accountRepo)
 }
 
 // initControllers 初始化控制器层
@@ -147,7 +162,8 @@ func (c *Container) initControllers() {
 
 	c.UserController = controllers.NewUserController(c.UserService)
 	c.InventoryController = controllers.NewInventoryController(c.ItemService, c.StockService, c.WarehouseService, c.MovementService)
-	c.SalesController = controllers.NewSalesController(c.CustomerService, c.SalesOrderService, c.QuotationService, c.SalesInvoiceService)
+	c.SalesController = controllers.NewSalesController(c.CustomerService, c.SalesOrderService, c.QuotationService, c.QuotationTemplateService, c.SalesInvoiceService, c.QuotationVersionService)
+	c.DeliveryNoteController = controllers.NewDeliveryNoteController(c.DeliveryNoteService)
 	c.ProductionController = controllers.NewProductionController(c.ProductService)
 	c.SystemController = controllers.NewSystemController()
 

@@ -31,14 +31,28 @@ type Warehouse struct {
 	Name        string `json:"name" gorm:"size:255;not null"`
 	Description string `json:"description,omitempty" gorm:"type:text"`
 	Address     string `json:"address,omitempty" gorm:"type:text"`
+	ManagerID   *uint  `json:"manager_id,omitempty" gorm:"index"`
 	IsActive    bool   `json:"is_active" gorm:"default:true"`
 
 	// 关联
+	Manager   *User      `json:"manager,omitempty" gorm:"foreignKey:ManagerID"`
 	Stocks    []Stock    `json:"stocks,omitempty" gorm:"foreignKey:WarehouseID"`
 	Movements []Movement `json:"movements,omitempty" gorm:"foreignKey:WarehouseID"`
+	Locations []Location `json:"locations,omitempty" gorm:"foreignKey:WarehouseID"`
 }
 
-// 注意：Location模型已移除，因为数据库中没有对应的表
+// Location 库位模型 - 根据数据库结构调整
+type Location struct {
+	BaseModel
+	WarehouseID  uint   `json:"warehouse_id" gorm:"index;not null"`
+	Code         string `json:"code" gorm:"size:100;not null"`
+	Name         string `json:"name" gorm:"size:255;not null"`
+	LocationType string `json:"location_type" gorm:"size:50"`
+	Status       string `json:"status" gorm:"size:50;default:'ACTIVE'"`
+
+	// 关联
+	Warehouse Warehouse `json:"warehouse,omitempty" gorm:"foreignKey:WarehouseID"`
+}
 
 // Stock 库存模型 - 根据数据库结构调整
 type Stock struct {

@@ -109,6 +109,7 @@ export interface PurchaseRequest {
   description?: string;
   priority: string;
   status: string;
+  department?: string;
   requiredDate: string;
   totalAmount: number;
   items: PurchaseRequestItem[];
@@ -264,40 +265,101 @@ export interface Warehouse {
   id: number;
   code: string;
   name: string;
-  address: string;
-  manager: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+  address?: string;
+  description?: string;
+  is_active: boolean;
+  manager?: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateWarehouseRequest {
   code: string;
   name: string;
-  address: string;
-  manager: string;
-  status: string;
+  address?: string;
+  description?: string;
+  manager_id?: number;
 }
 
 // 库存相关类型
 export interface Stock {
   id: number;
-  itemId: number;
-  itemCode: string;
-  itemName: string;
-  warehouseId: number;
-  warehouseCode: string;
-  warehouseName: string;
   quantity: number;
-  reservedQuantity: number;
-  availableQuantity: number;
-  unitCost: number;
-  totalValue: number;
-  reorderLevel: number;
-  maxLevel: number;
-  lastUpdated: string;
-  createdAt: string;
-  updatedAt: string;
+  reserved_qty: number;
+  available_qty: number;
+  item: {
+    id: number;
+    code: string;
+    name: string;
+    description?: string;
+    type: string;
+    min_stock: number;
+    max_stock: number;
+    unit_cost: number;
+    sale_price: number;
+    barcode?: string;
+    image_url?: string;
+    is_active: boolean;
+    category: {
+      id: number;
+      name: string;
+      code: string;
+      description?: string;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string;
+    };
+    unit: {
+      id: number;
+      name: string;
+      symbol: string;
+      description?: string;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string;
+    };
+    created_at: string;
+    updated_at: string;
+  };
+  warehouse: {
+    id: number;
+    name: string;
+    code: string;
+    address?: string;
+    description?: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  };
+  location: {
+    id: number;
+    name: string;
+    code: string;
+    type: string;
+    description?: string;
+    is_active: boolean;
+    warehouse: {
+      id: number;
+      name: string;
+      code: string;
+      address?: string;
+      description?: string;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string;
+    };
+    created_at: string;
+    updated_at: string;
+  };
+  updated_at: string;
 }
 
 export interface CreateStockRequest {
