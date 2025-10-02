@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
 )
 
 // ProjectRepository 项目仓储接口
@@ -61,18 +61,18 @@ func (r *ProjectRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *ProjectRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Project, int64, error) {
 	var projects []*models.Project
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Project{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&projects).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return projects, total, nil
 }
 
@@ -80,13 +80,13 @@ func (r *ProjectRepositoryImpl) List(ctx context.Context, offset, limit int) ([]
 func (r *ProjectRepositoryImpl) GetByStatus(ctx context.Context, status string, offset, limit int) ([]*models.Project, int64, error) {
 	var projects []*models.Project
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Project{}).
 		Where("status = ?", status).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).
 		Where("status = ?", status).
@@ -94,7 +94,7 @@ func (r *ProjectRepositoryImpl) GetByStatus(ctx context.Context, status string, 
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return projects, total, nil
 }
 
@@ -153,18 +153,18 @@ func (r *TaskRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *TaskRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Task, int64, error) {
 	var tasks []*models.Task
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Task{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Project").Offset(offset).Limit(limit).Find(&tasks).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return tasks, total, nil
 }
 
@@ -172,13 +172,13 @@ func (r *TaskRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*mo
 func (r *TaskRepositoryImpl) GetByProjectID(ctx context.Context, projectID uint, offset, limit int) ([]*models.Task, int64, error) {
 	var tasks []*models.Task
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Task{}).
 		Where("project_id = ?", projectID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Project").
 		Where("project_id = ?", projectID).
@@ -186,7 +186,7 @@ func (r *TaskRepositoryImpl) GetByProjectID(ctx context.Context, projectID uint,
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return tasks, total, nil
 }
 
@@ -194,13 +194,13 @@ func (r *TaskRepositoryImpl) GetByProjectID(ctx context.Context, projectID uint,
 func (r *TaskRepositoryImpl) GetByStatus(ctx context.Context, status string, offset, limit int) ([]*models.Task, int64, error) {
 	var tasks []*models.Task
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Task{}).
 		Where("status = ?", status).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Project").
 		Where("status = ?", status).
@@ -208,7 +208,7 @@ func (r *TaskRepositoryImpl) GetByStatus(ctx context.Context, status string, off
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return tasks, total, nil
 }
 
@@ -266,18 +266,18 @@ func (r *MilestoneRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *MilestoneRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Milestone, int64, error) {
 	var milestones []*models.Milestone
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Milestone{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Project").Offset(offset).Limit(limit).Find(&milestones).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return milestones, total, nil
 }
 
@@ -285,13 +285,13 @@ func (r *MilestoneRepositoryImpl) List(ctx context.Context, offset, limit int) (
 func (r *MilestoneRepositoryImpl) GetByProjectID(ctx context.Context, projectID uint, offset, limit int) ([]*models.Milestone, int64, error) {
 	var milestones []*models.Milestone
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Milestone{}).
 		Where("project_id = ?", projectID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Project").
 		Where("project_id = ?", projectID).
@@ -299,7 +299,7 @@ func (r *MilestoneRepositoryImpl) GetByProjectID(ctx context.Context, projectID 
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return milestones, total, nil
 }
 
@@ -358,18 +358,18 @@ func (r *TimeEntryRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *TimeEntryRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.TimeEntry, int64, error) {
 	var timeEntries []*models.TimeEntry
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.TimeEntry{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Task").Preload("User").Offset(offset).Limit(limit).Find(&timeEntries).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return timeEntries, total, nil
 }
 
@@ -377,13 +377,13 @@ func (r *TimeEntryRepositoryImpl) List(ctx context.Context, offset, limit int) (
 func (r *TimeEntryRepositoryImpl) GetByTaskID(ctx context.Context, taskID uint, offset, limit int) ([]*models.TimeEntry, int64, error) {
 	var timeEntries []*models.TimeEntry
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.TimeEntry{}).
 		Where("task_id = ?", taskID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Task").Preload("User").
 		Where("task_id = ?", taskID).
@@ -391,7 +391,7 @@ func (r *TimeEntryRepositoryImpl) GetByTaskID(ctx context.Context, taskID uint, 
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return timeEntries, total, nil
 }
 
@@ -399,13 +399,13 @@ func (r *TimeEntryRepositoryImpl) GetByTaskID(ctx context.Context, taskID uint, 
 func (r *TimeEntryRepositoryImpl) GetByUserID(ctx context.Context, userID uint, offset, limit int) ([]*models.TimeEntry, int64, error) {
 	var timeEntries []*models.TimeEntry
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.TimeEntry{}).
 		Where("user_id = ?", userID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Task").Preload("User").
 		Where("user_id = ?", userID).
@@ -413,6 +413,6 @@ func (r *TimeEntryRepositoryImpl) GetByUserID(ctx context.Context, userID uint, 
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return timeEntries, total, nil
 }

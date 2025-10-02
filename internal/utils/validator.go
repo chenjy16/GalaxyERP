@@ -13,7 +13,7 @@ var validate *validator.Validate
 
 func init() {
 	validate = validator.New()
-	
+
 	// Register custom tag name function to use json tags
 	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
@@ -27,7 +27,7 @@ func init() {
 // ValidateStruct validates a struct and returns formatted error messages
 func ValidateStruct(s interface{}) map[string]string {
 	errors := make(map[string]string)
-	
+
 	err := validate.Struct(s)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
@@ -35,7 +35,7 @@ func ValidateStruct(s interface{}) map[string]string {
 			errors[fieldName] = getErrorMessage(err)
 		}
 	}
-	
+
 	return errors
 }
 
@@ -45,12 +45,12 @@ func BindAndValidate(c *gin.Context, obj interface{}) bool {
 		BadRequestResponse(c, "Invalid JSON format: "+err.Error())
 		return false
 	}
-	
+
 	if errors := ValidateStruct(obj); len(errors) > 0 {
 		ValidationErrorResponse(c, errors)
 		return false
 	}
-	
+
 	return true
 }
 
@@ -59,7 +59,7 @@ func getErrorMessage(err validator.FieldError) string {
 	field := err.Field()
 	tag := err.Tag()
 	param := err.Param()
-	
+
 	switch tag {
 	case "required":
 		return fmt.Sprintf("%s is required", field)
@@ -109,7 +109,7 @@ func ValidateID(c *gin.Context, paramName string) (uint, bool) {
 		BadRequestResponse(c, fmt.Sprintf("%s parameter is required", paramName))
 		return 0, false
 	}
-	
+
 	var id uint
 	if err := c.ShouldBindUri(&struct {
 		ID uint `uri:"id" binding:"required,min=1"`
@@ -117,14 +117,14 @@ func ValidateID(c *gin.Context, paramName string) (uint, bool) {
 		BadRequestResponse(c, fmt.Sprintf("Invalid %s parameter", paramName))
 		return 0, false
 	}
-	
+
 	// Parse the ID manually since ShouldBindUri doesn't work as expected
 	fmt.Sscanf(idStr, "%d", &id)
 	if id == 0 {
 		BadRequestResponse(c, fmt.Sprintf("Invalid %s parameter", paramName))
 		return 0, false
 	}
-	
+
 	return id, true
 }
 
@@ -132,14 +132,14 @@ func ValidateID(c *gin.Context, paramName string) (uint, bool) {
 func ValidatePagination(c *gin.Context) (int, int, bool) {
 	page := 1
 	pageSize := 10
-	
+
 	if pageStr := c.Query("page"); pageStr != "" {
 		fmt.Sscanf(pageStr, "%d", &page)
 		if page < 1 {
 			page = 1
 		}
 	}
-	
+
 	if pageSizeStr := c.Query("page_size"); pageSizeStr != "" {
 		fmt.Sscanf(pageSizeStr, "%d", &pageSize)
 		if pageSize < 1 {
@@ -149,6 +149,6 @@ func ValidatePagination(c *gin.Context) (int, int, bool) {
 			pageSize = 100
 		}
 	}
-	
+
 	return page, pageSize, true
 }

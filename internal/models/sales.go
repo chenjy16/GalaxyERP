@@ -7,20 +7,20 @@ import (
 // Customer 客户模型
 type Customer struct {
 	BaseModel
-	Name           string  `json:"name" gorm:"not null"`
-	Code           string  `json:"code" gorm:"uniqueIndex;not null"`
-	Email          string  `json:"email,omitempty"`
-	Phone          string  `json:"phone,omitempty"`
-	Address        string  `json:"address,omitempty"`
-	City           string  `json:"city,omitempty"`
-	State          string  `json:"state,omitempty"`
-	PostalCode     string  `json:"postal_code,omitempty"`
-	Country        string  `json:"country,omitempty"`
-	ContactPerson  string  `json:"contact_person,omitempty"`
-	CreditLimit    float64 `json:"credit_limit" gorm:"default:0"`
-	CustomerGroup  string  `json:"customer_group,omitempty"`
-	Territory      string  `json:"territory,omitempty"`
-	IsActive       bool    `json:"is_active" gorm:"default:true"`
+	Name          string  `json:"name" gorm:"not null"`
+	Code          string  `json:"code" gorm:"uniqueIndex;not null"`
+	Email         string  `json:"email,omitempty"`
+	Phone         string  `json:"phone,omitempty"`
+	Address       string  `json:"address,omitempty"`
+	City          string  `json:"city,omitempty"`
+	State         string  `json:"state,omitempty"`
+	PostalCode    string  `json:"postal_code,omitempty"`
+	Country       string  `json:"country,omitempty"`
+	ContactPerson string  `json:"contact_person,omitempty"`
+	CreditLimit   float64 `json:"credit_limit" gorm:"default:0"`
+	CustomerGroup string  `json:"customer_group,omitempty"`
+	Territory     string  `json:"territory,omitempty"`
+	IsActive      bool    `json:"is_active" gorm:"default:true"`
 
 	// 关联关系
 	Quotations  []Quotation  `json:"quotations,omitempty" gorm:"foreignKey:CustomerID"`
@@ -43,7 +43,7 @@ type Quotation struct {
 	Terms           string    `json:"terms,omitempty"`
 	Notes           string    `json:"notes,omitempty"`
 	CreatedBy       uint      `json:"created_by,omitempty"`
-	
+
 	// 关联
 	Customer Customer        `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
 	Items    []QuotationItem `json:"items,omitempty" gorm:"foreignKey:QuotationID"`
@@ -63,7 +63,7 @@ type QuotationItem struct {
 	TaxRate        float64 `json:"tax_rate" gorm:"default:0"`
 	TaxAmount      float64 `json:"tax_amount" gorm:"default:0"`
 	TotalAmount    float64 `json:"total_amount" gorm:"default:0"`
-	
+
 	// 关联
 	Quotation Quotation `json:"quotation,omitempty" gorm:"foreignKey:QuotationID"`
 	Item      Item      `json:"item,omitempty" gorm:"foreignKey:ItemID"`
@@ -108,7 +108,7 @@ type SalesOrderItem struct {
 	TaxAmount      float64 `json:"tax_amount" gorm:"default:0"`
 	TotalAmount    float64 `json:"total_amount" gorm:"default:0"`
 	WarehouseID    *uint   `json:"warehouse_id,omitempty"`
-	
+
 	// 关联
 	SalesOrder SalesOrder `json:"sales_order,omitempty" gorm:"foreignKey:SalesOrderID"`
 	Item       Item       `json:"item,omitempty" gorm:"foreignKey:ItemID"`
@@ -131,28 +131,28 @@ type DeliveryNote struct {
 	Destination    string    `json:"destination,omitempty"`
 	Notes          string    `json:"notes,omitempty"`
 	CreatedBy      uint      `json:"created_by,omitempty"`
-	
+
 	// 关联
-	Customer    Customer           `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
-	SalesOrder  *SalesOrder        `json:"sales_order,omitempty" gorm:"foreignKey:SalesOrderID"`
-	Items       []DeliveryNoteItem `json:"items,omitempty" gorm:"foreignKey:DeliveryNoteID"`
+	Customer   Customer           `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
+	SalesOrder *SalesOrder        `json:"sales_order,omitempty" gorm:"foreignKey:SalesOrderID"`
+	Items      []DeliveryNoteItem `json:"items,omitempty" gorm:"foreignKey:DeliveryNoteID"`
 }
 
 // DeliveryNoteItem 送货单明细模型
 type DeliveryNoteItem struct {
 	BaseModel
-	DeliveryNoteID    uint   `json:"delivery_note_id" gorm:"not null"`
-	SalesOrderItemID  *uint  `json:"sales_order_item_id,omitempty"`
-	ItemID            uint   `json:"item_id" gorm:"not null"`
-	Description       string `json:"description,omitempty"`
-	Quantity          float64 `json:"quantity" gorm:"not null"`
-	BatchNo           string `json:"batch_no,omitempty"`
-	SerialNo          string `json:"serial_no,omitempty"`
-	WarehouseID       *uint  `json:"warehouse_id,omitempty"`
-	
+	DeliveryNoteID   uint    `json:"delivery_note_id" gorm:"not null"`
+	SalesOrderItemID *uint   `json:"sales_order_item_id,omitempty"`
+	ItemID           uint    `json:"item_id" gorm:"not null"`
+	Description      string  `json:"description,omitempty"`
+	Quantity         float64 `json:"quantity" gorm:"not null"`
+	BatchNo          string  `json:"batch_no,omitempty"`
+	SerialNo         string  `json:"serial_no,omitempty"`
+	WarehouseID      *uint   `json:"warehouse_id,omitempty"`
+
 	// 关联
-	DeliveryNote     DeliveryNote    `json:"delivery_note,omitempty" gorm:"foreignKey:DeliveryNoteID"`
-	SalesOrderItem   *SalesOrderItem `json:"sales_order_item,omitempty" gorm:"foreignKey:SalesOrderItemID"`
-	Item             Item            `json:"item,omitempty" gorm:"foreignKey:ItemID"`
-	Warehouse        *Warehouse      `json:"warehouse,omitempty" gorm:"foreignKey:WarehouseID"`
+	DeliveryNote   DeliveryNote    `json:"delivery_note,omitempty" gorm:"foreignKey:DeliveryNoteID"`
+	SalesOrderItem *SalesOrderItem `json:"sales_order_item,omitempty" gorm:"foreignKey:SalesOrderItemID"`
+	Item           Item            `json:"item,omitempty" gorm:"foreignKey:ItemID"`
+	Warehouse      *Warehouse      `json:"warehouse,omitempty" gorm:"foreignKey:WarehouseID"`
 }

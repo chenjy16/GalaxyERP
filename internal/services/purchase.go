@@ -114,7 +114,7 @@ func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, filter *dto.Sup
 			limit = filter.PageSize
 		}
 	}
-	
+
 	offset := (page - 1) * limit
 
 	suppliers, total, err := s.supplierRepo.List(ctx, offset, limit)
@@ -267,7 +267,7 @@ func (s *PurchaseRequestServiceImpl) ListPurchaseRequests(ctx context.Context, f
 			limit = filter.PageSize
 		}
 	}
-	
+
 	offset := (page - 1) * limit
 
 	purchaseRequests, total, err := s.purchaseRequestRepo.List(ctx, offset, limit)
@@ -362,12 +362,12 @@ func (s *PurchaseRequestServiceImpl) convertToPurchaseRequestResponse(purchaseRe
 	return &dto.PurchaseRequestResponse{
 		ID:           purchaseRequest.ID,
 		Number:       purchaseRequest.RequestNumber,
-		Title:        "", // 模型中没有Title字段
-		Description:  "", // 模型中没有Description字段
+		Title:        "",       // 模型中没有Title字段
+		Description:  "",       // 模型中没有Description字段
 		Priority:     "medium", // 默认优先级，模型中没有Priority字段
 		Status:       purchaseRequest.Status,
 		RequiredDate: purchaseRequest.RequiredBy,
-		TotalAmount:  0, // 需要计算，模型中没有TotalAmount字段
+		TotalAmount:  0,                                   // 需要计算，模型中没有TotalAmount字段
 		Items:        []dto.PurchaseRequestItemResponse{}, // 需要单独处理
 		CreatedBy:    dto.UserResponse{},                  // 需要单独处理
 		ApprovedBy:   nil,                                 // 需要单独处理
@@ -497,7 +497,7 @@ func (s *PurchaseOrderServiceImpl) ListPurchaseOrders(ctx context.Context, filte
 			limit = filter.PageSize
 		}
 	}
-	
+
 	offset := (page - 1) * limit
 
 	purchaseOrders, total, err := s.purchaseOrderRepo.List(ctx, offset, limit)
@@ -567,21 +567,21 @@ func (s *PurchaseOrderServiceImpl) convertToPurchaseOrderResponse(purchaseOrder 
 			CreatedAt: purchaseOrder.CreatedAt,
 			UpdatedAt: purchaseOrder.UpdatedAt,
 		},
-		OrderNumber:    purchaseOrder.OrderNumber,
-		SupplierID:     purchaseOrder.SupplierID,
-		OrderDate:      purchaseOrder.OrderDate,
-		ExpectedDate:   purchaseOrder.DeliveryDate, // 使用DeliveryDate作为ExpectedDate
-		DeliveryDate:   &purchaseOrder.DeliveryDate,
-		Status:         purchaseOrder.Status,
-		Currency:       "CNY",
-		ExchangeRate:   1.0,
-		PaymentTerms:   purchaseOrder.Terms,
-		Terms:          purchaseOrder.Terms,
-		Notes:          purchaseOrder.Notes,
-		SubTotal:       purchaseOrder.TotalAmount,
-		TotalDiscount:  purchaseOrder.DiscountAmount,
-		TotalTax:       purchaseOrder.TaxAmount,
-		TotalAmount:    purchaseOrder.GrandTotal,
-		Items:          []dto.PurchaseOrderItemResponse{},
+		OrderNumber:   purchaseOrder.OrderNumber,
+		SupplierID:    purchaseOrder.SupplierID,
+		OrderDate:     purchaseOrder.OrderDate,
+		ExpectedDate:  purchaseOrder.DeliveryDate, // 使用DeliveryDate作为ExpectedDate
+		DeliveryDate:  &purchaseOrder.DeliveryDate,
+		Status:        purchaseOrder.Status,
+		Currency:      "CNY",
+		ExchangeRate:  1.0,
+		PaymentTerms:  purchaseOrder.Terms,
+		Terms:         purchaseOrder.Terms,
+		Notes:         purchaseOrder.Notes,
+		SubTotal:      purchaseOrder.TotalAmount,
+		TotalDiscount: purchaseOrder.DiscountAmount,
+		TotalTax:      purchaseOrder.TaxAmount,
+		TotalAmount:   purchaseOrder.GrandTotal,
+		Items:         []dto.PurchaseOrderItemResponse{},
 	}
 }

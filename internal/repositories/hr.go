@@ -3,9 +3,9 @@ package repositories
 import (
 	"context"
 	"errors"
-	"time"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
+	"time"
 )
 
 // EmployeeRepository 员工仓储接口
@@ -91,18 +91,18 @@ func (r *EmployeeRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *EmployeeRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Employee, int64, error) {
 	var employees []*models.Employee
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Employee{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Department").Preload("Position").Offset(offset).Limit(limit).Find(&employees).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return employees, total, nil
 }
 
@@ -191,7 +191,7 @@ func (r *LeaveRepositoryImpl) GetByEmployeeIDAndDateRange(ctx context.Context, e
 	err := r.db.WithContext(ctx).
 		Preload("Employee").
 		Preload("ApprovedUser").
-		Where("employee_id = ? AND ((start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?))", 
+		Where("employee_id = ? AND ((start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?))",
 			employeeID, startDate, endDate, startDate, endDate, startDate, endDate).
 		Order("start_date ASC").
 		Find(&leaves).Error
@@ -204,7 +204,7 @@ func (r *LeaveRepositoryImpl) GetByDateRange(ctx context.Context, startDate, end
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&models.Leave{}).
-		Where("(start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?)", 
+		Where("(start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?)",
 			startDate, endDate, startDate, endDate, startDate, endDate)
 
 	// 获取总数
@@ -216,7 +216,7 @@ func (r *LeaveRepositoryImpl) GetByDateRange(ctx context.Context, startDate, end
 	err := r.db.WithContext(ctx).
 		Preload("Employee").
 		Preload("ApprovedUser").
-		Where("(start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?)", 
+		Where("(start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?)",
 			startDate, endDate, startDate, endDate, startDate, endDate).
 		Order("start_date ASC").
 		Offset(offset).
@@ -289,7 +289,7 @@ func (r *LeaveRepositoryImpl) ListWithFilters(ctx context.Context, employeeID *u
 		query = query.Where("status = ?", status)
 	}
 	if startDate != nil && endDate != nil {
-		query = query.Where("(start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?)", 
+		query = query.Where("(start_date BETWEEN ? AND ?) OR (end_date BETWEEN ? AND ?) OR (start_date <= ? AND end_date >= ?)",
 			*startDate, *endDate, *startDate, *endDate, *startDate, *endDate)
 	}
 
@@ -366,13 +366,13 @@ func (r *AttendanceRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *AttendanceRepositoryImpl) GetByEmployeeID(ctx context.Context, employeeID uint, offset, limit int) ([]*models.Attendance, int64, error) {
 	var attendances []*models.Attendance
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Attendance{}).
 		Where("employee_id = ?", employeeID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Employee").
 		Where("employee_id = ?", employeeID).
@@ -381,7 +381,7 @@ func (r *AttendanceRepositoryImpl) GetByEmployeeID(ctx context.Context, employee
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return attendances, total, nil
 }
 
@@ -401,13 +401,13 @@ func (r *AttendanceRepositoryImpl) GetByEmployeeIDAndDateRange(ctx context.Conte
 func (r *AttendanceRepositoryImpl) GetByDateRange(ctx context.Context, startDate, endDate time.Time, offset, limit int) ([]*models.Attendance, int64, error) {
 	var attendances []*models.Attendance
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Attendance{}).
 		Where("date >= ? AND date <= ?", startDate, endDate).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Employee").
 		Where("date >= ? AND date <= ?", startDate, endDate).
@@ -416,7 +416,7 @@ func (r *AttendanceRepositoryImpl) GetByDateRange(ctx context.Context, startDate
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return attendances, total, nil
 }
 
@@ -424,12 +424,12 @@ func (r *AttendanceRepositoryImpl) GetByDateRange(ctx context.Context, startDate
 func (r *AttendanceRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Attendance, int64, error) {
 	var attendances []*models.Attendance
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Attendance{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Employee").
 		Order("date DESC").
@@ -437,7 +437,7 @@ func (r *AttendanceRepositoryImpl) List(ctx context.Context, offset, limit int) 
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return attendances, total, nil
 }
 
@@ -497,13 +497,13 @@ func (r *PayrollRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *PayrollRepositoryImpl) GetByEmployeeID(ctx context.Context, employeeID uint, offset, limit int) ([]*models.Payroll, int64, error) {
 	var payrolls []*models.Payroll
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Payroll{}).
 		Where("employee_id = ?", employeeID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Employee").
 		Where("employee_id = ?", employeeID).
@@ -512,7 +512,7 @@ func (r *PayrollRepositoryImpl) GetByEmployeeID(ctx context.Context, employeeID 
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return payrolls, total, nil
 }
 
@@ -535,13 +535,13 @@ func (r *PayrollRepositoryImpl) GetByEmployeeIDAndPeriod(ctx context.Context, em
 func (r *PayrollRepositoryImpl) GetByPeriod(ctx context.Context, startDate, endDate time.Time, offset, limit int) ([]*models.Payroll, int64, error) {
 	var payrolls []*models.Payroll
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Payroll{}).
 		Where("pay_period_start = ? AND pay_period_end = ?", startDate, endDate).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Employee").
 		Where("pay_period_start = ? AND pay_period_end = ?", startDate, endDate).
@@ -550,7 +550,7 @@ func (r *PayrollRepositoryImpl) GetByPeriod(ctx context.Context, startDate, endD
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return payrolls, total, nil
 }
 
@@ -558,12 +558,12 @@ func (r *PayrollRepositoryImpl) GetByPeriod(ctx context.Context, startDate, endD
 func (r *PayrollRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Payroll, int64, error) {
 	var payrolls []*models.Payroll
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Payroll{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Employee").
 		Order("pay_period_start DESC").
@@ -571,7 +571,7 @@ func (r *PayrollRepositoryImpl) List(ctx context.Context, offset, limit int) ([]
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return payrolls, total, nil
 }
 
@@ -579,26 +579,26 @@ func (r *PayrollRepositoryImpl) List(ctx context.Context, offset, limit int) ([]
 func (r *EmployeeRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Employee, int64, error) {
 	var employees []*models.Employee
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Employee{}).
-		Where("code LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR full_name LIKE ? OR email LIKE ?", 
+		Where("code LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR full_name LIKE ? OR email LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery, searchQuery).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Department").Preload("Position").
-		Where("code LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR full_name LIKE ? OR email LIKE ?", 
+		Where("code LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR full_name LIKE ? OR email LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery, searchQuery).
 		Offset(offset).Limit(limit).Find(&employees).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return employees, total, nil
 }
 
@@ -606,13 +606,13 @@ func (r *EmployeeRepositoryImpl) Search(ctx context.Context, query string, offse
 func (r *EmployeeRepositoryImpl) GetByDepartmentID(ctx context.Context, departmentID uint, offset, limit int) ([]*models.Employee, int64, error) {
 	var employees []*models.Employee
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Employee{}).
 		Where("department_id = ?", departmentID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Department").Preload("Position").
 		Where("department_id = ?", departmentID).
@@ -620,6 +620,6 @@ func (r *EmployeeRepositoryImpl) GetByDepartmentID(ctx context.Context, departme
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return employees, total, nil
 }

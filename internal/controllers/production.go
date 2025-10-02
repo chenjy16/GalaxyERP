@@ -1,22 +1,22 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // ProductionController 生产控制器
 type ProductionController struct {
 	productService services.ProductService
-	utils         *ControllerUtils
+	utils          *ControllerUtils
 }
 
 // NewProductionController 创建生产控制器实例
 func NewProductionController(productService services.ProductService) *ProductionController {
 	return &ProductionController{
 		productService: productService,
-		utils:         NewControllerUtils(),
+		utils:          NewControllerUtils(),
 	}
 }
 
@@ -181,8 +181,8 @@ func (c *ProductionController) SearchProducts(ctx *gin.Context) {
 	req := &dto.ProductSearchRequest{
 		SearchRequest: dto.SearchRequest{
 			PaginationRequest: *pagination,
-			Keyword:          keyword,
-			Status:           status,
+			Keyword:           keyword,
+			Status:            status,
 		},
 		Category: category,
 	}

@@ -13,18 +13,18 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 获取Authorization头
 		authHeader := c.GetHeader("Authorization")
-		
-        // 检查是否为健康检查或公开接口
-        path := c.Request.URL.Path
-        if path == "/health" ||
-           path == "/api/v1/users/login" ||
-           path == "/api/v1/users/register" ||
-           path == "/api/v1/auth/refresh" ||
-           path == "/api/v1/auth/logout" {
-            c.Next()
-            return
-        }
-		
+
+		// 检查是否为健康检查或公开接口
+		path := c.Request.URL.Path
+		if path == "/health" ||
+			path == "/api/v1/users/login" ||
+			path == "/api/v1/users/register" ||
+			path == "/api/v1/auth/refresh" ||
+			path == "/api/v1/auth/logout" {
+			c.Next()
+			return
+		}
+
 		// 检查Authorization头
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -34,9 +34,9 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		
+
 		// 解析JWT token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			// 验证签名方法
@@ -45,7 +45,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			}
 			return []byte(jwtSecret), nil
 		})
-		
+
 		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
@@ -54,7 +54,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		// 从token中提取用户信息
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			if userIDFloat, exists := claims["user_id"]; exists {
@@ -67,7 +67,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 				c.Set("username", username.(string))
 			}
 		}
-		
+
 		c.Next()
 	}
 }

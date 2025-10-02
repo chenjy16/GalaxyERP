@@ -244,24 +244,6 @@ export default function SystemPage() {
       category: '邮件配置',
       type: 'number',
       required: true
-    },
-    {
-      key: '5',
-      configKey: 'backup.auto.enabled',
-      configValue: 'true',
-      description: '自动备份开关',
-      category: '备份配置',
-      type: 'boolean',
-      required: false
-    },
-    {
-      key: '6',
-      configKey: 'backup.auto.time',
-      configValue: '02:00',
-      description: '自动备份时间',
-      category: '备份配置',
-      type: 'time',
-      required: false
     }
   ];
 
@@ -625,6 +607,30 @@ export default function SystemPage() {
   const totalRoles = roleData.length;
   const totalPermissions = permissionData.length;
 
+  // 开发中功能组件
+  const DevelopmentFeature = ({ title, description, icon }: { title: string; description: string; icon: React.ReactNode }) => (
+    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ fontSize: '48px', color: '#faad14', marginBottom: '16px' }}>
+        {icon}
+      </div>
+      <Title level={3} style={{ color: '#faad14', marginBottom: '8px' }}>
+        {title}
+      </Title>
+      <Text type="secondary" style={{ fontSize: '16px' }}>
+        {description}
+      </Text>
+      <div style={{ marginTop: '24px' }}>
+        <Alert
+          message="功能开发中"
+          description="该功能正在开发中，敬请期待后续版本更新。"
+          type="warning"
+          showIcon
+          style={{ maxWidth: '400px', margin: '0 auto' }}
+        />
+      </div>
+    </div>
+  );
+
   // 定义Tabs的items
   const tabItems = [
     {
@@ -777,7 +783,6 @@ export default function SystemPage() {
                 <Option value="all">全部</Option>
                 <Option value="基础配置">基础配置</Option>
                 <Option value="邮件配置">邮件配置</Option>
-                <Option value="备份配置">备份配置</Option>
                 <Option value="安全配置">安全配置</Option>
               </Select>
               <Select placeholder="类型筛选" style={{ width: 120 }}>
@@ -789,8 +794,6 @@ export default function SystemPage() {
               </Select>
             </Space>
             <Space>
-              <Button icon={<DatabaseOutlined />}>备份配置</Button>
-              <Button icon={<CloudOutlined />}>恢复配置</Button>
               <Button icon={<SaveOutlined />} type="primary">保存配置</Button>
             </Space>
           </div>
@@ -800,6 +803,50 @@ export default function SystemPage() {
             pagination={{ pageSize: 10, showSizeChanger: true }}
           />
         </>
+      )
+    },
+    {
+      key: 'backup',
+      label: '备份管理',
+      children: (
+        <DevelopmentFeature
+          title="备份管理"
+          description="数据库备份、恢复和备份文件管理功能"
+          icon={<DatabaseOutlined />}
+        />
+      )
+    },
+    {
+      key: 'monitoring',
+      label: '系统监控',
+      children: (
+        <DevelopmentFeature
+          title="系统监控"
+          description="系统性能监控、资源使用情况和运行状态监控"
+          icon={<ApiOutlined />}
+        />
+      )
+    },
+    {
+      key: 'audit',
+      label: '审计日志',
+      children: (
+        <DevelopmentFeature
+          title="审计日志"
+          description="系统操作日志记录、查询和分析功能"
+          icon={<HistoryOutlined />}
+        />
+      )
+    },
+    {
+      key: 'workflow',
+      label: '审批流程',
+      children: (
+        <DevelopmentFeature
+          title="审批流程"
+          description="工作流程设计、审批步骤配置和流程管理"
+          icon={<SafetyOutlined />}
+        />
       )
     }
   ];
@@ -1023,7 +1070,6 @@ export default function SystemPage() {
                     <Select placeholder="选择分类">
                       <Option value="基础配置">基础配置</Option>
                       <Option value="邮件配置">邮件配置</Option>
-                      <Option value="备份配置">备份配置</Option>
                       <Option value="安全配置">安全配置</Option>
                     </Select>
                   </Form.Item>

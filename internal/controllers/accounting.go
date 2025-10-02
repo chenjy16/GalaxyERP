@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // AccountingController 会计控制器
@@ -107,10 +107,10 @@ func (c *AccountingController) GetAccountList(ctx *gin.Context) {
 
 	// 构造分页响应
 	response := gin.H{
-		"data":       accounts,
-		"total":      total,
-		"page":       pagination.Page,
-		"page_size":  pagination.PageSize,
+		"data":        accounts,
+		"total":       total,
+		"page":        pagination.Page,
+		"page_size":   pagination.PageSize,
 		"total_pages": (total + int64(pagination.PageSize) - 1) / int64(pagination.PageSize),
 	}
 
@@ -313,7 +313,7 @@ func (c *AccountingController) CreateJournalEntry(ctx *gin.Context) {
 		totalDebit += item.DebitAmount
 		totalCredit += item.CreditAmount
 	}
-	
+
 	if totalDebit != totalCredit {
 		c.utils.RespondBadRequest(ctx, "借贷金额不平衡")
 		return
@@ -366,10 +366,10 @@ func (c *AccountingController) GetJournalEntryList(ctx *gin.Context) {
 
 	// 构造分页响应
 	response := gin.H{
-		"data":       entries,
-		"total":      total,
-		"page":       pagination.Page,
-		"page_size":  pagination.PageSize,
+		"data":        entries,
+		"total":       total,
+		"page":        pagination.Page,
+		"page_size":   pagination.PageSize,
 		"total_pages": (total + int64(pagination.PageSize) - 1) / int64(pagination.PageSize),
 	}
 

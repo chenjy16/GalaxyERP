@@ -164,14 +164,14 @@ type StatisticsResponse struct {
 
 // ExportRequest 导出请求
 type ExportRequest struct {
-	Format    string    `json:"format" form:"format" binding:"required,oneof=excel pdf csv"`
-	StartDate time.Time `json:"start_date,omitempty" form:"start_date"`
-	EndDate   time.Time `json:"end_date,omitempty" form:"end_date"`
+	Format    string                 `json:"format" form:"format" binding:"required,oneof=excel pdf csv"`
+	StartDate time.Time              `json:"start_date,omitempty" form:"start_date"`
+	EndDate   time.Time              `json:"end_date,omitempty" form:"end_date"`
 	Filters   map[string]interface{} `json:"filters,omitempty"`
 }
 
 // ImportRequest 导入请求
 type ImportRequest struct {
-	FilePath string `json:"file_path" binding:"required"`
+	FilePath string                 `json:"file_path" binding:"required"`
 	Options  map[string]interface{} `json:"options,omitempty"`
 }

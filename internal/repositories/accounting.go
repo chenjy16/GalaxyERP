@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
 )
 
 // AccountRepository 会计科目仓储接口
@@ -76,18 +76,18 @@ func (r *AccountRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *AccountRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Account, int64, error) {
 	var accounts []*models.Account
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Account{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Parent").Offset(offset).Limit(limit).Find(&accounts).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return accounts, total, nil
 }
 
@@ -95,13 +95,13 @@ func (r *AccountRepositoryImpl) List(ctx context.Context, offset, limit int) ([]
 func (r *AccountRepositoryImpl) GetByType(ctx context.Context, accountType string, offset, limit int) ([]*models.Account, int64, error) {
 	var accounts []*models.Account
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Account{}).
 		Where("type = ?", accountType).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Parent").
 		Where("type = ?", accountType).
@@ -109,7 +109,7 @@ func (r *AccountRepositoryImpl) GetByType(ctx context.Context, accountType strin
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return accounts, total, nil
 }
 
@@ -177,18 +177,18 @@ func (r *JournalEntryRepositoryImpl) Delete(ctx context.Context, id uint) error 
 func (r *JournalEntryRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.JournalEntry, int64, error) {
 	var entries []*models.JournalEntry
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.JournalEntry{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据，预加载Account关联
 	err := r.db.WithContext(ctx).Preload("Account").Offset(offset).Limit(limit).Find(&entries).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return entries, total, nil
 }
 
@@ -196,13 +196,13 @@ func (r *JournalEntryRepositoryImpl) List(ctx context.Context, offset, limit int
 func (r *JournalEntryRepositoryImpl) GetByDateRange(ctx context.Context, startDate, endDate string, offset, limit int) ([]*models.JournalEntry, int64, error) {
 	var entries []*models.JournalEntry
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.JournalEntry{}).
 		Where("entry_date BETWEEN ? AND ?", startDate, endDate).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Items").
 		Where("entry_date BETWEEN ? AND ?", startDate, endDate).
@@ -210,6 +210,6 @@ func (r *JournalEntryRepositoryImpl) GetByDateRange(ctx context.Context, startDa
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return entries, total, nil
 }

@@ -4,17 +4,17 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // PurchaseController 采购管理控制器
 type PurchaseController struct {
-	utils                    *ControllerUtils
-	supplierService          services.SupplierService
-	purchaseRequestService   services.PurchaseRequestService
-	purchaseOrderService     services.PurchaseOrderService
+	utils                  *ControllerUtils
+	supplierService        services.SupplierService
+	purchaseRequestService services.PurchaseRequestService
+	purchaseOrderService   services.PurchaseOrderService
 }
 
 // NewPurchaseController 创建采购管理控制器实例
@@ -401,17 +401,17 @@ func (c *PurchaseController) GetPurchaseStats(ctx *gin.Context) {
 	// 这里应该调用相应的服务方法获取统计数据
 	// 暂时返回模拟数据
 	stats := map[string]interface{}{
-		"total_suppliers":        50,
-		"active_suppliers":       45,
+		"total_suppliers":         50,
+		"active_suppliers":        45,
 		"total_purchase_requests": 120,
-		"pending_requests":       15,
-		"approved_requests":      95,
-		"rejected_requests":      10,
-		"total_purchase_orders":  80,
-		"pending_orders":         8,
-		"confirmed_orders":       65,
-		"completed_orders":       7,
-		"total_amount":           1250000.00,
+		"pending_requests":        15,
+		"approved_requests":       95,
+		"rejected_requests":       10,
+		"total_purchase_orders":   80,
+		"pending_orders":          8,
+		"confirmed_orders":        65,
+		"completed_orders":        7,
+		"total_amount":            1250000.00,
 		"period": map[string]string{
 			"start_date": startDate,
 			"end_date":   endDate,

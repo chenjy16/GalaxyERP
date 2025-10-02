@@ -1,22 +1,22 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // UserController 用户控制器
 type UserController struct {
 	userService services.UserService
-	utils      *ControllerUtils
+	utils       *ControllerUtils
 }
 
 // NewUserController 创建用户控制器实例
 func NewUserController(userService services.UserService) *UserController {
 	return &UserController{
 		userService: userService,
-		utils:      NewControllerUtils(),
+		utils:       NewControllerUtils(),
 	}
 }
 

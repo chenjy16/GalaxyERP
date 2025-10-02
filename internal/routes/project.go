@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/container"
+	"github.com/gin-gonic/gin"
 )
 
 // RegisterProjectRoutes 注册项目管理相关路由

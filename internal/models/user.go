@@ -17,47 +17,47 @@ type User struct {
 	DepartmentID *uint      `json:"department_id,omitempty"`
 	Phone        string     `json:"phone,omitempty"`
 	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
-	
+
 	// 数据库中存在的其他字段
-	Salt                string     `json:"-" gorm:"column:salt"`
-	DisplayName         string     `json:"display_name,omitempty"`
-	AvatarURL           string     `json:"avatar_url,omitempty" gorm:"column:avatar_url"`
-	IsAdmin             bool       `json:"is_admin" gorm:"column:is_admin;default:false"`
-	Position            string     `json:"position,omitempty"`
-	EmployeeNumber      string     `json:"employee_number,omitempty"`
-	HireDate            *time.Time `json:"hire_date,omitempty"`
-	BirthDate           *time.Time `json:"birth_date,omitempty"`
-	Gender              string     `json:"gender,omitempty"`
-	Address             string     `json:"address,omitempty"`
-	EmergencyContact    string     `json:"emergency_contact,omitempty"`
-	EmergencyPhone      string     `json:"emergency_phone,omitempty"`
-	LastLoginIP         string     `json:"last_login_ip,omitempty" gorm:"column:last_login_ip"`
-	LoginCount          int        `json:"login_count" gorm:"default:0"`
-	FailedLoginCount    int        `json:"failed_login_count" gorm:"default:0"`
-	LockedUntil         *time.Time `json:"locked_until,omitempty"`
-	PasswordChangedAt   *time.Time `json:"password_changed_at,omitempty"`
-	MustChangePassword  bool       `json:"must_change_password" gorm:"default:false"`
-	TwoFactorEnabled    bool       `json:"two_factor_enabled" gorm:"default:false"`
-	TwoFactorSecret     string     `json:"-" gorm:"column:two_factor_secret"`
-	Preferences         string     `json:"preferences,omitempty"`
-	Timezone            string     `json:"timezone" gorm:"default:'Asia/Shanghai'"`
-	Language            string     `json:"language" gorm:"default:'zh-CN'"`
-	Theme               string     `json:"theme" gorm:"default:'light'"`
-	Status              string     `json:"status" gorm:"default:'ACTIVE'"`
-	
+	Salt               string     `json:"-" gorm:"column:salt"`
+	DisplayName        string     `json:"display_name,omitempty"`
+	AvatarURL          string     `json:"avatar_url,omitempty" gorm:"column:avatar_url"`
+	IsAdmin            bool       `json:"is_admin" gorm:"column:is_admin;default:false"`
+	Position           string     `json:"position,omitempty"`
+	EmployeeNumber     string     `json:"employee_number,omitempty"`
+	HireDate           *time.Time `json:"hire_date,omitempty"`
+	BirthDate          *time.Time `json:"birth_date,omitempty"`
+	Gender             string     `json:"gender,omitempty"`
+	Address            string     `json:"address,omitempty"`
+	EmergencyContact   string     `json:"emergency_contact,omitempty"`
+	EmergencyPhone     string     `json:"emergency_phone,omitempty"`
+	LastLoginIP        string     `json:"last_login_ip,omitempty" gorm:"column:last_login_ip"`
+	LoginCount         int        `json:"login_count" gorm:"default:0"`
+	FailedLoginCount   int        `json:"failed_login_count" gorm:"default:0"`
+	LockedUntil        *time.Time `json:"locked_until,omitempty"`
+	PasswordChangedAt  *time.Time `json:"password_changed_at,omitempty"`
+	MustChangePassword bool       `json:"must_change_password" gorm:"default:false"`
+	TwoFactorEnabled   bool       `json:"two_factor_enabled" gorm:"default:false"`
+	TwoFactorSecret    string     `json:"-" gorm:"column:two_factor_secret"`
+	Preferences        string     `json:"preferences,omitempty"`
+	Timezone           string     `json:"timezone" gorm:"default:'Asia/Shanghai'"`
+	Language           string     `json:"language" gorm:"default:'zh-CN'"`
+	Theme              string     `json:"theme" gorm:"default:'light'"`
+	Status             string     `json:"status" gorm:"default:'ACTIVE'"`
+
 	// 关联
-	Roles        []Role       `json:"roles,omitempty" gorm:"many2many:user_roles;"`
-	Permissions  []Permission `json:"permissions,omitempty" gorm:"many2many:user_permissions;"`
-	Department   *Department  `json:"department,omitempty" gorm:"foreignKey:DepartmentID"`
+	Roles       []Role       `json:"roles,omitempty" gorm:"many2many:user_roles;"`
+	Permissions []Permission `json:"permissions,omitempty" gorm:"many2many:user_permissions;"`
+	Department  *Department  `json:"department,omitempty" gorm:"foreignKey:DepartmentID"`
 }
 
 // Role 角色模型
 type Role struct {
 	BaseModel
-	Name        string       `json:"name" gorm:"uniqueIndex;size:100;not null"`
-	Description string       `json:"description,omitempty" gorm:"type:text"`
-	IsActive    bool         `json:"is_active" gorm:"default:true;index"`
-	
+	Name        string `json:"name" gorm:"uniqueIndex;size:100;not null"`
+	Description string `json:"description,omitempty" gorm:"type:text"`
+	IsActive    bool   `json:"is_active" gorm:"default:true;index"`
+
 	// 关联
 	Users       []User       `json:"users,omitempty" gorm:"many2many:user_roles;"`
 	Permissions []Permission `json:"permissions,omitempty" gorm:"many2many:role_permissions;"`
@@ -70,7 +70,7 @@ type Permission struct {
 	Resource    string `json:"resource" gorm:"size:100;not null;index"`
 	Action      string `json:"action" gorm:"size:50;not null;index"`
 	Description string `json:"description,omitempty" gorm:"type:text"`
-	
+
 	// 关联
 	Users []User `json:"users,omitempty" gorm:"many2many:user_permissions;"`
 	Roles []Role `json:"roles,omitempty" gorm:"many2many:role_permissions;"`
@@ -79,15 +79,15 @@ type Permission struct {
 // Department 部门模型
 type Department struct {
 	BaseModel
-	Name        string       `json:"name" gorm:"not null"`
-	Code        string       `json:"code" gorm:"uniqueIndex;not null"`
-	Description string       `json:"description,omitempty"`
-	CompanyID   uint         `json:"company_id" gorm:"not null"`
-	ParentID    *uint        `json:"parent_id,omitempty"`
-	IsActive    bool         `json:"is_active" gorm:"default:true"`
-	CreatedBy   *uint        `json:"created_by,omitempty"`
-	UpdatedBy   *uint        `json:"updated_by,omitempty"`
-	
+	Name        string `json:"name" gorm:"not null"`
+	Code        string `json:"code" gorm:"uniqueIndex;not null"`
+	Description string `json:"description,omitempty"`
+	CompanyID   uint   `json:"company_id" gorm:"not null"`
+	ParentID    *uint  `json:"parent_id,omitempty"`
+	IsActive    bool   `json:"is_active" gorm:"default:true"`
+	CreatedBy   *uint  `json:"created_by,omitempty"`
+	UpdatedBy   *uint  `json:"updated_by,omitempty"`
+
 	// 关联
 	Parent   *Department  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
 	Children []Department `json:"children,omitempty" gorm:"foreignKey:ParentID"`
@@ -103,7 +103,7 @@ type UserSession struct {
 	IPAddress string    `json:"ip_address,omitempty" gorm:"size:45"`
 	UserAgent string    `json:"user_agent,omitempty" gorm:"type:text"`
 	IsActive  bool      `json:"is_active" gorm:"default:true;index"`
-	
+
 	// 关联
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 }
@@ -112,7 +112,7 @@ type UserSession struct {
 type UserRole struct {
 	UserID uint `json:"user_id" gorm:"primaryKey"`
 	RoleID uint `json:"role_id" gorm:"primaryKey"`
-	
+
 	// 关联
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Role Role `json:"role,omitempty" gorm:"foreignKey:RoleID"`
@@ -122,7 +122,7 @@ type UserRole struct {
 type RolePermission struct {
 	RoleID       uint `json:"role_id" gorm:"primaryKey"`
 	PermissionID uint `json:"permission_id" gorm:"primaryKey"`
-	
+
 	// 关联
 	Role       Role       `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 	Permission Permission `json:"permission,omitempty" gorm:"foreignKey:PermissionID"`

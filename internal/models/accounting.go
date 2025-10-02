@@ -15,7 +15,7 @@ type Account struct {
 	IsActive    bool    `json:"is_active" gorm:"default:true"`
 	ParentID    *uint   `json:"parent_id,omitempty"`
 	Currency    string  `json:"currency" gorm:"default:'USD'"`
-	
+
 	// 关联
 	Parent   *Account  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
 	Children []Account `json:"children,omitempty" gorm:"foreignKey:ParentID"`
@@ -29,7 +29,7 @@ type JournalEntry struct {
 	Debit         float64 `json:"debit,omitempty"`
 	Credit        float64 `json:"credit,omitempty"`
 	Description   string  `json:"description,omitempty"`
-	
+
 	// 关联
 	Account Account `json:"account,omitempty" gorm:"foreignKey:AccountID"`
 }
@@ -52,7 +52,7 @@ type Payment struct {
 	ReferenceID   *uint     `json:"reference_id,omitempty" gorm:"index"`
 	Status        string    `json:"status" gorm:"size:50;default:'pending';index"` // pending, completed, cancelled
 	Notes         string    `json:"notes,omitempty" gorm:"type:text"`
-	
+
 	// 关联
 	BankAccount *BankAccount `json:"bank_account,omitempty" gorm:"foreignKey:BankAccountID"`
 }
@@ -70,7 +70,7 @@ type BankAccount struct {
 	IsDefault     bool    `json:"is_default" gorm:"default:false"`
 	IsActive      bool    `json:"is_active" gorm:"default:true"`
 	AccountID     *uint   `json:"account_id,omitempty"`
-	
+
 	// 关联
 	Account  *Account  `json:"account,omitempty" gorm:"foreignKey:AccountID"`
 	Payments []Payment `json:"payments,omitempty" gorm:"foreignKey:BankAccountID"`
@@ -79,15 +79,15 @@ type BankAccount struct {
 // Budget 预算模型
 type Budget struct {
 	AuditableModel
-	BudgetName   string    `json:"budget_name" gorm:"size:255;not null"`
-	BudgetYear   int       `json:"budget_year" gorm:"index;not null"`
-	StartDate    time.Time `json:"start_date" gorm:"index;not null"`
-	EndDate      time.Time `json:"end_date" gorm:"index;not null"`
-	TotalAmount  float64   `json:"total_amount" gorm:"not null"`
-	UsedAmount   float64   `json:"used_amount" gorm:"default:0"`
-	RemainingAmount float64 `json:"remaining_amount" gorm:"default:0"`
-	Status       string    `json:"status" gorm:"size:50;default:'draft';index"` // draft, approved, active, closed
-	
+	BudgetName      string    `json:"budget_name" gorm:"size:255;not null"`
+	BudgetYear      int       `json:"budget_year" gorm:"index;not null"`
+	StartDate       time.Time `json:"start_date" gorm:"index;not null"`
+	EndDate         time.Time `json:"end_date" gorm:"index;not null"`
+	TotalAmount     float64   `json:"total_amount" gorm:"not null"`
+	UsedAmount      float64   `json:"used_amount" gorm:"default:0"`
+	RemainingAmount float64   `json:"remaining_amount" gorm:"default:0"`
+	Status          string    `json:"status" gorm:"size:50;default:'draft';index"` // draft, approved, active, closed
+
 	// 关联
 	Items []BudgetItem `json:"items,omitempty" gorm:"foreignKey:BudgetID"`
 }
@@ -101,7 +101,7 @@ type BudgetItem struct {
 	ActualAmount   float64 `json:"actual_amount" gorm:"default:0"`
 	VarianceAmount float64 `json:"variance_amount" gorm:"default:0"`
 	Notes          string  `json:"notes,omitempty" gorm:"type:text"`
-	
+
 	// 关联
 	Budget  Budget  `json:"budget,omitempty" gorm:"foreignKey:BudgetID"`
 	Account Account `json:"account,omitempty" gorm:"foreignKey:AccountID"`
@@ -110,9 +110,9 @@ type BudgetItem struct {
 // TaxRate 税率模型
 type TaxRate struct {
 	CodeModel
-	TaxType    string  `json:"tax_type" gorm:"size:50;not null;index"` // vat, income, sales
-	Rate       float64 `json:"rate" gorm:"not null"`
-	EffectiveDate time.Time `json:"effective_date" gorm:"index;not null"`
+	TaxType       string     `json:"tax_type" gorm:"size:50;not null;index"` // vat, income, sales
+	Rate          float64    `json:"rate" gorm:"not null"`
+	EffectiveDate time.Time  `json:"effective_date" gorm:"index;not null"`
 	ExpiryDate    *time.Time `json:"expiry_date,omitempty" gorm:"index"`
 }
 
@@ -121,7 +121,7 @@ type CostCenter struct {
 	CodeModel
 	ManagerID    *uint `json:"manager_id,omitempty" gorm:"index"`
 	DepartmentID *uint `json:"department_id,omitempty" gorm:"index"`
-	
+
 	// 关联
 	Manager    *Employee   `json:"manager,omitempty" gorm:"foreignKey:ManagerID"`
 	Department *Department `json:"department,omitempty" gorm:"foreignKey:DepartmentID"`
@@ -130,14 +130,14 @@ type CostCenter struct {
 // FinancialReport 财务报表模型
 type FinancialReport struct {
 	AuditableModel
-	ReportName   string    `json:"report_name" gorm:"size:255;not null"`
-	ReportType   string    `json:"report_type" gorm:"size:50;not null;index"` // balance_sheet, income_statement, cash_flow
-	PeriodType   string    `json:"period_type" gorm:"size:50;not null;index"` // monthly, quarterly, yearly
-	StartDate    time.Time `json:"start_date" gorm:"index;not null"`
-	EndDate      time.Time `json:"end_date" gorm:"index;not null"`
-	Status       string    `json:"status" gorm:"size:50;default:'draft';index"` // draft, generated, approved
-	FilePath     string    `json:"file_path,omitempty" gorm:"size:500"`
-	
+	ReportName string    `json:"report_name" gorm:"size:255;not null"`
+	ReportType string    `json:"report_type" gorm:"size:50;not null;index"` // balance_sheet, income_statement, cash_flow
+	PeriodType string    `json:"period_type" gorm:"size:50;not null;index"` // monthly, quarterly, yearly
+	StartDate  time.Time `json:"start_date" gorm:"index;not null"`
+	EndDate    time.Time `json:"end_date" gorm:"index;not null"`
+	Status     string    `json:"status" gorm:"size:50;default:'draft';index"` // draft, generated, approved
+	FilePath   string    `json:"file_path,omitempty" gorm:"size:500"`
+
 	// 关联
 	Items []FinancialReportItem `json:"items,omitempty" gorm:"foreignKey:ReportID"`
 }
@@ -145,11 +145,11 @@ type FinancialReport struct {
 // FinancialReportItem 财务报表明细模型
 type FinancialReportItem struct {
 	BaseModel
-	ReportID    uint    `json:"report_id" gorm:"index;not null"`
-	AccountID   uint    `json:"account_id" gorm:"index;not null"`
-	Amount      float64 `json:"amount" gorm:"not null"`
-	Percentage  float64 `json:"percentage,omitempty" gorm:"default:0"`
-	
+	ReportID   uint    `json:"report_id" gorm:"index;not null"`
+	AccountID  uint    `json:"account_id" gorm:"index;not null"`
+	Amount     float64 `json:"amount" gorm:"not null"`
+	Percentage float64 `json:"percentage,omitempty" gorm:"default:0"`
+
 	// 关联
 	Report  FinancialReport `json:"report,omitempty" gorm:"foreignKey:ReportID"`
 	Account Account         `json:"account,omitempty" gorm:"foreignKey:AccountID"`
@@ -184,7 +184,7 @@ type Receivable struct {
 	Currency      string    `json:"currency" gorm:"default:'USD'"`
 	ExchangeRate  float64   `json:"exchange_rate" gorm:"default:1"`
 	Status        string    `json:"status" gorm:"default:'open'"`
-	
+
 	// 关联
 	Customer *Customer `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
 }
@@ -202,7 +202,7 @@ type Payable struct {
 	Currency      string    `json:"currency" gorm:"default:'USD'"`
 	ExchangeRate  float64   `json:"exchange_rate" gorm:"default:1"`
 	Status        string    `json:"status" gorm:"default:'open'"`
-	
+
 	// 关联
 	Supplier *Supplier `json:"supplier,omitempty" gorm:"foreignKey:SupplierID"`
 }
@@ -233,7 +233,7 @@ type DepreciationEntry struct {
 	BookValue          float64   `json:"book_value" gorm:"default:0"`
 	Method             string    `json:"method" gorm:"size:50;not null"` // straight_line, declining_balance
 	Notes              string    `json:"notes,omitempty" gorm:"type:text"`
-	
+
 	// 关联
 	Asset FixedAsset `json:"asset,omitempty" gorm:"foreignKey:AssetID"`
 }
@@ -254,35 +254,35 @@ type TaxEntry struct {
 // Currency 货币模型
 type Currency struct {
 	BaseModel
-	Code         string  `json:"code" gorm:"uniqueIndex;size:10;not null"`
-	Name         string  `json:"name" gorm:"size:100;not null"`
-	Symbol       string  `json:"symbol" gorm:"size:10;not null"`
-	ExchangeRate float64 `json:"exchange_rate" gorm:"default:1"`
-	IsBaseCurrency bool  `json:"is_base_currency" gorm:"default:false"`
-	Status       string  `json:"status" gorm:"size:50;default:'active';index"`
+	Code           string  `json:"code" gorm:"uniqueIndex;size:10;not null"`
+	Name           string  `json:"name" gorm:"size:100;not null"`
+	Symbol         string  `json:"symbol" gorm:"size:10;not null"`
+	ExchangeRate   float64 `json:"exchange_rate" gorm:"default:1"`
+	IsBaseCurrency bool    `json:"is_base_currency" gorm:"default:false"`
+	Status         string  `json:"status" gorm:"size:50;default:'active';index"`
 }
 
 // PaymentEntry 付款记录模型
 type PaymentEntry struct {
 	BaseModel
-	PaymentType     string    `json:"payment_type" gorm:"not null"`
-	PartyType       string    `json:"party_type" gorm:"not null"`
-	PartyID         uint      `json:"party_id" gorm:"not null"`
-	PostingDate     time.Time `json:"posting_date" gorm:"not null"`
-	PaidAmount      float64   `json:"paid_amount" gorm:"not null"`
-	ReceivedAmount  float64   `json:"received_amount" gorm:"not null"`
-	Currency        string    `json:"currency" gorm:"default:'USD'"`
-	ExchangeRate    float64   `json:"exchange_rate" gorm:"default:1"`
-	BankAccountID   *uint     `json:"bank_account_id,omitempty"`
-	CashAccountID   *uint     `json:"cash_account_id,omitempty"`
-	Reference       string    `json:"reference,omitempty"`
-	Remarks         string    `json:"remarks,omitempty"`
-	Status          string    `json:"status" gorm:"default:'draft'"`
-	IsPosted        bool      `json:"is_posted" gorm:"default:false"`
-	PostedAt        *time.Time `json:"posted_at,omitempty"`
-	CostCenterID    *uint     `json:"cost_center_id,omitempty"`
-	ProjectID       *uint     `json:"project_id,omitempty"`
-	
+	PaymentType    string     `json:"payment_type" gorm:"not null"`
+	PartyType      string     `json:"party_type" gorm:"not null"`
+	PartyID        uint       `json:"party_id" gorm:"not null"`
+	PostingDate    time.Time  `json:"posting_date" gorm:"not null"`
+	PaidAmount     float64    `json:"paid_amount" gorm:"not null"`
+	ReceivedAmount float64    `json:"received_amount" gorm:"not null"`
+	Currency       string     `json:"currency" gorm:"default:'USD'"`
+	ExchangeRate   float64    `json:"exchange_rate" gorm:"default:1"`
+	BankAccountID  *uint      `json:"bank_account_id,omitempty"`
+	CashAccountID  *uint      `json:"cash_account_id,omitempty"`
+	Reference      string     `json:"reference,omitempty"`
+	Remarks        string     `json:"remarks,omitempty"`
+	Status         string     `json:"status" gorm:"default:'draft'"`
+	IsPosted       bool       `json:"is_posted" gorm:"default:false"`
+	PostedAt       *time.Time `json:"posted_at,omitempty"`
+	CostCenterID   *uint      `json:"cost_center_id,omitempty"`
+	ProjectID      *uint      `json:"project_id,omitempty"`
+
 	// 关联
 	BankAccount *BankAccount `json:"bank_account,omitempty" gorm:"foreignKey:BankAccountID"`
 	CashAccount *Account     `json:"cash_account,omitempty" gorm:"foreignKey:CashAccountID"`
@@ -292,10 +292,10 @@ type PaymentEntry struct {
 // ExchangeRateHistory 汇率历史模型
 type ExchangeRateHistory struct {
 	BaseModel
-	CurrencyCode string    `json:"currency_code" gorm:"size:10;not null;index"`
-	ExchangeRate float64   `json:"exchange_rate" gorm:"not null"`
+	CurrencyCode  string    `json:"currency_code" gorm:"size:10;not null;index"`
+	ExchangeRate  float64   `json:"exchange_rate" gorm:"not null"`
 	EffectiveDate time.Time `json:"effective_date" gorm:"index;not null"`
-	Source       string    `json:"source" gorm:"size:100"`
+	Source        string    `json:"source" gorm:"size:100"`
 }
 
 // TaxTemplate 税务模板模型

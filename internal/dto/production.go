@@ -58,8 +58,8 @@ type ProductListResponse struct {
 // ProductSearchRequest 产品搜索请求
 type ProductSearchRequest struct {
 	SearchRequest
-	Category string `json:"category,omitempty" form:"category"`
-	Status   string `json:"status,omitempty" form:"status"`
+	Category string   `json:"category,omitempty" form:"category"`
+	Status   string   `json:"status,omitempty" form:"status"`
 	MinPrice *float64 `json:"min_price,omitempty" form:"min_price"`
 	MaxPrice *float64 `json:"max_price,omitempty" form:"max_price"`
 }

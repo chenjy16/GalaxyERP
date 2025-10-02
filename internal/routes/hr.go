@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/container"
 	"github.com/galaxyerp/galaxyErp/internal/controllers"
+	"github.com/gin-gonic/gin"
 )
 
 // RegisterHRRoutes 注册人力资源相关路由

@@ -29,11 +29,11 @@ func SuccessResponse(c *gin.Context, data interface{}, message ...string) {
 		Success: true,
 		Data:    data,
 	}
-	
+
 	if len(message) > 0 {
 		response.Message = message[0]
 	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -43,13 +43,13 @@ func CreatedResponse(c *gin.Context, data interface{}, message ...string) {
 		Success: true,
 		Data:    data,
 	}
-	
+
 	if len(message) > 0 {
 		response.Message = message[0]
 	} else {
 		response.Message = "Resource created successfully"
 	}
-	
+
 	c.JSON(http.StatusCreated, response)
 }
 
@@ -59,7 +59,7 @@ func ErrorResponse(c *gin.Context, statusCode int, message string) {
 		Success: false,
 		Error:   message,
 	}
-	
+
 	c.JSON(statusCode, response)
 }
 
@@ -96,7 +96,7 @@ func ConflictResponse(c *gin.Context, message string) {
 // PaginatedResponse sends a paginated response
 func PaginatedResponse(c *gin.Context, data interface{}, page, pageSize int, total int64, message ...string) {
 	totalPages := int((total + int64(pageSize) - 1) / int64(pageSize))
-	
+
 	response := APIResponse{
 		Success: true,
 		Data:    data,
@@ -107,11 +107,11 @@ func PaginatedResponse(c *gin.Context, data interface{}, page, pageSize int, tot
 			TotalPages: totalPages,
 		},
 	}
-	
+
 	if len(message) > 0 {
 		response.Message = message[0]
 	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 
@@ -122,6 +122,6 @@ func ValidationErrorResponse(c *gin.Context, errors map[string]string) {
 		Error:   "Validation failed",
 		Data:    errors,
 	}
-	
+
 	c.JSON(http.StatusUnprocessableEntity, response)
 }

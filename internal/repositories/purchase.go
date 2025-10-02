@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
 )
 
 // SupplierRepository 供应商仓储接口
@@ -61,18 +61,18 @@ func (r *SupplierRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *SupplierRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Supplier, int64, error) {
 	var suppliers []*models.Supplier
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Supplier{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&suppliers).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return suppliers, total, nil
 }
 
@@ -80,26 +80,26 @@ func (r *SupplierRepositoryImpl) List(ctx context.Context, offset, limit int) ([
 func (r *SupplierRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Supplier, int64, error) {
 	var suppliers []*models.Supplier
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Supplier{}).
-		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?", 
+		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?",
 			searchQuery, searchQuery, searchQuery).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).
-		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?", 
+		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?",
 			searchQuery, searchQuery, searchQuery).
 		Offset(offset).Limit(limit).Find(&suppliers).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return suppliers, total, nil
 }
 
@@ -158,18 +158,18 @@ func (r *PurchaseRequestRepositoryImpl) Delete(ctx context.Context, id uint) err
 func (r *PurchaseRequestRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.PurchaseRequest, int64, error) {
 	var requests []*models.PurchaseRequest
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.PurchaseRequest{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&requests).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return requests, total, nil
 }
 
@@ -177,20 +177,20 @@ func (r *PurchaseRequestRepositoryImpl) List(ctx context.Context, offset, limit 
 func (r *PurchaseRequestRepositoryImpl) GetByDepartmentID(ctx context.Context, departmentID uint, offset, limit int) ([]*models.PurchaseRequest, int64, error) {
 	var requests []*models.PurchaseRequest
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.PurchaseRequest{}).
 		Where("department_id = ?", departmentID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Where("department_id = ?", departmentID).
 		Offset(offset).Limit(limit).Find(&requests).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return requests, total, nil
 }
 
@@ -198,20 +198,20 @@ func (r *PurchaseRequestRepositoryImpl) GetByDepartmentID(ctx context.Context, d
 func (r *PurchaseRequestRepositoryImpl) GetByStatus(ctx context.Context, status string, offset, limit int) ([]*models.PurchaseRequest, int64, error) {
 	var requests []*models.PurchaseRequest
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.PurchaseRequest{}).
 		Where("status = ?", status).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Where("status = ?", status).
 		Offset(offset).Limit(limit).Find(&requests).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return requests, total, nil
 }
 
@@ -269,18 +269,18 @@ func (r *PurchaseOrderRepositoryImpl) Delete(ctx context.Context, id uint) error
 func (r *PurchaseOrderRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.PurchaseOrder, int64, error) {
 	var orders []*models.PurchaseOrder
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.PurchaseOrder{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Supplier").Offset(offset).Limit(limit).Find(&orders).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return orders, total, nil
 }
 
@@ -288,13 +288,13 @@ func (r *PurchaseOrderRepositoryImpl) List(ctx context.Context, offset, limit in
 func (r *PurchaseOrderRepositoryImpl) GetBySupplierID(ctx context.Context, supplierID uint, offset, limit int) ([]*models.PurchaseOrder, int64, error) {
 	var orders []*models.PurchaseOrder
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.PurchaseOrder{}).
 		Where("supplier_id = ?", supplierID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Supplier").
 		Where("supplier_id = ?", supplierID).
@@ -302,6 +302,6 @@ func (r *PurchaseOrderRepositoryImpl) GetBySupplierID(ctx context.Context, suppl
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return orders, total, nil
 }

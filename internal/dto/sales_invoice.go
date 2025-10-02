@@ -6,47 +6,47 @@ import (
 
 // SalesInvoiceCreateRequest 销售发票创建请求
 type SalesInvoiceCreateRequest struct {
-	CustomerID       uint                         `json:"customer_id" binding:"required"`
-	SalesOrderID     *uint                        `json:"sales_order_id,omitempty"`
-	DeliveryNoteID   *uint                        `json:"delivery_note_id,omitempty"`
-	InvoiceDate      time.Time                    `json:"invoice_date" binding:"required"`
-	DueDate          time.Time                    `json:"due_date" binding:"required"`
-	PostingDate      time.Time                    `json:"posting_date" binding:"required"`
-	Currency         string                       `json:"currency" binding:"required"`
-	ExchangeRate     float64                      `json:"exchange_rate" binding:"min=0"`
-	BillingAddress   string                       `json:"billing_address,omitempty"`
-	ShippingAddress  string                       `json:"shipping_address,omitempty"`
-	PaymentTerms     string                       `json:"payment_terms,omitempty"`
-	PaymentTermsDays int                          `json:"payment_terms_days" binding:"min=0"`
-	SalesPersonID    *uint                        `json:"sales_person_id,omitempty"`
-	Territory        string                       `json:"territory,omitempty"`
-	CustomerPONumber string                       `json:"customer_po_number,omitempty"`
-	Project          string                       `json:"project,omitempty"`
-	CostCenter       string                       `json:"cost_center,omitempty"`
-	Terms            string                       `json:"terms,omitempty"`
-	Notes            string                       `json:"notes,omitempty"`
-	Items            []SalesInvoiceItemRequest    `json:"items" binding:"required,min=1"`
+	CustomerID       uint                      `json:"customer_id" binding:"required"`
+	SalesOrderID     *uint                     `json:"sales_order_id,omitempty"`
+	DeliveryNoteID   *uint                     `json:"delivery_note_id,omitempty"`
+	InvoiceDate      time.Time                 `json:"invoice_date" binding:"required"`
+	DueDate          time.Time                 `json:"due_date" binding:"required"`
+	PostingDate      time.Time                 `json:"posting_date" binding:"required"`
+	Currency         string                    `json:"currency" binding:"required"`
+	ExchangeRate     float64                   `json:"exchange_rate" binding:"min=0"`
+	BillingAddress   string                    `json:"billing_address,omitempty"`
+	ShippingAddress  string                    `json:"shipping_address,omitempty"`
+	PaymentTerms     string                    `json:"payment_terms,omitempty"`
+	PaymentTermsDays int                       `json:"payment_terms_days" binding:"min=0"`
+	SalesPersonID    *uint                     `json:"sales_person_id,omitempty"`
+	Territory        string                    `json:"territory,omitempty"`
+	CustomerPONumber string                    `json:"customer_po_number,omitempty"`
+	Project          string                    `json:"project,omitempty"`
+	CostCenter       string                    `json:"cost_center,omitempty"`
+	Terms            string                    `json:"terms,omitempty"`
+	Notes            string                    `json:"notes,omitempty"`
+	Items            []SalesInvoiceItemRequest `json:"items" binding:"required,min=1"`
 }
 
 // SalesInvoiceUpdateRequest 销售发票更新请求
 type SalesInvoiceUpdateRequest struct {
-	InvoiceDate      *time.Time                   `json:"invoice_date,omitempty"`
-	DueDate          *time.Time                   `json:"due_date,omitempty"`
-	PostingDate      *time.Time                   `json:"posting_date,omitempty"`
-	Currency         string                       `json:"currency,omitempty"`
-	ExchangeRate     *float64                     `json:"exchange_rate,omitempty"`
-	BillingAddress   string                       `json:"billing_address,omitempty"`
-	ShippingAddress  string                       `json:"shipping_address,omitempty"`
-	PaymentTerms     string                       `json:"payment_terms,omitempty"`
-	PaymentTermsDays *int                         `json:"payment_terms_days,omitempty"`
-	SalesPersonID    *uint                        `json:"sales_person_id,omitempty"`
-	Territory        string                       `json:"territory,omitempty"`
-	CustomerPONumber string                       `json:"customer_po_number,omitempty"`
-	Project          string                       `json:"project,omitempty"`
-	CostCenter       string                       `json:"cost_center,omitempty"`
-	Terms            string                       `json:"terms,omitempty"`
-	Notes            string                       `json:"notes,omitempty"`
-	Items            []SalesInvoiceItemRequest    `json:"items,omitempty"`
+	InvoiceDate      *time.Time                `json:"invoice_date,omitempty"`
+	DueDate          *time.Time                `json:"due_date,omitempty"`
+	PostingDate      *time.Time                `json:"posting_date,omitempty"`
+	Currency         string                    `json:"currency,omitempty"`
+	ExchangeRate     *float64                  `json:"exchange_rate,omitempty"`
+	BillingAddress   string                    `json:"billing_address,omitempty"`
+	ShippingAddress  string                    `json:"shipping_address,omitempty"`
+	PaymentTerms     string                    `json:"payment_terms,omitempty"`
+	PaymentTermsDays *int                      `json:"payment_terms_days,omitempty"`
+	SalesPersonID    *uint                     `json:"sales_person_id,omitempty"`
+	Territory        string                    `json:"territory,omitempty"`
+	CustomerPONumber string                    `json:"customer_po_number,omitempty"`
+	Project          string                    `json:"project,omitempty"`
+	CostCenter       string                    `json:"cost_center,omitempty"`
+	Terms            string                    `json:"terms,omitempty"`
+	Notes            string                    `json:"notes,omitempty"`
+	Items            []SalesInvoiceItemRequest `json:"items,omitempty"`
 }
 
 // SalesInvoiceItemRequest 销售发票明细请求
@@ -70,81 +70,81 @@ type SalesInvoiceItemRequest struct {
 
 // SalesInvoiceResponse 销售发票响应
 type SalesInvoiceResponse struct {
-	ID                uint                          `json:"id"`
-	InvoiceNumber     string                        `json:"invoice_number"`
-	CustomerID        uint                          `json:"customer_id"`
-	SalesOrderID      *uint                         `json:"sales_order_id,omitempty"`
-	DeliveryNoteID    *uint                         `json:"delivery_note_id,omitempty"`
-	InvoiceDate       time.Time                     `json:"invoice_date"`
-	DueDate           time.Time                     `json:"due_date"`
-	PostingDate       time.Time                     `json:"posting_date"`
-	DocStatus         string                        `json:"doc_status"`
-	PaymentStatus     string                        `json:"payment_status"`
-	Currency          string                        `json:"currency"`
-	ExchangeRate      float64                       `json:"exchange_rate"`
-	SubTotal          float64                       `json:"sub_total"`
-	DiscountAmount    float64                       `json:"discount_amount"`
-	TaxAmount         float64                       `json:"tax_amount"`
-	ShippingAmount    float64                       `json:"shipping_amount"`
-	GrandTotal        float64                       `json:"grand_total"`
-	OutstandingAmount float64                       `json:"outstanding_amount"`
-	PaidAmount        float64                       `json:"paid_amount"`
-	BillingAddress    string                        `json:"billing_address,omitempty"`
-	ShippingAddress   string                        `json:"shipping_address,omitempty"`
-	PaymentTerms      string                        `json:"payment_terms,omitempty"`
-	PaymentTermsDays  int                           `json:"payment_terms_days"`
-	SalesPersonID     *uint                         `json:"sales_person_id,omitempty"`
-	Territory         string                        `json:"territory,omitempty"`
-	CustomerPONumber  string                        `json:"customer_po_number,omitempty"`
-	Project           string                        `json:"project,omitempty"`
-	CostCenter        string                        `json:"cost_center,omitempty"`
-	Terms             string                        `json:"terms,omitempty"`
-	Notes             string                        `json:"notes,omitempty"`
-	CreatedBy         uint                          `json:"created_by"`
-	SubmittedBy       *uint                         `json:"submitted_by,omitempty"`
-	SubmittedAt       *time.Time                    `json:"submitted_at,omitempty"`
-	Customer          CustomerResponse              `json:"customer"`
-	SalesOrder        *SalesOrderResponse           `json:"sales_order,omitempty"`
-	DeliveryNote      *DeliveryNoteResponse         `json:"delivery_note,omitempty"`
-	SalesPerson       *UserResponse                 `json:"sales_person,omitempty"`
-	Items             []SalesInvoiceItemResponse    `json:"items"`
-	Payments          []InvoicePaymentResponse      `json:"payments,omitempty"`
-	StatusLogs        []InvoiceStatusLogResponse    `json:"status_logs,omitempty"`
-	CreatedAt         time.Time                     `json:"created_at"`
-	UpdatedAt         time.Time                     `json:"updated_at"`
+	ID                uint                       `json:"id"`
+	InvoiceNumber     string                     `json:"invoice_number"`
+	CustomerID        uint                       `json:"customer_id"`
+	SalesOrderID      *uint                      `json:"sales_order_id,omitempty"`
+	DeliveryNoteID    *uint                      `json:"delivery_note_id,omitempty"`
+	InvoiceDate       time.Time                  `json:"invoice_date"`
+	DueDate           time.Time                  `json:"due_date"`
+	PostingDate       time.Time                  `json:"posting_date"`
+	DocStatus         string                     `json:"doc_status"`
+	PaymentStatus     string                     `json:"payment_status"`
+	Currency          string                     `json:"currency"`
+	ExchangeRate      float64                    `json:"exchange_rate"`
+	SubTotal          float64                    `json:"sub_total"`
+	DiscountAmount    float64                    `json:"discount_amount"`
+	TaxAmount         float64                    `json:"tax_amount"`
+	ShippingAmount    float64                    `json:"shipping_amount"`
+	GrandTotal        float64                    `json:"grand_total"`
+	OutstandingAmount float64                    `json:"outstanding_amount"`
+	PaidAmount        float64                    `json:"paid_amount"`
+	BillingAddress    string                     `json:"billing_address,omitempty"`
+	ShippingAddress   string                     `json:"shipping_address,omitempty"`
+	PaymentTerms      string                     `json:"payment_terms,omitempty"`
+	PaymentTermsDays  int                        `json:"payment_terms_days"`
+	SalesPersonID     *uint                      `json:"sales_person_id,omitempty"`
+	Territory         string                     `json:"territory,omitempty"`
+	CustomerPONumber  string                     `json:"customer_po_number,omitempty"`
+	Project           string                     `json:"project,omitempty"`
+	CostCenter        string                     `json:"cost_center,omitempty"`
+	Terms             string                     `json:"terms,omitempty"`
+	Notes             string                     `json:"notes,omitempty"`
+	CreatedBy         uint                       `json:"created_by"`
+	SubmittedBy       *uint                      `json:"submitted_by,omitempty"`
+	SubmittedAt       *time.Time                 `json:"submitted_at,omitempty"`
+	Customer          CustomerResponse           `json:"customer"`
+	SalesOrder        *SalesOrderResponse        `json:"sales_order,omitempty"`
+	DeliveryNote      *DeliveryNoteResponse      `json:"delivery_note,omitempty"`
+	SalesPerson       *UserResponse              `json:"sales_person,omitempty"`
+	Items             []SalesInvoiceItemResponse `json:"items"`
+	Payments          []InvoicePaymentResponse   `json:"payments,omitempty"`
+	StatusLogs        []InvoiceStatusLogResponse `json:"status_logs,omitempty"`
+	CreatedAt         time.Time                  `json:"created_at"`
+	UpdatedAt         time.Time                  `json:"updated_at"`
 }
 
 // SalesInvoiceItemResponse 销售发票明细响应
 type SalesInvoiceItemResponse struct {
-	ID                 uint                       `json:"id"`
-	SalesInvoiceID     uint                       `json:"sales_invoice_id"`
-	SalesOrderItemID   *uint                      `json:"sales_order_item_id,omitempty"`
-	DeliveryNoteItemID *uint                      `json:"delivery_note_item_id,omitempty"`
-	ItemID             uint                       `json:"item_id"`
-	ItemCode           string                     `json:"item_code"`
-	ItemName           string                     `json:"item_name"`
-	Description        string                     `json:"description,omitempty"`
-	Quantity           float64                    `json:"quantity"`
-	UOM                string                     `json:"uom"`
-	ConversionFactor   float64                    `json:"conversion_factor"`
-	StockUOM           string                     `json:"stock_uom,omitempty"`
-	Rate               float64                    `json:"rate"`
-	PriceListRate      float64                    `json:"price_list_rate"`
-	Amount             float64                    `json:"amount"`
-	DiscountPercentage float64                    `json:"discount_percentage"`
-	DiscountAmount     float64                    `json:"discount_amount"`
-	TaxCategory        string                     `json:"tax_category,omitempty"`
-	TaxRate            float64                    `json:"tax_rate"`
-	TaxAmount          float64                    `json:"tax_amount"`
-	NetRate            float64                    `json:"net_rate"`
-	NetAmount          float64                    `json:"net_amount"`
-	WarehouseID        *uint                      `json:"warehouse_id,omitempty"`
-	BatchNo            string                     `json:"batch_no,omitempty"`
-	SerialNo           string                     `json:"serial_no,omitempty"`
-	CostCenter         string                     `json:"cost_center,omitempty"`
-	Project            string                     `json:"project,omitempty"`
-	Item               ItemResponse               `json:"item"`
-	Warehouse          *WarehouseResponse         `json:"warehouse,omitempty"`
+	ID                 uint               `json:"id"`
+	SalesInvoiceID     uint               `json:"sales_invoice_id"`
+	SalesOrderItemID   *uint              `json:"sales_order_item_id,omitempty"`
+	DeliveryNoteItemID *uint              `json:"delivery_note_item_id,omitempty"`
+	ItemID             uint               `json:"item_id"`
+	ItemCode           string             `json:"item_code"`
+	ItemName           string             `json:"item_name"`
+	Description        string             `json:"description,omitempty"`
+	Quantity           float64            `json:"quantity"`
+	UOM                string             `json:"uom"`
+	ConversionFactor   float64            `json:"conversion_factor"`
+	StockUOM           string             `json:"stock_uom,omitempty"`
+	Rate               float64            `json:"rate"`
+	PriceListRate      float64            `json:"price_list_rate"`
+	Amount             float64            `json:"amount"`
+	DiscountPercentage float64            `json:"discount_percentage"`
+	DiscountAmount     float64            `json:"discount_amount"`
+	TaxCategory        string             `json:"tax_category,omitempty"`
+	TaxRate            float64            `json:"tax_rate"`
+	TaxAmount          float64            `json:"tax_amount"`
+	NetRate            float64            `json:"net_rate"`
+	NetAmount          float64            `json:"net_amount"`
+	WarehouseID        *uint              `json:"warehouse_id,omitempty"`
+	BatchNo            string             `json:"batch_no,omitempty"`
+	SerialNo           string             `json:"serial_no,omitempty"`
+	CostCenter         string             `json:"cost_center,omitempty"`
+	Project            string             `json:"project,omitempty"`
+	Item               ItemResponse       `json:"item"`
+	Warehouse          *WarehouseResponse `json:"warehouse,omitempty"`
 }
 
 // InvoicePaymentResponse 发票付款响应

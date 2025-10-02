@@ -37,37 +37,37 @@ type ItemUpdateRequest struct {
 
 // ItemResponse 物料响应
 type ItemResponse struct {
-	ID          uint              `json:"id"`
-	Code        string            `json:"code"`
-	Name        string            `json:"name"`
-	Description string            `json:"description,omitempty"`
-	Type        string            `json:"type"`
-	MinStock    float64           `json:"min_stock"`
-	MaxStock    float64           `json:"max_stock"`
-	UnitCost    float64           `json:"unit_cost"`
-	SalePrice   float64           `json:"sale_price"`
-	Barcode     string            `json:"barcode,omitempty"`
-	ImageURL    string            `json:"image_url,omitempty"`
-	IsActive    bool              `json:"is_active"`
-	Category    CategoryResponse  `json:"category"`
-	Unit        UnitResponse      `json:"unit"`
-	Stock       []StockResponse   `json:"stock,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	ID          uint             `json:"id"`
+	Code        string           `json:"code"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Type        string           `json:"type"`
+	MinStock    float64          `json:"min_stock"`
+	MaxStock    float64          `json:"max_stock"`
+	UnitCost    float64          `json:"unit_cost"`
+	SalePrice   float64          `json:"sale_price"`
+	Barcode     string           `json:"barcode,omitempty"`
+	ImageURL    string           `json:"image_url,omitempty"`
+	IsActive    bool             `json:"is_active"`
+	Category    CategoryResponse `json:"category"`
+	Unit        UnitResponse     `json:"unit"`
+	Stock       []StockResponse  `json:"stock,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
 // ItemListResponse 物料列表响应
 type ItemListResponse struct {
-	ID          uint    `json:"id"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Type        string  `json:"type"`
-	Category    string  `json:"category"`
-	Unit        string  `json:"unit"`
-	UnitCost    float64 `json:"unit_cost"`
-	SalePrice   float64 `json:"sale_price"`
-	TotalStock  float64 `json:"total_stock"`
-	IsActive    bool    `json:"is_active"`
+	ID         uint    `json:"id"`
+	Code       string  `json:"code"`
+	Name       string  `json:"name"`
+	Type       string  `json:"type"`
+	Category   string  `json:"category"`
+	Unit       string  `json:"unit"`
+	UnitCost   float64 `json:"unit_cost"`
+	SalePrice  float64 `json:"sale_price"`
+	TotalStock float64 `json:"total_stock"`
+	IsActive   bool    `json:"is_active"`
 }
 
 // CategoryCreateRequest 分类创建请求
@@ -145,16 +145,16 @@ type WarehouseUpdateRequest struct {
 
 // WarehouseResponse 仓库响应
 type WarehouseResponse struct {
-	ID          uint         `json:"id"`
-	Name        string       `json:"name"`
-	Code        string       `json:"code"`
-	Address     string       `json:"address,omitempty"`
-	Description string       `json:"description,omitempty"`
-	IsActive    bool         `json:"is_active"`
-	Manager     *UserResponse `json:"manager,omitempty"`
+	ID          uint               `json:"id"`
+	Name        string             `json:"name"`
+	Code        string             `json:"code"`
+	Address     string             `json:"address,omitempty"`
+	Description string             `json:"description,omitempty"`
+	IsActive    bool               `json:"is_active"`
+	Manager     *UserResponse      `json:"manager,omitempty"`
 	Locations   []LocationResponse `json:"locations,omitempty"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 // LocationCreateRequest 库位创建请求
@@ -212,66 +212,66 @@ type MovementCreateRequest struct {
 
 // MovementResponse 库存移动响应
 type MovementResponse struct {
-	ID          uint              `json:"id"`
-	Type        string            `json:"type"`
-	Quantity    float64           `json:"quantity"`
-	Reference   string            `json:"reference,omitempty"`
-	Notes       string            `json:"notes,omitempty"`
-	Item        ItemResponse      `json:"item"`
-	Warehouse   WarehouseResponse `json:"warehouse"`
-	Location    LocationResponse  `json:"location"`
-	CreatedBy   UserResponse      `json:"created_by"`
-	CreatedAt   time.Time         `json:"created_at"`
+	ID        uint              `json:"id"`
+	Type      string            `json:"type"`
+	Quantity  float64           `json:"quantity"`
+	Reference string            `json:"reference,omitempty"`
+	Notes     string            `json:"notes,omitempty"`
+	Item      ItemResponse      `json:"item"`
+	Warehouse WarehouseResponse `json:"warehouse"`
+	Location  LocationResponse  `json:"location"`
+	CreatedBy UserResponse      `json:"created_by"`
+	CreatedAt time.Time         `json:"created_at"`
 }
 
 // StockAdjustmentCreateRequest 库存调整创建请求
 type StockAdjustmentCreateRequest struct {
-	WarehouseID uint                           `json:"warehouse_id" binding:"required"`
-	Reason      string                         `json:"reason" binding:"required"`
-	Notes       string                         `json:"notes,omitempty"`
-	Items       []StockAdjustmentItemRequest   `json:"items" binding:"required,min=1"`
+	WarehouseID uint                         `json:"warehouse_id" binding:"required"`
+	Reason      string                       `json:"reason" binding:"required"`
+	Notes       string                       `json:"notes,omitempty"`
+	Items       []StockAdjustmentItemRequest `json:"items" binding:"required,min=1"`
 }
 
 // StockAdjustmentItemRequest 库存调整项目请求
 type StockAdjustmentItemRequest struct {
-	ItemID       uint    `json:"item_id" binding:"required"`
-	LocationID   uint    `json:"location_id" binding:"required"`
-	SystemQty    float64 `json:"system_qty" binding:"required,min=0"`
-	ActualQty    float64 `json:"actual_qty" binding:"required,min=0"`
-	Reason       string  `json:"reason,omitempty"`
+	ItemID     uint    `json:"item_id" binding:"required"`
+	LocationID uint    `json:"location_id" binding:"required"`
+	SystemQty  float64 `json:"system_qty" binding:"required,min=0"`
+	ActualQty  float64 `json:"actual_qty" binding:"required,min=0"`
+	Reason     string  `json:"reason,omitempty"`
 }
 
 // StockAdjustmentResponse 库存调整响应
 type StockAdjustmentResponse struct {
-	ID          uint                              `json:"id"`
-	Number      string                            `json:"number"`
-	Reason      string                            `json:"reason"`
-	Notes       string                            `json:"notes,omitempty"`
-	Status      string                            `json:"status"`
-	Warehouse   WarehouseResponse                 `json:"warehouse"`
-	Items       []StockAdjustmentItemResponse     `json:"items"`
-	CreatedBy   UserResponse                      `json:"created_by"`
-	CreatedAt   time.Time                         `json:"created_at"`
-	UpdatedAt   time.Time                         `json:"updated_at"`
+	ID        uint                          `json:"id"`
+	Number    string                        `json:"number"`
+	Reason    string                        `json:"reason"`
+	Notes     string                        `json:"notes,omitempty"`
+	Status    string                        `json:"status"`
+	Warehouse WarehouseResponse             `json:"warehouse"`
+	Items     []StockAdjustmentItemResponse `json:"items"`
+	CreatedBy UserResponse                  `json:"created_by"`
+	CreatedAt time.Time                     `json:"created_at"`
+	UpdatedAt time.Time                     `json:"updated_at"`
 }
 
 // StockAdjustmentItemResponse 库存调整项目响应
 type StockAdjustmentItemResponse struct {
-	ID           uint             `json:"id"`
-	SystemQty    float64          `json:"system_qty"`
-	ActualQty    float64          `json:"actual_qty"`
-	DifferenceQty float64         `json:"difference_qty"`
-	Reason       string           `json:"reason,omitempty"`
-	Item         ItemResponse     `json:"item"`
-	Location     LocationResponse `json:"location"`
+	ID            uint             `json:"id"`
+	SystemQty     float64          `json:"system_qty"`
+	ActualQty     float64          `json:"actual_qty"`
+	DifferenceQty float64          `json:"difference_qty"`
+	Reason        string           `json:"reason,omitempty"`
+	Item          ItemResponse     `json:"item"`
+	Location      LocationResponse `json:"location"`
 }
 
 // ItemSearchRequest 物料搜索请求
 type ItemSearchRequest struct {
 	SearchRequest
-	CategoryID *uint   `json:"category_id,omitempty" form:"category_id"`
-	Type       string  `json:"type,omitempty" form:"type"`
-	IsActive   *bool   `json:"is_active,omitempty" form:"is_active"`
+	CategoryID *uint    `json:"category_id,omitempty" form:"category_id"`
+	Type       string   `json:"type,omitempty" form:"type"`
+	IsActive   *bool    `json:"is_active,omitempty" form:"is_active"`
 	MinPrice   *float64 `json:"min_price,omitempty" form:"min_price"`
 	MaxPrice   *float64 `json:"max_price,omitempty" form:"max_price"`
 }

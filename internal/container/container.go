@@ -23,17 +23,17 @@ type Container struct {
 	QuotationService    services.QuotationService
 	SalesInvoiceService services.SalesInvoiceService
 	ProductService      services.ProductService
-	
+
 	// Purchase Services
 	SupplierService        services.SupplierService
 	PurchaseRequestService services.PurchaseRequestService
 	PurchaseOrderService   services.PurchaseOrderService
-	
+
 	// Project Services
-	ProjectService     services.ProjectService
-	TaskService        services.TaskService
-	MilestoneService   services.MilestoneService
-	TimeEntryService   services.TimeEntryService
+	ProjectService   services.ProjectService
+	TaskService      services.TaskService
+	MilestoneService services.MilestoneService
+	TimeEntryService services.TimeEntryService
 
 	// HR Services
 	EmployeeService   services.EmployeeService
@@ -54,6 +54,7 @@ type Container struct {
 	PurchaseController   *controllers.PurchaseController
 	ProjectController    *controllers.ProjectController
 	AccountingController *controllers.AccountingController
+	HRController         *controllers.HRController
 }
 
 // NewContainer 创建新的依赖注入容器
@@ -83,12 +84,12 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	salesOrderRepo := repositories.NewSalesOrderRepository(c.DB)
 	quotationRepo := repositories.NewQuotationRepository(c.DB)
 	productRepo := repositories.NewProductRepository(c.DB)
-	
+
 	// Purchase repositories
 	supplierRepo := repositories.NewSupplierRepository(c.DB)
 	purchaseRequestRepo := repositories.NewPurchaseRequestRepository(c.DB)
 	purchaseOrderRepo := repositories.NewPurchaseOrderRepository(c.DB)
-	
+
 	// Project repositories
 	projectRepo := repositories.NewProjectRepository(c.DB)
 	taskRepo := repositories.NewTaskRepository(c.DB)
@@ -116,12 +117,12 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	c.QuotationService = services.NewQuotationService(quotationRepo, customerRepo)
 	c.SalesInvoiceService = services.NewSalesInvoiceService(c.DB)
 	c.ProductService = services.NewProductService(productRepo)
-	
+
 	// Purchase services
 	c.SupplierService = services.NewSupplierService(supplierRepo)
 	c.PurchaseRequestService = services.NewPurchaseRequestService(purchaseRequestRepo)
 	c.PurchaseOrderService = services.NewPurchaseOrderService(purchaseOrderRepo)
-	
+
 	// Project services
 	c.ProjectService = services.NewProjectService(projectRepo)
 	c.TaskService = services.NewTaskService(taskRepo)
@@ -143,13 +144,13 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 func (c *Container) initControllers() {
 	// 创建ControllerUtils实例
 	utils := controllers.NewControllerUtils()
-	
+
 	c.UserController = controllers.NewUserController(c.UserService)
 	c.InventoryController = controllers.NewInventoryController(c.ItemService, c.StockService, c.WarehouseService, c.MovementService)
 	c.SalesController = controllers.NewSalesController(c.CustomerService, c.SalesOrderService, c.QuotationService, c.SalesInvoiceService)
 	c.ProductionController = controllers.NewProductionController(c.ProductService)
 	c.SystemController = controllers.NewSystemController()
-	
+
 	// Purchase Controller
 	c.PurchaseController = controllers.NewPurchaseController(
 		utils,
@@ -157,7 +158,7 @@ func (c *Container) initControllers() {
 		c.PurchaseRequestService,
 		c.PurchaseOrderService,
 	)
-	
+
 	// Project Controller
 	c.ProjectController = controllers.NewProjectController(
 		c.ProjectService,
@@ -170,5 +171,13 @@ func (c *Container) initControllers() {
 	c.AccountingController = controllers.NewAccountingController(
 		c.AccountService,
 		c.JournalEntryService,
+	)
+
+	// HR Controller
+	c.HRController = controllers.NewHRController(
+		c.EmployeeService,
+		c.AttendanceService,
+		c.PayrollService,
+		c.LeaveService,
 	)
 }

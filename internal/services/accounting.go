@@ -196,7 +196,7 @@ func (s *AccountServiceImpl) SearchAccounts(ctx context.Context, keyword string,
 	}
 
 	offset := (page - 1) * pageSize
-	
+
 	// 如果仓储层没有搜索方法，使用列表方法
 	// 这里假设仓储层有搜索方法，如果没有需要在仓储层添加
 	accounts, total, err := s.accountRepo.List(ctx, offset, pageSize)
@@ -207,10 +207,10 @@ func (s *AccountServiceImpl) SearchAccounts(ctx context.Context, keyword string,
 	// 简单的内存过滤（生产环境应该在数据库层面进行搜索）
 	var filteredAccounts []*models.Account
 	for _, account := range accounts {
-		if keyword == "" || 
-		   containsIgnoreCase(account.Code, keyword) ||
-		   containsIgnoreCase(account.Name, keyword) ||
-		   containsIgnoreCase(account.Description, keyword) {
+		if keyword == "" ||
+			containsIgnoreCase(account.Code, keyword) ||
+			containsIgnoreCase(account.Name, keyword) ||
+			containsIgnoreCase(account.Description, keyword) {
 			filteredAccounts = append(filteredAccounts, account)
 		}
 	}
@@ -262,14 +262,14 @@ func (s *AccountServiceImpl) ValidateAccountHierarchy(ctx context.Context, accou
 
 // containsIgnoreCase 不区分大小写的字符串包含检查
 func containsIgnoreCase(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		   (substr == "" || 
-		    len(s) > 0 && 
-		    (s == substr || 
-		     (len(s) > len(substr) && 
-		      (s[:len(substr)] == substr || 
-		       s[len(s)-len(substr):] == substr ||
-		       containsIgnoreCase(s[1:], substr)))))
+	return len(s) >= len(substr) &&
+		(substr == "" ||
+			len(s) > 0 &&
+				(s == substr ||
+					(len(s) > len(substr) &&
+						(s[:len(substr)] == substr ||
+							s[len(s)-len(substr):] == substr ||
+							containsIgnoreCase(s[1:], substr)))))
 }
 
 // JournalEntryService 会计分录服务接口
@@ -329,9 +329,9 @@ func (s *JournalEntryServiceImpl) CreateJournalEntryFromDTO(ctx context.Context,
 		TransactionNumber: fmt.Sprintf("TXN-%d", time.Now().Unix()),
 		TransactionDate:   req.Date,
 		TransactionType:   "journal",
-		Amount:           0, // 将在下面计算
-		Description:      req.Description,
-		Status:          "completed",
+		Amount:            0, // 将在下面计算
+		Description:       req.Description,
+		Status:            "completed",
 	}
 
 	// 计算总金额
@@ -352,11 +352,11 @@ func (s *JournalEntryServiceImpl) CreateJournalEntryFromDTO(ctx context.Context,
 		entry := &models.JournalEntry{
 			TransactionID: transactionID,
 			AccountID:     item.AccountID,
-			Debit:        item.DebitAmount,
-			Credit:       item.CreditAmount,
-			Description:  item.Description,
+			Debit:         item.DebitAmount,
+			Credit:        item.CreditAmount,
+			Description:   item.Description,
 		}
-		
+
 		// 验证科目存在
 		account, err := s.accountRepo.GetByID(ctx, item.AccountID)
 		if err != nil {
@@ -389,10 +389,10 @@ func (s *JournalEntryServiceImpl) CreateJournalEntryFromDTO(ctx context.Context,
 	for _, entry := range journalEntries {
 		response.TotalDebit += entry.Debit
 		response.TotalCredit += entry.Credit
-		
+
 		// 获取科目信息
 		account, _ := s.accountRepo.GetByID(ctx, entry.AccountID)
-		
+
 		itemResponse := dto.JournalEntryItemResponse{
 			ID:           entry.ID,
 			DebitAmount:  entry.Debit,

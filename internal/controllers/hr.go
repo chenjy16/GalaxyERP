@@ -3,9 +3,9 @@ package controllers
 import (
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // HRController HR控制器
@@ -14,7 +14,7 @@ type HRController struct {
 	attendanceService services.AttendanceService
 	payrollService    services.PayrollService
 	leaveService      services.LeaveService
-	utils            *ControllerUtils
+	utils             *ControllerUtils
 }
 
 // NewHRController 创建HR控制器实例
@@ -29,7 +29,7 @@ func NewHRController(
 		attendanceService: attendanceService,
 		payrollService:    payrollService,
 		leaveService:      leaveService,
-		utils:            NewControllerUtils(),
+		utils:             NewControllerUtils(),
 	}
 }
 
@@ -198,27 +198,27 @@ func (c *HRController) DeleteLeave(ctx *gin.Context) {
 // @Router /api/v1/hr/leaves [get]
 func (c *HRController) GetLeaveList(ctx *gin.Context) {
 	pagination := c.utils.ParsePaginationParams(ctx)
-	
+
 	// 构建筛选条件
 	filter := &dto.LeaveFilter{
 		PaginationRequest: *pagination,
 	}
-	
+
 	if employeeIDStr := ctx.Query("employee_id"); employeeIDStr != "" {
 		if employeeID, err := strconv.ParseUint(employeeIDStr, 10, 32); err == nil {
 			empID := uint(employeeID)
 			filter.EmployeeID = &empID
 		}
 	}
-	
+
 	if leaveType := ctx.Query("leave_type"); leaveType != "" {
 		filter.LeaveType = leaveType
 	}
-	
+
 	if status := ctx.Query("status"); status != "" {
 		filter.Status = status
 	}
-	
+
 	// 注意：这里简化处理，实际应该解析时间格式
 	// 在实际应用中应该使用 time.Parse 来解析日期字符串
 

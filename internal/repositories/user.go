@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
 )
 
 // UserRepository 用户仓储接口
@@ -89,18 +89,18 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *UserRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.User, int64, error) {
 	var users []*models.User
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.User{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Role").Offset(offset).Limit(limit).Find(&users).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return users, total, nil
 }
 
@@ -108,25 +108,25 @@ func (r *UserRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*mo
 func (r *UserRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.User, int64, error) {
 	var users []*models.User
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.User{}).
-		Where("username LIKE ? OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?", 
+		Where("username LIKE ? OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Role").
-		Where("username LIKE ? OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?", 
+		Where("username LIKE ? OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?",
 			searchQuery, searchQuery, searchQuery, searchQuery).
 		Offset(offset).Limit(limit).Find(&users).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return users, total, nil
 }

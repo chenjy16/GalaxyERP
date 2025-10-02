@@ -581,14 +581,14 @@ func (s *TimeEntryServiceImpl) DeleteTimeEntry(ctx context.Context, id uint) err
 func (s *TimeEntryServiceImpl) ListTimeEntries(ctx context.Context, projectID uint, employeeID *uint) ([]*dto.TimeEntryResponse, error) {
 	var timeEntries []*models.TimeEntry
 	var err error
-	
+
 	if employeeID != nil {
 		timeEntries, _, err = s.timeEntryRepo.GetByUserID(ctx, *employeeID, 0, 100)
 	} else {
 		// 暂时使用List方法，后续可以添加GetByProjectID方法到repository
 		timeEntries, _, err = s.timeEntryRepo.List(ctx, 0, 100)
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}

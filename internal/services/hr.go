@@ -619,19 +619,19 @@ func (s *PayrollServiceImpl) Create(ctx context.Context, req *dto.PayrollCreateR
 
 	// 创建薪资记录
 	payroll := &models.Payroll{
-		EmployeeID:       req.EmployeeID,
-		PayPeriodStart:   req.PayPeriodStart,
-		PayPeriodEnd:     req.PayPeriodEnd,
-		BasicSalary:      req.BasicSalary,
-		OvertimePay:      req.OvertimePay,
-		Allowance:        req.Allowance,
-		Bonus:            req.Bonus,
-		Deductions:       req.Deductions,
-		SocialInsurance:  req.SocialInsurance,
-		HousingFund:      req.HousingFund,
-		Tax:              req.Tax,
-		NetPay:           req.NetPay,
-		Status:           req.Status,
+		EmployeeID:      req.EmployeeID,
+		PayPeriodStart:  req.PayPeriodStart,
+		PayPeriodEnd:    req.PayPeriodEnd,
+		BasicSalary:     req.BasicSalary,
+		OvertimePay:     req.OvertimePay,
+		Allowance:       req.Allowance,
+		Bonus:           req.Bonus,
+		Deductions:      req.Deductions,
+		SocialInsurance: req.SocialInsurance,
+		HousingFund:     req.HousingFund,
+		Tax:             req.Tax,
+		NetPay:          req.NetPay,
+		Status:          req.Status,
 	}
 
 	// 保存到数据库

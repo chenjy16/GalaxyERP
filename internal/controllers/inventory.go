@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // InventoryController 库存控制器
@@ -482,7 +482,7 @@ func (c *InventoryController) DeleteStock(ctx *gin.Context) {
 func (c *InventoryController) ListStockMovements(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	
+
 	itemIDStr := ctx.Query("item_id")
 	warehouseIDStr := ctx.Query("warehouse_id")
 	movementType := ctx.Query("type")

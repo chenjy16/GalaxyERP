@@ -30,18 +30,18 @@ type UserUpdateRequest struct {
 
 // UserResponse 用户响应
 type UserResponse struct {
-	ID           uint                `json:"id"`
-	Username     string              `json:"username"`
-	Email        string              `json:"email"`
-	FirstName    string              `json:"first_name"`
-	LastName     string              `json:"last_name"`
-	Phone        string              `json:"phone,omitempty"`
-	IsActive     bool                `json:"is_active"`
-	LastLoginAt  *time.Time          `json:"last_login_at,omitempty"`
-	Department   *DepartmentResponse `json:"department,omitempty"`
-	Roles        []RoleResponse      `json:"roles,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ID          uint                `json:"id"`
+	Username    string              `json:"username"`
+	Email       string              `json:"email"`
+	FirstName   string              `json:"first_name"`
+	LastName    string              `json:"last_name"`
+	Phone       string              `json:"phone,omitempty"`
+	IsActive    bool                `json:"is_active"`
+	LastLoginAt *time.Time          `json:"last_login_at,omitempty"`
+	Department  *DepartmentResponse `json:"department,omitempty"`
+	Roles       []RoleResponse      `json:"roles,omitempty"`
+	CreatedAt   time.Time           `json:"created_at"`
+	UpdatedAt   time.Time           `json:"updated_at"`
 }
 
 // UserListResponse 用户列表响应
@@ -184,16 +184,16 @@ type DepartmentUpdateRequest struct {
 
 // DepartmentResponse 部门响应
 type DepartmentResponse struct {
-	ID          uint                  `json:"id"`
-	Name        string                `json:"name"`
-	Code        string                `json:"code"`
-	Description string                `json:"description,omitempty"`
-	IsActive    bool                  `json:"is_active"`
-	Parent      *DepartmentResponse   `json:"parent,omitempty"`
-	Manager     *UserResponse         `json:"manager,omitempty"`
-	Children    []DepartmentResponse  `json:"children,omitempty"`
-	CreatedAt   time.Time             `json:"created_at"`
-	UpdatedAt   time.Time             `json:"updated_at"`
+	ID          uint                 `json:"id"`
+	Name        string               `json:"name"`
+	Code        string               `json:"code"`
+	Description string               `json:"description,omitempty"`
+	IsActive    bool                 `json:"is_active"`
+	Parent      *DepartmentResponse  `json:"parent,omitempty"`
+	Manager     *UserResponse        `json:"manager,omitempty"`
+	Children    []DepartmentResponse `json:"children,omitempty"`
+	CreatedAt   time.Time            `json:"created_at"`
+	UpdatedAt   time.Time            `json:"updated_at"`
 }
 
 // UserSearchRequest 用户搜索请求

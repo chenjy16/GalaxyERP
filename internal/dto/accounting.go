@@ -51,34 +51,34 @@ type AccountListResponse struct {
 
 // JournalEntryCreateRequest 日记账分录创建请求
 type JournalEntryCreateRequest struct {
-	Date        time.Time                    `json:"date" binding:"required"`
-	Reference   string                       `json:"reference,omitempty"`
-	Description string                       `json:"description" binding:"required"`
-	Items       []JournalEntryItemRequest    `json:"items" binding:"required,min=2"`
+	Date        time.Time                 `json:"date" binding:"required"`
+	Reference   string                    `json:"reference,omitempty"`
+	Description string                    `json:"description" binding:"required"`
+	Items       []JournalEntryItemRequest `json:"items" binding:"required,min=2"`
 }
 
 // JournalEntryItemRequest 日记账分录项请求
 type JournalEntryItemRequest struct {
-	AccountID   uint    `json:"account_id" binding:"required"`
-	DebitAmount float64 `json:"debit_amount,omitempty" binding:"min=0"`
+	AccountID    uint    `json:"account_id" binding:"required"`
+	DebitAmount  float64 `json:"debit_amount,omitempty" binding:"min=0"`
 	CreditAmount float64 `json:"credit_amount,omitempty" binding:"min=0"`
-	Description string  `json:"description,omitempty"`
+	Description  string  `json:"description,omitempty"`
 }
 
 // JournalEntryResponse 日记账分录响应
 type JournalEntryResponse struct {
-	ID          uint                        `json:"id"`
-	Number      string                      `json:"number"`
-	Date        time.Time                   `json:"date"`
-	Reference   string                      `json:"reference,omitempty"`
-	Description string                      `json:"description"`
-	TotalDebit  float64                     `json:"total_debit"`
-	TotalCredit float64                     `json:"total_credit"`
-	Status      string                      `json:"status"`
-	Items       []JournalEntryItemResponse  `json:"items"`
-	CreatedBy   UserResponse                `json:"created_by"`
-	CreatedAt   time.Time                   `json:"created_at"`
-	UpdatedAt   time.Time                   `json:"updated_at"`
+	ID          uint                       `json:"id"`
+	Number      string                     `json:"number"`
+	Date        time.Time                  `json:"date"`
+	Reference   string                     `json:"reference,omitempty"`
+	Description string                     `json:"description"`
+	TotalDebit  float64                    `json:"total_debit"`
+	TotalCredit float64                    `json:"total_credit"`
+	Status      string                     `json:"status"`
+	Items       []JournalEntryItemResponse `json:"items"`
+	CreatedBy   UserResponse               `json:"created_by"`
+	CreatedAt   time.Time                  `json:"created_at"`
+	UpdatedAt   time.Time                  `json:"updated_at"`
 }
 
 // JournalEntryItemResponse 日记账分录项响应
@@ -92,15 +92,15 @@ type JournalEntryItemResponse struct {
 
 // PaymentCreateRequest 付款创建请求
 type PaymentCreateRequest struct {
-	Type        string    `json:"type" binding:"required,oneof=payment receipt"`
-	Amount      float64   `json:"amount" binding:"required,gt=0"`
-	Date        time.Time `json:"date" binding:"required"`
-	Reference   string    `json:"reference,omitempty"`
-	Description string    `json:"description,omitempty"`
-	AccountID   uint      `json:"account_id" binding:"required"`
-	PaymentMethod string  `json:"payment_method" binding:"required,oneof=cash bank_transfer check credit_card"`
-	CustomerID  *uint     `json:"customer_id,omitempty"`
-	SupplierID  *uint     `json:"supplier_id,omitempty"`
+	Type          string    `json:"type" binding:"required,oneof=payment receipt"`
+	Amount        float64   `json:"amount" binding:"required,gt=0"`
+	Date          time.Time `json:"date" binding:"required"`
+	Reference     string    `json:"reference,omitempty"`
+	Description   string    `json:"description,omitempty"`
+	AccountID     uint      `json:"account_id" binding:"required"`
+	PaymentMethod string    `json:"payment_method" binding:"required,oneof=cash bank_transfer check credit_card"`
+	CustomerID    *uint     `json:"customer_id,omitempty"`
+	SupplierID    *uint     `json:"supplier_id,omitempty"`
 }
 
 // PaymentResponse 付款响应

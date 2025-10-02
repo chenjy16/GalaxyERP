@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // SalesController 销售控制器
@@ -12,7 +12,7 @@ type SalesController struct {
 	salesOrderService   services.SalesOrderService
 	quotationService    services.QuotationService
 	salesInvoiceService services.SalesInvoiceService
-	utils              *ControllerUtils
+	utils               *ControllerUtils
 }
 
 // NewSalesController 创建销售控制器实例
@@ -27,7 +27,7 @@ func NewSalesController(
 		salesOrderService:   salesOrderService,
 		quotationService:    quotationService,
 		salesInvoiceService: salesInvoiceService,
-		utils:              NewControllerUtils(),
+		utils:               NewControllerUtils(),
 	}
 }
 
@@ -189,8 +189,8 @@ func (c *SalesController) SearchCustomers(ctx *gin.Context) {
 
 	req := &dto.SearchRequest{
 		PaginationRequest: *pagination,
-		Keyword:          keyword,
-		Status:           status,
+		Keyword:           keyword,
+		Status:            status,
 	}
 
 	response, err := c.customerService.SearchCustomers(ctx.Request.Context(), req)
@@ -536,8 +536,8 @@ func (c *SalesController) SearchQuotations(ctx *gin.Context) {
 
 	req := &dto.SearchRequest{
 		PaginationRequest: *pagination,
-		Keyword:          keyword,
-		Status:           status,
+		Keyword:           keyword,
+		Status:            status,
 	}
 
 	response, err := c.quotationService.SearchQuotations(ctx.Request.Context(), req)
@@ -677,7 +677,7 @@ func (c *SalesController) DeleteSalesInvoice(ctx *gin.Context) {
 // @Router /api/v1/sales-invoices [get]
 func (c *SalesController) ListSalesInvoices(ctx *gin.Context) {
 	pagination := c.utils.ParsePaginationParams(ctx)
-	
+
 	req := &dto.SalesInvoiceListRequest{
 		PaginationRequest: *pagination,
 	}

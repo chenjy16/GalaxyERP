@@ -10,7 +10,7 @@ type Company struct {
 	Address string `json:"address,omitempty" gorm:"type:text"`
 	Phone   string `json:"phone,omitempty" gorm:"size:20"`
 	Email   string `json:"email,omitempty" gorm:"size:255"`
-	
+
 	// 关联
 	Departments []Department `json:"departments,omitempty" gorm:"foreignKey:CompanyID"`
 	Users       []User       `json:"users,omitempty" gorm:"foreignKey:CompanyID"`
@@ -22,11 +22,11 @@ type DataPermission struct {
 	Name        string `json:"name" gorm:"size:255;not null"`
 	Description string `json:"description,omitempty" gorm:"type:text"`
 	Resource    string `json:"resource" gorm:"size:100;not null;index"`
-	Scope       string `json:"scope" gorm:"size:50;not null"` // all, own, department, company
+	Scope       string `json:"scope" gorm:"size:50;not null"`         // all, own, department, company
 	Constraint  string `json:"constraint,omitempty" gorm:"type:text"` // JSON格式的约束条件
 	RoleID      *uint  `json:"role_id,omitempty" gorm:"index"`
 	UserID      *uint  `json:"user_id,omitempty" gorm:"index"`
-	
+
 	// 关联
 	Role *Role `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 	User *User `json:"user,omitempty" gorm:"foreignKey:UserID"`
@@ -49,7 +49,7 @@ type ApprovalWorkflow struct {
 	Name        string `json:"name" gorm:"size:255;not null"`
 	Description string `json:"description,omitempty" gorm:"type:text"`
 	Resource    string `json:"resource" gorm:"size:100;not null;index"` // 关联的资源类型
-	
+
 	// 关联
 	Steps []ApprovalStep `json:"steps,omitempty" gorm:"foreignKey:WorkflowID"`
 }
@@ -60,9 +60,9 @@ type ApprovalStep struct {
 	WorkflowID uint   `json:"workflow_id" gorm:"index;not null"`
 	StepNumber int    `json:"step_number" gorm:"not null"`
 	Name       string `json:"name" gorm:"size:255;not null"`
-	Approver   string `json:"approver" gorm:"size:100;not null"` // 审批人类型：user, role, department
+	Approver   string `json:"approver" gorm:"size:100;not null"`    // 审批人类型：user, role, department
 	Condition  string `json:"condition,omitempty" gorm:"type:text"` // 审批条件
-	
+
 	// 关联
 	Workflow *ApprovalWorkflow `json:"workflow,omitempty" gorm:"foreignKey:WorkflowID"`
 }
@@ -77,7 +77,7 @@ type AuditLog struct {
 	Description string `json:"description,omitempty" gorm:"type:text"`
 	IPAddress   string `json:"ip_address,omitempty" gorm:"size:45"`
 	UserAgent   string `json:"user_agent,omitempty" gorm:"type:text"`
-	
+
 	// 关联
 	User *User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 }

@@ -44,29 +44,29 @@ type EmployeeUpdateRequest struct {
 
 // EmployeeResponse 员工响应
 type EmployeeResponse struct {
-	ID               uint                 `json:"id"`
-	Code             string               `json:"code"`
-	FirstName        string               `json:"first_name"`
-	LastName         string               `json:"last_name"`
-	FullName         string               `json:"full_name"`
-	Email            string               `json:"email"`
-	Phone            string               `json:"phone,omitempty"`
-	DateOfBirth      *time.Time           `json:"date_of_birth,omitempty"`
-	Gender           string               `json:"gender,omitempty"`
-	HireDate         time.Time            `json:"hire_date"`
-	DepartmentID     *uint                `json:"department_id,omitempty"`
-	PositionID       *uint                `json:"position_id,omitempty"`
-	ManagerID        *uint                `json:"manager_id,omitempty"`
-	Status           string               `json:"status"`
-	EmergencyContact string               `json:"emergency_contact,omitempty"`
-	IDNumber         string               `json:"id_number,omitempty"`
-	Address          string               `json:"address,omitempty"`
-	BankAccount      string               `json:"bank_account,omitempty"`
-	Department       *DepartmentResponse  `json:"department,omitempty"`
-	Position         *PositionResponse    `json:"position,omitempty"`
-	Manager          *EmployeeResponse    `json:"manager,omitempty"`
-	CreatedAt        time.Time            `json:"created_at"`
-	UpdatedAt        time.Time            `json:"updated_at"`
+	ID               uint                `json:"id"`
+	Code             string              `json:"code"`
+	FirstName        string              `json:"first_name"`
+	LastName         string              `json:"last_name"`
+	FullName         string              `json:"full_name"`
+	Email            string              `json:"email"`
+	Phone            string              `json:"phone,omitempty"`
+	DateOfBirth      *time.Time          `json:"date_of_birth,omitempty"`
+	Gender           string              `json:"gender,omitempty"`
+	HireDate         time.Time           `json:"hire_date"`
+	DepartmentID     *uint               `json:"department_id,omitempty"`
+	PositionID       *uint               `json:"position_id,omitempty"`
+	ManagerID        *uint               `json:"manager_id,omitempty"`
+	Status           string              `json:"status"`
+	EmergencyContact string              `json:"emergency_contact,omitempty"`
+	IDNumber         string              `json:"id_number,omitempty"`
+	Address          string              `json:"address,omitempty"`
+	BankAccount      string              `json:"bank_account,omitempty"`
+	Department       *DepartmentResponse `json:"department,omitempty"`
+	Position         *PositionResponse   `json:"position,omitempty"`
+	Manager          *EmployeeResponse   `json:"manager,omitempty"`
+	CreatedAt        time.Time           `json:"created_at"`
+	UpdatedAt        time.Time           `json:"updated_at"`
 }
 
 // EmployeeListResponse 员工列表响应
@@ -85,11 +85,11 @@ type EmployeeListResponse struct {
 
 // PositionCreateRequest 职位创建请求
 type PositionCreateRequest struct {
-	Name         string `json:"name" binding:"required,max=100"`
-	Code         string `json:"code" binding:"required,max=50"`
-	Description  string `json:"description,omitempty"`
-	DepartmentID uint   `json:"department_id" binding:"required"`
-	Level        int    `json:"level" binding:"required,min=1"`
+	Name         string  `json:"name" binding:"required,max=100"`
+	Code         string  `json:"code" binding:"required,max=50"`
+	Description  string  `json:"description,omitempty"`
+	DepartmentID uint    `json:"department_id" binding:"required"`
+	Level        int     `json:"level" binding:"required,min=1"`
 	MinSalary    float64 `json:"min_salary,omitempty" binding:"omitempty,min=0"`
 	MaxSalary    float64 `json:"max_salary,omitempty" binding:"omitempty,min=0"`
 }
@@ -107,17 +107,17 @@ type PositionUpdateRequest struct {
 
 // PositionResponse 职位响应
 type PositionResponse struct {
-	ID           uint                `json:"id"`
-	Name         string              `json:"name"`
-	Code         string              `json:"code"`
-	Description  string              `json:"description,omitempty"`
-	Level        int                 `json:"level"`
-	MinSalary    float64             `json:"min_salary"`
-	MaxSalary    float64             `json:"max_salary"`
-	IsActive     bool                `json:"is_active"`
-	Department   DepartmentResponse  `json:"department"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ID          uint               `json:"id"`
+	Name        string             `json:"name"`
+	Code        string             `json:"code"`
+	Description string             `json:"description,omitempty"`
+	Level       int                `json:"level"`
+	MinSalary   float64            `json:"min_salary"`
+	MaxSalary   float64            `json:"max_salary"`
+	IsActive    bool               `json:"is_active"`
+	Department  DepartmentResponse `json:"department"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 // EmployeeSearchRequest 员工搜索请求
@@ -174,33 +174,33 @@ type AttendanceResponse struct {
 
 // PayrollCreateRequest 薪资创建请求
 type PayrollCreateRequest struct {
-	EmployeeID       uint      `json:"employee_id" binding:"required"`
-	PayPeriodStart   time.Time `json:"pay_period_start" binding:"required"`
-	PayPeriodEnd     time.Time `json:"pay_period_end" binding:"required"`
-	BasicSalary      float64   `json:"basic_salary" binding:"required,min=0"`
-	OvertimePay      float64   `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
-	Allowance        float64   `json:"allowance,omitempty" binding:"omitempty,min=0"`
-	Bonus            float64   `json:"bonus,omitempty" binding:"omitempty,min=0"`
-	Deductions       float64   `json:"deductions,omitempty" binding:"omitempty,min=0"`
-	SocialInsurance  float64   `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
-	HousingFund      float64   `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
-	Tax              float64   `json:"tax,omitempty" binding:"omitempty,min=0"`
-	NetPay           float64   `json:"net_pay" binding:"required,min=0"`
-	Status           string    `json:"status" binding:"required,oneof=draft confirmed paid"`
+	EmployeeID      uint      `json:"employee_id" binding:"required"`
+	PayPeriodStart  time.Time `json:"pay_period_start" binding:"required"`
+	PayPeriodEnd    time.Time `json:"pay_period_end" binding:"required"`
+	BasicSalary     float64   `json:"basic_salary" binding:"required,min=0"`
+	OvertimePay     float64   `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
+	Allowance       float64   `json:"allowance,omitempty" binding:"omitempty,min=0"`
+	Bonus           float64   `json:"bonus,omitempty" binding:"omitempty,min=0"`
+	Deductions      float64   `json:"deductions,omitempty" binding:"omitempty,min=0"`
+	SocialInsurance float64   `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
+	HousingFund     float64   `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
+	Tax             float64   `json:"tax,omitempty" binding:"omitempty,min=0"`
+	NetPay          float64   `json:"net_pay" binding:"required,min=0"`
+	Status          string    `json:"status" binding:"required,oneof=draft confirmed paid"`
 }
 
 // PayrollUpdateRequest 薪资更新请求
 type PayrollUpdateRequest struct {
-	BasicSalary      *float64 `json:"basic_salary,omitempty" binding:"omitempty,min=0"`
-	OvertimePay      *float64 `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
-	Allowance        *float64 `json:"allowance,omitempty" binding:"omitempty,min=0"`
-	Bonus            *float64 `json:"bonus,omitempty" binding:"omitempty,min=0"`
-	Deductions       *float64 `json:"deductions,omitempty" binding:"omitempty,min=0"`
-	SocialInsurance  *float64 `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
-	HousingFund      *float64 `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
-	Tax              *float64 `json:"tax,omitempty" binding:"omitempty,min=0"`
-	NetPay           *float64 `json:"net_pay,omitempty" binding:"omitempty,min=0"`
-	Status           string   `json:"status,omitempty" binding:"omitempty,oneof=draft confirmed paid"`
+	BasicSalary     *float64 `json:"basic_salary,omitempty" binding:"omitempty,min=0"`
+	OvertimePay     *float64 `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
+	Allowance       *float64 `json:"allowance,omitempty" binding:"omitempty,min=0"`
+	Bonus           *float64 `json:"bonus,omitempty" binding:"omitempty,min=0"`
+	Deductions      *float64 `json:"deductions,omitempty" binding:"omitempty,min=0"`
+	SocialInsurance *float64 `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
+	HousingFund     *float64 `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
+	Tax             *float64 `json:"tax,omitempty" binding:"omitempty,min=0"`
+	NetPay          *float64 `json:"net_pay,omitempty" binding:"omitempty,min=0"`
+	Status          string   `json:"status,omitempty" binding:"omitempty,oneof=draft confirmed paid"`
 }
 
 // PayrollResponse 薪资响应
@@ -286,9 +286,9 @@ type LeaveListResponse struct {
 // LeaveFilter 请假申请筛选条件
 type LeaveFilter struct {
 	PaginationRequest
-	EmployeeID *uint     `json:"employee_id,omitempty" form:"employee_id"`
-	LeaveType  string    `json:"leave_type,omitempty" form:"leave_type"`
-	Status     string    `json:"status,omitempty" form:"status"`
+	EmployeeID *uint      `json:"employee_id,omitempty" form:"employee_id"`
+	LeaveType  string     `json:"leave_type,omitempty" form:"leave_type"`
+	Status     string     `json:"status,omitempty" form:"status"`
 	StartDate  *time.Time `json:"start_date,omitempty" form:"start_date"`
 	EndDate    *time.Time `json:"end_date,omitempty" form:"end_date"`
 }

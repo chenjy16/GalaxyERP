@@ -6,64 +6,64 @@ import (
 
 // ProjectCreateRequest 项目创建请求
 type ProjectCreateRequest struct {
-	ProjectName   string     `json:"project_name" binding:"required,max=255"`
-	ProjectCode   string     `json:"project_code" binding:"required,max=50"`
-	Description   string     `json:"description,omitempty"`
-	ClientID      *uint      `json:"client_id,omitempty"`
-	ManagerID     uint       `json:"manager_id" binding:"required"`
-	StartDate     time.Time  `json:"start_date" binding:"required"`
-	EndDate       time.Time  `json:"end_date" binding:"required"`
-	Budget        float64    `json:"budget" binding:"min=0"`
-	Priority      string     `json:"priority" binding:"required,oneof=low normal high urgent"`
-	Status        string     `json:"status" binding:"required,oneof=planning active on_hold completed cancelled"`
+	ProjectName string    `json:"project_name" binding:"required,max=255"`
+	ProjectCode string    `json:"project_code" binding:"required,max=50"`
+	Description string    `json:"description,omitempty"`
+	ClientID    *uint     `json:"client_id,omitempty"`
+	ManagerID   uint      `json:"manager_id" binding:"required"`
+	StartDate   time.Time `json:"start_date" binding:"required"`
+	EndDate     time.Time `json:"end_date" binding:"required"`
+	Budget      float64   `json:"budget" binding:"min=0"`
+	Priority    string    `json:"priority" binding:"required,oneof=low normal high urgent"`
+	Status      string    `json:"status" binding:"required,oneof=planning active on_hold completed cancelled"`
 }
 
 // ProjectUpdateRequest 项目更新请求
 type ProjectUpdateRequest struct {
-	ProjectName   string     `json:"project_name,omitempty" binding:"omitempty,max=255"`
-	Description   string     `json:"description,omitempty"`
-	ClientID      *uint      `json:"client_id,omitempty"`
-	ManagerID     uint       `json:"manager_id,omitempty"`
-	StartDate     *time.Time `json:"start_date,omitempty"`
-	EndDate       *time.Time `json:"end_date,omitempty"`
-	Budget        *float64   `json:"budget,omitempty" binding:"omitempty,min=0"`
-	Priority      string     `json:"priority,omitempty" binding:"omitempty,oneof=low normal high urgent"`
-	Status        string     `json:"status,omitempty" binding:"omitempty,oneof=planning active on_hold completed cancelled"`
+	ProjectName string     `json:"project_name,omitempty" binding:"omitempty,max=255"`
+	Description string     `json:"description,omitempty"`
+	ClientID    *uint      `json:"client_id,omitempty"`
+	ManagerID   uint       `json:"manager_id,omitempty"`
+	StartDate   *time.Time `json:"start_date,omitempty"`
+	EndDate     *time.Time `json:"end_date,omitempty"`
+	Budget      *float64   `json:"budget,omitempty" binding:"omitempty,min=0"`
+	Priority    string     `json:"priority,omitempty" binding:"omitempty,oneof=low normal high urgent"`
+	Status      string     `json:"status,omitempty" binding:"omitempty,oneof=planning active on_hold completed cancelled"`
 }
 
 // ProjectResponse 项目响应
 type ProjectResponse struct {
 	BaseModel
-	ProjectName   string     `json:"project_name"`
-	ProjectCode   string     `json:"project_code"`
-	Description   string     `json:"description,omitempty"`
-	ClientID      *uint      `json:"client_id,omitempty"`
-	ManagerID     uint       `json:"manager_id"`
-	StartDate     time.Time  `json:"start_date"`
-	EndDate       time.Time  `json:"end_date"`
-	ActualStartDate *time.Time `json:"actual_start_date,omitempty"`
-	ActualEndDate   *time.Time `json:"actual_end_date,omitempty"`
-	Budget        float64    `json:"budget"`
-	ActualCost    float64    `json:"actual_cost"`
-	Progress      float64    `json:"progress"`
-	Priority      string     `json:"priority"`
-	Status        string     `json:"status"`
-	Client        *CustomerResponse `json:"client,omitempty"`
-	Manager       *EmployeeResponse `json:"manager,omitempty"`
+	ProjectName     string            `json:"project_name"`
+	ProjectCode     string            `json:"project_code"`
+	Description     string            `json:"description,omitempty"`
+	ClientID        *uint             `json:"client_id,omitempty"`
+	ManagerID       uint              `json:"manager_id"`
+	StartDate       time.Time         `json:"start_date"`
+	EndDate         time.Time         `json:"end_date"`
+	ActualStartDate *time.Time        `json:"actual_start_date,omitempty"`
+	ActualEndDate   *time.Time        `json:"actual_end_date,omitempty"`
+	Budget          float64           `json:"budget"`
+	ActualCost      float64           `json:"actual_cost"`
+	Progress        float64           `json:"progress"`
+	Priority        string            `json:"priority"`
+	Status          string            `json:"status"`
+	Client          *CustomerResponse `json:"client,omitempty"`
+	Manager         *EmployeeResponse `json:"manager,omitempty"`
 }
 
 // TaskCreateRequest 任务创建请求
 type TaskCreateRequest struct {
-	TaskName       string     `json:"task_name" binding:"required,max=255"`
-	TaskNumber     string     `json:"task_number" binding:"required,max=100"`
-	Description    string     `json:"description,omitempty"`
-	ProjectID      uint       `json:"project_id" binding:"required"`
-	ParentTaskID   *uint      `json:"parent_task_id,omitempty"`
-	AssigneeID     *uint      `json:"assignee_id,omitempty"`
-	StartDate      time.Time  `json:"start_date" binding:"required"`
-	EndDate        time.Time  `json:"end_date" binding:"required"`
-	EstimatedHours float64    `json:"estimated_hours" binding:"min=0"`
-	Priority       string     `json:"priority" binding:"required,oneof=low normal high urgent"`
+	TaskName       string    `json:"task_name" binding:"required,max=255"`
+	TaskNumber     string    `json:"task_number" binding:"required,max=100"`
+	Description    string    `json:"description,omitempty"`
+	ProjectID      uint      `json:"project_id" binding:"required"`
+	ParentTaskID   *uint     `json:"parent_task_id,omitempty"`
+	AssigneeID     *uint     `json:"assignee_id,omitempty"`
+	StartDate      time.Time `json:"start_date" binding:"required"`
+	EndDate        time.Time `json:"end_date" binding:"required"`
+	EstimatedHours float64   `json:"estimated_hours" binding:"min=0"`
+	Priority       string    `json:"priority" binding:"required,oneof=low normal high urgent"`
 }
 
 // TaskUpdateRequest 任务更新请求
@@ -84,23 +84,23 @@ type TaskUpdateRequest struct {
 // TaskResponse 任务响应
 type TaskResponse struct {
 	BaseModel
-	TaskNumber      string     `json:"task_number"`
-	TaskName        string     `json:"task_name"`
-	Description     string     `json:"description,omitempty"`
-	ProjectID       uint       `json:"project_id"`
-	ParentTaskID    *uint      `json:"parent_task_id,omitempty"`
-	AssigneeID      *uint      `json:"assignee_id,omitempty"`
-	StartDate       time.Time  `json:"start_date"`
-	EndDate         time.Time  `json:"end_date"`
-	ActualStartDate *time.Time `json:"actual_start_date,omitempty"`
-	ActualEndDate   *time.Time `json:"actual_end_date,omitempty"`
-	EstimatedHours  float64    `json:"estimated_hours"`
-	ActualHours     float64    `json:"actual_hours"`
-	Progress        float64    `json:"progress"`
-	Priority        string     `json:"priority"`
-	Status          string     `json:"status"`
-	Project         *ProjectResponse `json:"project,omitempty"`
-	ParentTask      *TaskResponse    `json:"parent_task,omitempty"`
+	TaskNumber      string            `json:"task_number"`
+	TaskName        string            `json:"task_name"`
+	Description     string            `json:"description,omitempty"`
+	ProjectID       uint              `json:"project_id"`
+	ParentTaskID    *uint             `json:"parent_task_id,omitempty"`
+	AssigneeID      *uint             `json:"assignee_id,omitempty"`
+	StartDate       time.Time         `json:"start_date"`
+	EndDate         time.Time         `json:"end_date"`
+	ActualStartDate *time.Time        `json:"actual_start_date,omitempty"`
+	ActualEndDate   *time.Time        `json:"actual_end_date,omitempty"`
+	EstimatedHours  float64           `json:"estimated_hours"`
+	ActualHours     float64           `json:"actual_hours"`
+	Progress        float64           `json:"progress"`
+	Priority        string            `json:"priority"`
+	Status          string            `json:"status"`
+	Project         *ProjectResponse  `json:"project,omitempty"`
+	ParentTask      *TaskResponse     `json:"parent_task,omitempty"`
 	Assignee        *EmployeeResponse `json:"assignee,omitempty"`
 }
 
@@ -123,12 +123,12 @@ type MilestoneUpdateRequest struct {
 // MilestoneResponse 里程碑响应
 type MilestoneResponse struct {
 	BaseModel
-	ProjectID     uint       `json:"project_id"`
-	MilestoneName string     `json:"milestone_name"`
-	Description   string     `json:"description,omitempty"`
-	DueDate       time.Time  `json:"due_date"`
-	CompletedDate *time.Time `json:"completed_date,omitempty"`
-	Status        string     `json:"status"`
+	ProjectID     uint             `json:"project_id"`
+	MilestoneName string           `json:"milestone_name"`
+	Description   string           `json:"description,omitempty"`
+	DueDate       time.Time        `json:"due_date"`
+	CompletedDate *time.Time       `json:"completed_date,omitempty"`
+	Status        string           `json:"status"`
 	Project       *ProjectResponse `json:"project,omitempty"`
 }
 
@@ -159,18 +159,18 @@ type TimeEntryUpdateRequest struct {
 // TimeEntryResponse 工时记录响应
 type TimeEntryResponse struct {
 	BaseModel
-	EmployeeID  uint      `json:"employee_id"`
-	ProjectID   uint      `json:"project_id"`
-	TaskID      *uint     `json:"task_id,omitempty"`
-	Date        time.Time `json:"date"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Hours       float64   `json:"hours"`
-	Description string    `json:"description,omitempty"`
-	IsBillable  bool      `json:"is_billable"`
-	HourlyRate  float64   `json:"hourly_rate"`
-	Amount      float64   `json:"amount"`
-	Status      string    `json:"status"`
+	EmployeeID  uint              `json:"employee_id"`
+	ProjectID   uint              `json:"project_id"`
+	TaskID      *uint             `json:"task_id,omitempty"`
+	Date        time.Time         `json:"date"`
+	StartTime   time.Time         `json:"start_time"`
+	EndTime     time.Time         `json:"end_time"`
+	Hours       float64           `json:"hours"`
+	Description string            `json:"description,omitempty"`
+	IsBillable  bool              `json:"is_billable"`
+	HourlyRate  float64           `json:"hourly_rate"`
+	Amount      float64           `json:"amount"`
+	Status      string            `json:"status"`
 	Employee    *EmployeeResponse `json:"employee,omitempty"`
 	Project     *ProjectResponse  `json:"project,omitempty"`
 	Task        *TaskResponse     `json:"task,omitempty"`
@@ -194,12 +194,12 @@ type ProjectMemberUpdateRequest struct {
 // ProjectMemberResponse 项目成员响应
 type ProjectMemberResponse struct {
 	BaseModel
-	ProjectID  uint       `json:"project_id"`
-	EmployeeID uint       `json:"employee_id"`
-	Role       string     `json:"role"`
-	JoinDate   time.Time  `json:"join_date"`
-	LeaveDate  *time.Time `json:"leave_date,omitempty"`
-	IsActive   bool       `json:"is_active"`
+	ProjectID  uint              `json:"project_id"`
+	EmployeeID uint              `json:"employee_id"`
+	Role       string            `json:"role"`
+	JoinDate   time.Time         `json:"join_date"`
+	LeaveDate  *time.Time        `json:"leave_date,omitempty"`
+	IsActive   bool              `json:"is_active"`
 	Project    *ProjectResponse  `json:"project,omitempty"`
 	Employee   *EmployeeResponse `json:"employee,omitempty"`
 }

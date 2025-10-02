@@ -3,8 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
 )
 
 // ItemRepository 物料仓储接口
@@ -75,18 +75,18 @@ func (r *ItemRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *ItemRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Item, int64, error) {
 	var items []*models.Item
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Item{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return items, total, nil
 }
 
@@ -94,20 +94,20 @@ func (r *ItemRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*mo
 func (r *ItemRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Item, int64, error) {
 	var items []*models.Item
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Item{}).Where("name LIKE ? OR code LIKE ? OR sku LIKE ?", searchQuery, searchQuery, searchQuery).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Category").Preload("Unit").Where("name LIKE ? OR code LIKE ? OR sku LIKE ?", searchQuery, searchQuery, searchQuery).Offset(offset).Limit(limit).Find(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return items, total, nil
 }
 
@@ -165,18 +165,18 @@ func (r *StockRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *StockRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Stock, int64, error) {
 	var stocks []*models.Stock
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Stock{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Item").Preload("Warehouse").Offset(offset).Limit(limit).Find(&stocks).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return stocks, total, nil
 }
 
@@ -243,18 +243,18 @@ func (r *WarehouseRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *WarehouseRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Warehouse, int64, error) {
 	var warehouses []*models.Warehouse
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Warehouse{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&warehouses).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return warehouses, total, nil
 }
 
@@ -314,13 +314,13 @@ func (r *MovementRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *MovementRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Movement, int64, error) {
 	var movements []*models.Movement
 	var total int64
-	
+
 	// 获取总数
 	err := r.db.WithContext(ctx).Model(&models.Movement{}).Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取数据
 	err = r.db.WithContext(ctx).
 		Preload("Item").
@@ -331,7 +331,7 @@ func (r *MovementRepositoryImpl) List(ctx context.Context, offset, limit int) ([
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return movements, total, nil
 }
 
@@ -339,15 +339,15 @@ func (r *MovementRepositoryImpl) List(ctx context.Context, offset, limit int) ([
 func (r *MovementRepositoryImpl) GetByItemID(ctx context.Context, itemID uint, offset, limit int) ([]*models.Movement, int64, error) {
 	var movements []*models.Movement
 	var total int64
-	
+
 	query := r.db.WithContext(ctx).Model(&models.Movement{}).Where("item_id = ?", itemID)
-	
+
 	// 获取总数
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取数据
 	err = query.
 		Preload("Item").
@@ -358,7 +358,7 @@ func (r *MovementRepositoryImpl) GetByItemID(ctx context.Context, itemID uint, o
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return movements, total, nil
 }
 
@@ -366,15 +366,15 @@ func (r *MovementRepositoryImpl) GetByItemID(ctx context.Context, itemID uint, o
 func (r *MovementRepositoryImpl) GetByWarehouseID(ctx context.Context, warehouseID uint, offset, limit int) ([]*models.Movement, int64, error) {
 	var movements []*models.Movement
 	var total int64
-	
+
 	query := r.db.WithContext(ctx).Model(&models.Movement{}).Where("warehouse_id = ?", warehouseID)
-	
+
 	// 获取总数
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取数据
 	err = query.
 		Preload("Item").
@@ -385,7 +385,7 @@ func (r *MovementRepositoryImpl) GetByWarehouseID(ctx context.Context, warehouse
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return movements, total, nil
 }
 
@@ -393,15 +393,15 @@ func (r *MovementRepositoryImpl) GetByWarehouseID(ctx context.Context, warehouse
 func (r *MovementRepositoryImpl) GetByType(ctx context.Context, movementType string, offset, limit int) ([]*models.Movement, int64, error) {
 	var movements []*models.Movement
 	var total int64
-	
+
 	query := r.db.WithContext(ctx).Model(&models.Movement{}).Where("movement_type = ?", movementType)
-	
+
 	// 获取总数
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取数据
 	err = query.
 		Preload("Item").
@@ -412,6 +412,6 @@ func (r *MovementRepositoryImpl) GetByType(ctx context.Context, movementType str
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return movements, total, nil
 }

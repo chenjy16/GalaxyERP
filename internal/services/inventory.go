@@ -37,9 +37,9 @@ func NewItemService(itemRepo repositories.ItemRepository) ItemService {
 func (s *ItemServiceImpl) CreateItem(ctx context.Context, req *dto.ItemCreateRequest) (*dto.ItemResponse, error) {
 	// 创建物料
 	item := &models.Item{
-		Code:         req.Code,
-		Name:         req.Name,
-		Description:  req.Description,
+		Code:        req.Code,
+		Name:        req.Name,
+		Description: req.Description,
 		// TODO: 需要根据CategoryID和UnitID查询对应的名称
 		// Category:     req.Category,
 		// Unit:         req.Unit,
@@ -189,12 +189,12 @@ func (s *ItemServiceImpl) toItemResponse(item *models.Item) *dto.ItemResponse {
 		// TODO: 需要根据字符串字段映射到对应的ID和对象
 		// MinStock:    float64(item.ReorderLevel),
 		// MaxStock:    0, // 当前模型中没有MaxStock字段
-		UnitCost:    item.Cost,
-		SalePrice:   item.Price,
+		UnitCost:  item.Cost,
+		SalePrice: item.Price,
 		// Barcode:     "", // 当前模型中没有Barcode字段
-		IsActive:    item.IsActive,
-		CreatedAt:   item.CreatedAt,
-		UpdatedAt:   item.UpdatedAt,
+		IsActive:  item.IsActive,
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
 	}
 }
 
@@ -296,11 +296,11 @@ func (s *StockServiceImpl) GetStocks(ctx context.Context, req *dto.PaginationReq
 	}
 
 	return &dto.PaginatedResponse[dto.StockResponse]{
-		Data:        stockResponses,
-		Total:       total,
-		Page:        req.Page,
-		Limit:       req.PageSize,
-		TotalPages:  int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+		Data:       stockResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
 	}, nil
 }
 
@@ -335,7 +335,7 @@ func (s *StockServiceImpl) toStockResponse(stock *models.Stock) *dto.StockRespon
 	response := &dto.StockResponse{
 		ID:           stock.ID,
 		Quantity:     stock.Quantity,
-		ReservedQty:  0, // TODO: 需要实现预留数量逻辑
+		ReservedQty:  0,              // TODO: 需要实现预留数量逻辑
 		AvailableQty: stock.Quantity, // 暂时设为总数量
 		UpdatedAt:    stock.UpdatedAt,
 	}
@@ -348,8 +348,8 @@ func (s *StockServiceImpl) toStockResponse(stock *models.Stock) *dto.StockRespon
 			Name:        stock.Item.Name,
 			Description: stock.Item.Description,
 			Type:        stock.Item.Category, // 暂时使用Category字段作为Type
-			MinStock:    0, // TODO: 从Item模型获取
-			MaxStock:    0, // TODO: 从Item模型获取
+			MinStock:    0,                   // TODO: 从Item模型获取
+			MaxStock:    0,                   // TODO: 从Item模型获取
 			UnitCost:    stock.Item.Cost,
 			SalePrice:   stock.Item.Price,
 			IsActive:    stock.Item.IsActive,
@@ -524,9 +524,9 @@ type MovementService interface {
 
 // MovementServiceImpl 库存移动服务实现
 type MovementServiceImpl struct {
-	movementRepo repositories.MovementRepository
-	stockRepo    repositories.StockRepository
-	itemRepo     repositories.ItemRepository
+	movementRepo  repositories.MovementRepository
+	stockRepo     repositories.StockRepository
+	itemRepo      repositories.ItemRepository
 	warehouseRepo repositories.WarehouseRepository
 }
 
@@ -774,9 +774,9 @@ func (s *MovementServiceImpl) convertToMovementResponse(movement *models.Movemen
 			Code:        item.Code,
 			Name:        item.Name,
 			Description: item.Description,
-			Type:        "",  // 模型中没有Type字段，使用空字符串
-			MinStock:    0,   // 模型中没有MinStock字段
-			MaxStock:    0,   // 模型中没有MaxStock字段
+			Type:        "", // 模型中没有Type字段，使用空字符串
+			MinStock:    0,  // 模型中没有MinStock字段
+			MaxStock:    0,  // 模型中没有MaxStock字段
 			UnitCost:    item.Cost,
 			SalePrice:   item.Price,
 			IsActive:    item.IsActive,

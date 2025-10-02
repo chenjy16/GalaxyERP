@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-	"golang.org/x/crypto/bcrypt"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
-	"github.com/galaxyerp/galaxyErp/internal/dto"
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
+	"time"
 )
 
 // UserService 用户服务接口
@@ -26,16 +26,16 @@ type UserService interface {
 
 // UserServiceImpl 用户服务实现
 type UserServiceImpl struct {
-	userRepo repositories.UserRepository
-	jwtSecret string
+	userRepo       repositories.UserRepository
+	jwtSecret      string
 	jwtExpiryHours int
 }
 
 // NewUserService 创建用户服务实例
 func NewUserService(userRepo repositories.UserRepository, jwtSecret string, jwtExpiryHours int) UserService {
 	return &UserServiceImpl{
-		userRepo: userRepo,
-		jwtSecret: jwtSecret,
+		userRepo:       userRepo,
+		jwtSecret:      jwtSecret,
 		jwtExpiryHours: jwtExpiryHours,
 	}
 }

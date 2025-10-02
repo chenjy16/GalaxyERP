@@ -131,12 +131,12 @@ func main() {
 		// Human Resources models
 		&models.Employee{},
 		&models.Attendance{}, // 修正为Attendance
-		&models.Leave{}, // 修正为Leave
+		&models.Leave{},      // 修正为Leave
 		&models.OvertimeRecord{},
 		&models.Payroll{},
 		&models.PerformanceGoal{},
 		&models.PerformanceReview{},
-		&models.Training{}, // 修正为Training
+		&models.Training{},            // 修正为Training
 		&models.TrainingParticipant{}, // 修正为TrainingParticipant
 		&models.Skill{},
 		&models.EmployeeSkill{},
@@ -147,10 +147,6 @@ func main() {
 
 	// Create server
 	r := gin.Default()
-
-	// Serve static files
-	r.StaticFile("/", "./web/index.html")
-	r.Static("/static", "./web")
 
 	// Register routes
 	registerRoutes(r, appContainer)
@@ -260,7 +256,7 @@ func initConfig() {
 func registerRoutes(r *gin.Engine, appContainer *container.Container) {
 	// Add CORS middleware
 	r.Use(middleware.CORSMiddleware())
-	
+
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -278,31 +274,31 @@ func registerRoutes(r *gin.Engine, appContainer *container.Container) {
 			})
 		})
 
-        // Authentication routes (public for login/register)
-        authGroup := v1.Group("/auth")
-        {
-            // Use real user controller handlers
-            authGroup.POST("/register", appContainer.UserController.Register)
-            authGroup.POST("/login", appContainer.UserController.Login)
-        }
+		// Authentication routes (public for login/register)
+		authGroup := v1.Group("/auth")
+		{
+			// Use real user controller handlers
+			authGroup.POST("/register", appContainer.UserController.Register)
+			authGroup.POST("/login", appContainer.UserController.Login)
+		}
 
-        // Authenticated auth routes (require token)
-        authProtected := v1.Group("/auth")
-        authProtected.Use(middleware.AuthMiddleware(viper.GetString("jwt.secret")))
-        {
-            authProtected.GET("/me", appContainer.UserController.GetProfile)
-            // Simple logout endpoint
-            authProtected.POST("/logout", func(c *gin.Context) {
-                c.JSON(200, gin.H{
-                    "success": true,
-                    "message": "已登出",
-                })
-            })
-            // Token refresh placeholder
-            authProtected.POST("/refresh", func(c *gin.Context) {
-                c.JSON(501, gin.H{"message": "刷新令牌功能待实现"})
-            })
-        }
+		// Authenticated auth routes (require token)
+		authProtected := v1.Group("/auth")
+		authProtected.Use(middleware.AuthMiddleware(viper.GetString("jwt.secret")))
+		{
+			authProtected.GET("/me", appContainer.UserController.GetProfile)
+			// Simple logout endpoint
+			authProtected.POST("/logout", func(c *gin.Context) {
+				c.JSON(200, gin.H{
+					"success": true,
+					"message": "已登出",
+				})
+			})
+			// Token refresh placeholder
+			authProtected.POST("/refresh", func(c *gin.Context) {
+				c.JSON(501, gin.H{"message": "刷新令牌功能待实现"})
+			})
+		}
 
 		// Protected routes
 		protected := v1.Group("")
@@ -317,139 +313,8 @@ func registerRoutes(r *gin.Engine, appContainer *container.Container) {
 			routes.RegisterProductionRoutes(protected, appContainer)
 			routes.RegisterHRRoutes(protected, appContainer)
 			routes.RegisterProjectRoutes(protected, appContainer)
-
-
-
-
-
-
-
-			// System management routes
-			sys := protected.Group("/system")
-			{
-				// User management
-				users := sys.Group("/users")
-				{
-					users.POST("/", appContainer.UserController.CreateUser)
-					users.GET("/", appContainer.UserController.GetUsers)
-					users.GET("/:id", appContainer.UserController.GetUser)
-					users.PUT("/:id", appContainer.UserController.UpdateUser)
-					users.DELETE("/:id", appContainer.UserController.DeleteUser)
-					users.POST("/:id/assign-role", appContainer.UserController.AssignRole)
-					users.POST("/:id/remove-role", appContainer.UserController.RemoveRole)
-				}
-
-				// Role management
-				roles := sys.Group("/roles")
-				{
-					roles.POST("/", appContainer.UserController.CreateRole)
-					roles.GET("/", appContainer.UserController.GetRoles)
-					roles.GET("/:id", appContainer.UserController.GetRole)
-					roles.PUT("/:id", appContainer.UserController.UpdateRole)
-					roles.DELETE("/:id", appContainer.UserController.DeleteRole)
-					roles.POST("/:id/assign-permission", appContainer.UserController.AssignPermission)
-					roles.POST("/:id/remove-permission", appContainer.UserController.RemovePermission)
-				}
-
-				// Permission management
-				permissions := sys.Group("/permissions")
-				{
-					permissions.POST("/", appContainer.SystemController.CreatePermission)
-					permissions.GET("/", appContainer.SystemController.GetPermissions)
-					permissions.GET("/:id", appContainer.SystemController.GetPermission)
-					permissions.PUT("/:id", appContainer.SystemController.UpdatePermission)
-					permissions.DELETE("/:id", appContainer.SystemController.DeletePermission)
-				}
-
-				// Data permission management
-				dataPermissions := sys.Group("/data-permissions")
-				{
-					dataPermissions.POST("/", appContainer.SystemController.CreateDataPermission)
-					dataPermissions.GET("/", appContainer.SystemController.GetDataPermissions)
-					dataPermissions.GET("/:id", appContainer.SystemController.GetDataPermission)
-					dataPermissions.PUT("/:id", appContainer.SystemController.UpdateDataPermission)
-					dataPermissions.DELETE("/:id", appContainer.SystemController.DeleteDataPermission)
-				}
-
-				// Company management
-				companies := sys.Group("/companies")
-				{
-					companies.POST("/", appContainer.SystemController.CreateCompany)
-					companies.GET("/", appContainer.SystemController.GetCompanies)
-					companies.GET("/:id", appContainer.SystemController.GetCompany)
-					companies.PUT("/:id", appContainer.SystemController.UpdateCompany)
-					companies.DELETE("/:id", appContainer.SystemController.DeleteCompany)
-				}
-
-				// Department management
-				departments := sys.Group("/departments")
-				{
-					departments.POST("/", appContainer.SystemController.CreateDepartment)
-					departments.GET("/", appContainer.SystemController.GetDepartments)
-					departments.GET("/:id", appContainer.SystemController.GetDepartment)
-					departments.PUT("/:id", appContainer.SystemController.UpdateDepartment)
-					departments.DELETE("/:id", appContainer.SystemController.DeleteDepartment)
-				}
-
-				// Position management
-				positions := sys.Group("/positions")
-				{
-					positions.POST("/", appContainer.SystemController.CreatePosition)
-					positions.GET("/", appContainer.SystemController.GetPositions)
-					positions.GET("/:id", appContainer.SystemController.GetPosition)
-					positions.PUT("/:id", appContainer.SystemController.UpdatePosition)
-					positions.DELETE("/:id", appContainer.SystemController.DeletePosition)
-				}
-
-				// System configuration
-				configs := sys.Group("/configs")
-				{
-					configs.POST("/", appContainer.SystemController.CreateSystemConfig)
-					configs.GET("/", appContainer.SystemController.GetSystemConfigs)
-					configs.GET("/:id", appContainer.SystemController.GetSystemConfig)
-					configs.PUT("/:id", appContainer.SystemController.UpdateSystemConfig)
-					configs.DELETE("/:id", appContainer.SystemController.DeleteSystemConfig)
-				}
-
-				// Approval workflows
-				workflows := sys.Group("/workflows")
-				{
-					workflows.POST("/", appContainer.SystemController.CreateApprovalWorkflow)
-					workflows.GET("/", appContainer.SystemController.GetApprovalWorkflows)
-					workflows.GET("/:id", appContainer.SystemController.GetApprovalWorkflow)
-					workflows.PUT("/:id", appContainer.SystemController.UpdateApprovalWorkflow)
-					workflows.DELETE("/:id", appContainer.SystemController.DeleteApprovalWorkflow)
-				}
-
-				// Approval steps
-				steps := sys.Group("/steps")
-				{
-					steps.POST("/", appContainer.SystemController.CreateApprovalStep)
-					steps.GET("/workflow/:workflow_id", appContainer.SystemController.GetApprovalSteps)
-					steps.GET("/:id", appContainer.SystemController.GetApprovalStep)
-					steps.PUT("/:id", appContainer.SystemController.UpdateApprovalStep)
-					steps.DELETE("/:id", appContainer.SystemController.DeleteApprovalStep)
-				}
-
-				// Backups
-				backups := sys.Group("/backups")
-				{
-					backups.POST("/", appContainer.SystemController.CreateBackup)
-					backups.GET("/", appContainer.SystemController.GetBackups)
-					backups.GET("/:id", appContainer.SystemController.GetBackup)
-					backups.DELETE("/:id", appContainer.SystemController.DeleteBackup)
-				}
-
-				// Audit logs
-				auditLogs := sys.Group("/audit-logs")
-				{
-					auditLogs.POST("/", appContainer.SystemController.CreateAuditLog)
-					auditLogs.GET("/", appContainer.SystemController.GetAuditLogs)
-					auditLogs.GET("/:id", appContainer.SystemController.GetAuditLog)
-					auditLogs.GET("/user/:user_id", appContainer.SystemController.GetAuditLogsByUser)
-					auditLogs.GET("/resource/:resource", appContainer.SystemController.GetAuditLogsByResource)
-				}
-			}
+			// System management routes - modularized
+			routes.RegisterSystemRoutes(protected, appContainer)
 		}
 	}
 }

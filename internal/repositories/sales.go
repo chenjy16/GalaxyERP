@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-	"gorm.io/gorm"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
+	"gorm.io/gorm"
+	"time"
 )
 
 // CustomerRepository 客户仓储接口
@@ -64,18 +64,18 @@ func (r *CustomerRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *CustomerRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Customer, int64, error) {
 	var customers []*models.Customer
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Customer{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&customers).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return customers, total, nil
 }
 
@@ -83,26 +83,26 @@ func (r *CustomerRepositoryImpl) List(ctx context.Context, offset, limit int) ([
 func (r *CustomerRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Customer, int64, error) {
 	var customers []*models.Customer
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Customer{}).
-		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?", 
+		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?",
 			searchQuery, searchQuery, searchQuery).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).
-		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?", 
+		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?",
 			searchQuery, searchQuery, searchQuery).
 		Offset(offset).Limit(limit).Find(&customers).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return customers, total, nil
 }
 
@@ -160,18 +160,18 @@ func (r *SalesOrderRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *SalesOrderRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.SalesOrder, int64, error) {
 	var orders []*models.SalesOrder
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.SalesOrder{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").Offset(offset).Limit(limit).Find(&orders).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return orders, total, nil
 }
 
@@ -230,18 +230,18 @@ func (r *QuotationRepositoryImpl) Delete(ctx context.Context, id uint) error {
 func (r *QuotationRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Quotation, int64, error) {
 	var quotations []*models.Quotation
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Quotation{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").Offset(offset).Limit(limit).Find(&quotations).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return quotations, total, nil
 }
 
@@ -249,18 +249,18 @@ func (r *QuotationRepositoryImpl) List(ctx context.Context, offset, limit int) (
 func (r *QuotationRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.Quotation, int64, error) {
 	var quotations []*models.Quotation
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Quotation{}).Where("customer_id = ?", customerID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").Where("customer_id = ?", customerID).Offset(offset).Limit(limit).Find(&quotations).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return quotations, total, nil
 }
 
@@ -268,20 +268,20 @@ func (r *QuotationRepositoryImpl) GetByCustomerID(ctx context.Context, customerI
 func (r *QuotationRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Quotation, int64, error) {
 	var quotations []*models.Quotation
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.Quotation{}).Joins("LEFT JOIN customers ON quotations.customer_id = customers.id").Where("quotations.quotation_number LIKE ? OR customers.name LIKE ?", searchQuery, searchQuery).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").Joins("LEFT JOIN customers ON quotations.customer_id = customers.id").Where("quotations.quotation_number LIKE ? OR customers.name LIKE ?", searchQuery, searchQuery).Offset(offset).Limit(limit).Find(&quotations).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return quotations, total, nil
 }
 
@@ -289,13 +289,13 @@ func (r *QuotationRepositoryImpl) Search(ctx context.Context, query string, offs
 func (r *SalesOrderRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesOrder, int64, error) {
 	var orders []*models.SalesOrder
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.SalesOrder{}).
 		Where("customer_id = ?", customerID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").
 		Where("customer_id = ?", customerID).
@@ -303,7 +303,7 @@ func (r *SalesOrderRepositoryImpl) GetByCustomerID(ctx context.Context, customer
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return orders, total, nil
 }
 
@@ -373,9 +373,9 @@ func (r *SalesInvoiceRepositoryImpl) Delete(ctx context.Context, id uint) error 
 func (r *SalesInvoiceRepositoryImpl) List(ctx context.Context, filter *dto.SalesInvoiceListRequest) ([]*models.SalesInvoice, int64, error) {
 	var invoices []*models.SalesInvoice
 	var total int64
-	
+
 	query := r.db.WithContext(ctx).Model(&models.SalesInvoice{})
-	
+
 	// 应用过滤条件
 	if filter.CustomerID != nil {
 		query = query.Where("customer_id = ?", *filter.CustomerID)
@@ -405,16 +405,16 @@ func (r *SalesInvoiceRepositoryImpl) List(ctx context.Context, filter *dto.Sales
 		searchQuery := "%" + filter.Search + "%"
 		query = query.Where("invoice_number LIKE ? OR customer_po_number LIKE ?", searchQuery, searchQuery)
 	}
-	
+
 	// 获取总数
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 应用分页和排序
 	offset := (filter.Page - 1) * filter.PageSize
 	query = query.Offset(offset).Limit(filter.PageSize)
-	
+
 	if filter.SortBy != "" {
 		order := filter.SortBy
 		if filter.SortDesc {
@@ -424,13 +424,13 @@ func (r *SalesInvoiceRepositoryImpl) List(ctx context.Context, filter *dto.Sales
 	} else {
 		query = query.Order("created_at DESC")
 	}
-	
+
 	// 获取数据
 	err := r.db.WithContext(ctx).Preload("Customer").Find(&invoices).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return invoices, total, nil
 }
 
@@ -438,13 +438,13 @@ func (r *SalesInvoiceRepositoryImpl) List(ctx context.Context, filter *dto.Sales
 func (r *SalesInvoiceRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesInvoice, int64, error) {
 	var invoices []*models.SalesInvoice
 	var total int64
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
 		Where("customer_id = ?", customerID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").
 		Where("customer_id = ?", customerID).
@@ -452,7 +452,7 @@ func (r *SalesInvoiceRepositoryImpl) GetByCustomerID(ctx context.Context, custom
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return invoices, total, nil
 }
 
@@ -473,27 +473,27 @@ func (r *SalesInvoiceRepositoryImpl) GetByInvoiceNumber(ctx context.Context, inv
 func (r *SalesInvoiceRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.SalesInvoice, int64, error) {
 	var invoices []*models.SalesInvoice
 	var total int64
-	
+
 	searchQuery := "%" + query + "%"
-	
+
 	// 获取总数
 	if err := r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
 		Joins("LEFT JOIN customers ON sales_invoices.customer_id = customers.id").
-		Where("sales_invoices.invoice_number LIKE ? OR customers.name LIKE ? OR sales_invoices.customer_po_number LIKE ?", 
+		Where("sales_invoices.invoice_number LIKE ? OR customers.name LIKE ? OR sales_invoices.customer_po_number LIKE ?",
 			searchQuery, searchQuery, searchQuery).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	
+
 	// 获取分页数据
 	err := r.db.WithContext(ctx).Preload("Customer").
 		Joins("LEFT JOIN customers ON sales_invoices.customer_id = customers.id").
-		Where("sales_invoices.invoice_number LIKE ? OR customers.name LIKE ? OR sales_invoices.customer_po_number LIKE ?", 
+		Where("sales_invoices.invoice_number LIKE ? OR customers.name LIKE ? OR sales_invoices.customer_po_number LIKE ?",
 			searchQuery, searchQuery, searchQuery).
 		Offset(offset).Limit(limit).Find(&invoices).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	return invoices, total, nil
 }
 
@@ -510,22 +510,22 @@ func (r *SalesInvoiceRepositoryImpl) GetNextInvoiceNumber(ctx context.Context) (
 	if err != nil {
 		return "", err
 	}
-	
+
 	// 生成格式: INV-YYYYMM-000001
 	now := time.Now()
 	prefix := fmt.Sprintf("INV-%04d%02d", now.Year(), now.Month())
-	
+
 	// 查询当月已有的发票数量
 	var monthlyCount int64
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Nanosecond)
-	
+
 	err = r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
 		Where("created_at >= ? AND created_at <= ?", startOfMonth, endOfMonth).
 		Count(&monthlyCount).Error
 	if err != nil {
 		return "", err
 	}
-	
+
 	return fmt.Sprintf("%s-%06d", prefix, monthlyCount+1), nil
 }

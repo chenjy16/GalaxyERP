@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
+	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
-	"github.com/galaxyerp/galaxyErp/internal/dto"
+	"time"
 )
 
 // CustomerService 客户服务接口
@@ -44,7 +44,7 @@ func (s *CustomerServiceImpl) CreateCustomer(ctx context.Context, req *dto.Custo
 		// PaymentTerms:  req.PaymentTerms, // 字段不存在
 		// Status:        "active", // 字段不存在，使用IsActive
 	}
-	
+
 	// 设置CodeModel字段
 	customer.Name = req.Name
 	customer.Code = req.Code
@@ -183,18 +183,18 @@ func (s *CustomerServiceImpl) SearchCustomers(ctx context.Context, req *dto.Sear
 // toCustomerResponse 转换为客户响应格式
 func (s *CustomerServiceImpl) toCustomerResponse(customer *models.Customer) *dto.CustomerResponse {
 	return &dto.CustomerResponse{
-		ID:           customer.ID,
-		Name:         customer.Name,
-		Code:         customer.Code,
-		Email:        customer.Email,
-		Phone:        customer.Phone,
-		Address:      customer.Address,
-		ContactName:  customer.ContactPerson,
-		CreditLimit:  customer.CreditLimit,
+		ID:          customer.ID,
+		Name:        customer.Name,
+		Code:        customer.Code,
+		Email:       customer.Email,
+		Phone:       customer.Phone,
+		Address:     customer.Address,
+		ContactName: customer.ContactPerson,
+		CreditLimit: customer.CreditLimit,
 		// PaymentTerms: customer.PaymentTerms, // 字段不存在
-		IsActive:     customer.IsActive,
-		CreatedAt:    customer.CreatedAt,
-		UpdatedAt:    customer.UpdatedAt,
+		IsActive:  customer.IsActive,
+		CreatedAt: customer.CreatedAt,
+		UpdatedAt: customer.UpdatedAt,
 	}
 }
 
@@ -236,17 +236,17 @@ func (s *SalesOrderServiceImpl) CreateSalesOrder(ctx context.Context, req *dto.S
 	}
 
 	salesOrder := &models.SalesOrder{
-		OrderNumber:  orderNumber,
-		CustomerID:   req.CustomerID,
-		Date:         time.Now(), // 使用Date字段
+		OrderNumber: orderNumber,
+		CustomerID:  req.CustomerID,
+		Date:        time.Now(), // 使用Date字段
 		// OrderDate:    req.OrderDate, // 字段不存在
 		// RequiredDate: req.RequiredDate, // 字段不存在
 		DeliveryDate: deliveryDate,
 		Status:       "draft",
 		// PaymentTerms:  req.PaymentTerms, // 字段不存在，使用Terms
 		// DeliveryTerms: req.DeliveryTerms, // 字段不存在
-		Terms:        req.PaymentTerms,
-		Notes:        req.Notes,
+		Terms: req.PaymentTerms,
+		Notes: req.Notes,
 	}
 
 	if err := s.salesOrderRepo.Create(ctx, salesOrder); err != nil {
@@ -394,8 +394,8 @@ func (s *SalesOrderServiceImpl) toSalesOrderResponse(salesOrder *models.SalesOrd
 		Number:          salesOrder.OrderNumber,
 		Status:          salesOrder.Status,
 		ExpectedDate:    salesOrder.DeliveryDate, // 使用DeliveryDate作为ExpectedDate
-		PaymentTerms:    salesOrder.Terms, // 使用Terms字段
-		ShippingAddress: "", // 模型中没有ShippingAddress字段
+		PaymentTerms:    salesOrder.Terms,        // 使用Terms字段
+		ShippingAddress: "",                      // 模型中没有ShippingAddress字段
 		Notes:           salesOrder.Notes,
 		SubTotal:        salesOrder.TotalAmount,
 		DiscountAmount:  salesOrder.DiscountAmount,
@@ -440,10 +440,10 @@ func (s *QuotationServiceImpl) CreateQuotation(ctx context.Context, req *dto.Quo
 	quotation := &models.Quotation{
 		QuotationNumber: quotationNumber,
 		CustomerID:      req.CustomerID,
-		Date:            time.Now(), // 使用Date字段
+		Date:            time.Now(),     // 使用Date字段
 		ValidTill:       req.ValidUntil, // 使用ValidUntil字段
 		Status:          "draft",
-		Subject:         req.Title, // 使用Title作为Subject
+		Subject:         req.Title,        // 使用Title作为Subject
 		Terms:           req.PaymentTerms, // 使用PaymentTerms作为Terms
 		Notes:           req.Notes,
 	}
@@ -609,20 +609,20 @@ func (s *QuotationServiceImpl) ConvertToSalesOrder(ctx context.Context, quotatio
 // toQuotationResponse 转换为报价响应格式
 func (s *QuotationServiceImpl) toQuotationResponse(quotation *models.Quotation) *dto.QuotationResponse {
 	return &dto.QuotationResponse{
-		ID:              quotation.ID,
-		Number:          quotation.QuotationNumber,
-		Title:           quotation.Subject, // 使用Subject作为Title
-		Description:     "", // 模型中没有Description字段
-		Status:          quotation.Status,
-		ValidUntil:      quotation.ValidTill, // 使用ValidTill字段
-		PaymentTerms:    quotation.Terms, // 使用Terms字段
-		Notes:           quotation.Notes,
-		SubTotal:        quotation.TotalAmount,
-		DiscountAmount:  quotation.DiscountAmount,
-		TaxAmount:       quotation.TaxAmount,
-		TotalAmount:     quotation.GrandTotal,
-		CreatedAt:       quotation.CreatedAt,
-		UpdatedAt:       quotation.UpdatedAt,
+		ID:             quotation.ID,
+		Number:         quotation.QuotationNumber,
+		Title:          quotation.Subject, // 使用Subject作为Title
+		Description:    "",                // 模型中没有Description字段
+		Status:         quotation.Status,
+		ValidUntil:     quotation.ValidTill, // 使用ValidTill字段
+		PaymentTerms:   quotation.Terms,     // 使用Terms字段
+		Notes:          quotation.Notes,
+		SubTotal:       quotation.TotalAmount,
+		DiscountAmount: quotation.DiscountAmount,
+		TaxAmount:      quotation.TaxAmount,
+		TotalAmount:    quotation.GrandTotal,
+		CreatedAt:      quotation.CreatedAt,
+		UpdatedAt:      quotation.UpdatedAt,
 	}
 }
 
