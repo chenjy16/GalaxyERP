@@ -34,14 +34,14 @@ func RegisterAccountingRoutes(router *gin.RouterGroup, container *container.Cont
 	// 科目类型
 	router.GET("/account-types", accountingController.GetAccountTypes)
 
-	// 财务报表 (暂时保留占位符)
+	// 财务报表
 	reports := router.Group("/reports")
 	{
 		reports.GET("/balance-sheet", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "财务报表功能待实现"})
+			c.JSON(501, gin.H{"error": "功能暂未实现"})
 		})
 		reports.GET("/income-statement", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "财务报表功能待实现"})
+			c.JSON(501, gin.H{"error": "功能暂未实现"})
 		})
 	}
 }

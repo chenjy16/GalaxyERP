@@ -296,7 +296,7 @@ func registerRoutes(r *gin.Engine, appContainer *container.Container) {
 			})
 			// Token refresh placeholder
 			authProtected.POST("/refresh", func(c *gin.Context) {
-				c.JSON(501, gin.H{"message": "刷新令牌功能待实现"})
+				c.JSON(501, gin.H{"error": "功能暂未实现"})
 			})
 		}
 

@@ -9,19 +9,19 @@ import (
 func RegisterSystemRoutes(router *gin.RouterGroup, container *container.Container) {
 	sys := router.Group("/system")
 
-	// 用户和角色管理 - 使用UserController（已实现基础功能）
+	// 用户和角色管理
 	registerUserManagementRoutes(sys, container)
 
-	// 权限管理 - 使用SystemController（待实现）
+	// 权限管理
 	registerPermissionManagementRoutes(sys, container)
 
-	// 组织架构管理 - 使用SystemController（待实现）
+	// 组织架构管理
 	registerOrganizationRoutes(sys, container)
 
-	// 系统配置管理 - 使用SystemController（待实现）
+	// 系统配置管理
 	registerSystemConfigRoutes(sys, container)
 
-	// 系统维护功能 - 使用SystemController（待实现）
+	// 系统维护功能
 	registerMaintenanceRoutes(sys, container)
 }
 

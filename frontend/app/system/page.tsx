@@ -607,30 +607,6 @@ export default function SystemPage() {
   const totalRoles = roleData.length;
   const totalPermissions = permissionData.length;
 
-  // 开发中功能组件
-  const DevelopmentFeature = ({ title, description, icon }: { title: string; description: string; icon: React.ReactNode }) => (
-    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-      <div style={{ fontSize: '48px', color: '#faad14', marginBottom: '16px' }}>
-        {icon}
-      </div>
-      <Title level={3} style={{ color: '#faad14', marginBottom: '8px' }}>
-        {title}
-      </Title>
-      <Text type="secondary" style={{ fontSize: '16px' }}>
-        {description}
-      </Text>
-      <div style={{ marginTop: '24px' }}>
-        <Alert
-          message="功能开发中"
-          description="该功能正在开发中，敬请期待后续版本更新。"
-          type="warning"
-          showIcon
-          style={{ maxWidth: '400px', margin: '0 auto' }}
-        />
-      </div>
-    </div>
-  );
-
   // 定义Tabs的items
   const tabItems = [
     {
@@ -809,44 +785,52 @@ export default function SystemPage() {
       key: 'backup',
       label: '备份管理',
       children: (
-        <DevelopmentFeature
-          title="备份管理"
-          description="数据库备份、恢复和备份文件管理功能"
-          icon={<DatabaseOutlined />}
-        />
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <DatabaseOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+          <Title level={3} style={{ color: '#999', marginBottom: '8px' }}>
+            备份管理
+          </Title>
+          <Text type="secondary">功能暂未实现</Text>
+        </div>
       )
     },
     {
       key: 'monitoring',
       label: '系统监控',
       children: (
-        <DevelopmentFeature
-          title="系统监控"
-          description="系统性能监控、资源使用情况和运行状态监控"
-          icon={<ApiOutlined />}
-        />
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <ApiOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+          <Title level={3} style={{ color: '#999', marginBottom: '8px' }}>
+            系统监控
+          </Title>
+          <Text type="secondary">功能暂未实现</Text>
+        </div>
       )
     },
     {
       key: 'audit',
       label: '审计日志',
       children: (
-        <DevelopmentFeature
-          title="审计日志"
-          description="系统操作日志记录、查询和分析功能"
-          icon={<HistoryOutlined />}
-        />
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <HistoryOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+          <Title level={3} style={{ color: '#999', marginBottom: '8px' }}>
+            审计日志
+          </Title>
+          <Text type="secondary">功能暂未实现</Text>
+        </div>
       )
     },
     {
       key: 'workflow',
       label: '审批流程',
       children: (
-        <DevelopmentFeature
-          title="审批流程"
-          description="工作流程设计、审批步骤配置和流程管理"
-          icon={<SafetyOutlined />}
-        />
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <SafetyOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+          <Title level={3} style={{ color: '#999', marginBottom: '8px' }}>
+            审批流程
+          </Title>
+          <Text type="secondary">功能暂未实现</Text>
+        </div>
       )
     }
   ];

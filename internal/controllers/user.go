@@ -170,75 +170,75 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 
 // CreateUser 创建用户
 func (c *UserController) CreateUser(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "创建用户功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // GetUser 获取单个用户
 func (c *UserController) GetUser(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "获取用户功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // UpdateUser 更新用户
 func (c *UserController) UpdateUser(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "更新用户功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // DeleteUser 删除用户
 func (c *UserController) DeleteUser(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "删除用户功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // GetUsers 获取用户列表
 func (c *UserController) GetUsers(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "获取用户列表功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // SearchUsers 搜索用户
 func (c *UserController) SearchUsers(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "搜索用户功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // AssignRole 分配角色
 func (c *UserController) AssignRole(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "分配角色功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // RemoveRole 移除角色
 func (c *UserController) RemoveRole(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "移除角色功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // CreateRole 创建角色
 func (c *UserController) CreateRole(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "创建角色功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // GetRoles 获取角色列表
 func (c *UserController) GetRoles(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "获取角色列表功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // GetRole 获取角色
 func (c *UserController) GetRole(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "获取角色功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // UpdateRole 更新角色
 func (c *UserController) UpdateRole(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "更新角色功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // DeleteRole 删除角色
 func (c *UserController) DeleteRole(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "删除角色功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // AssignPermission 分配权限
 func (c *UserController) AssignPermission(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "分配权限功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }
 
 // RemovePermission 移除权限
 func (c *UserController) RemovePermission(ctx *gin.Context) {
-	c.utils.RespondNotImplemented(ctx, "移除权限功能待实现")
+	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
 }

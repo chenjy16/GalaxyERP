@@ -882,11 +882,11 @@ func (c *InventoryController) DeleteWarehouse(ctx *gin.Context) {
 	})
 }
 
-// 库存报告和统计相关方法 - 占位符实现
+// 库存报告和统计相关方法
 func (c *InventoryController) GetInventoryStats(ctx *gin.Context) {
 	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
 		Success:    false,
-		Message:    "库存统计功能待实现",
+		Message:    "功能暂未实现",
 		StatusCode: http.StatusNotImplemented,
 	})
 }
@@ -894,7 +894,7 @@ func (c *InventoryController) GetInventoryStats(ctx *gin.Context) {
 func (c *InventoryController) GetInventoryReport(ctx *gin.Context) {
 	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
 		Success:    false,
-		Message:    "库存报告功能待实现",
+		Message:    "功能暂未实现",
 		StatusCode: http.StatusNotImplemented,
 	})
 }
@@ -902,7 +902,7 @@ func (c *InventoryController) GetInventoryReport(ctx *gin.Context) {
 func (c *InventoryController) GetABCAnalysis(ctx *gin.Context) {
 	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
 		Success:    false,
-		Message:    "ABC分析功能待实现",
+		Message:    "功能暂未实现",
 		StatusCode: http.StatusNotImplemented,
 	})
 }
@@ -910,7 +910,7 @@ func (c *InventoryController) GetABCAnalysis(ctx *gin.Context) {
 func (c *InventoryController) ExportInventoryReport(ctx *gin.Context) {
 	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
 		Success:    false,
-		Message:    "导出库存报告功能待实现",
+		Message:    "功能暂未实现",
 		StatusCode: http.StatusNotImplemented,
 	})
 }

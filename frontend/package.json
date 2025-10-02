@@ -5,8 +5,19 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build",
+    "build:standalone": "next build",
+    "build:export": "next build && next export",
+    "build:static": "NEXT_CONFIG=static next build",
+    "export:static": "NEXT_CONFIG=static next build",
     "start": "next start",
-    "lint": "next lint"
+    "start:prod": "NODE_ENV=production next start",
+    "preview:static": "npx serve out",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next out",
+    "clean:static": "rm -rf .next out && npm run build:static"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
