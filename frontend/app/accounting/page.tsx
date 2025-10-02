@@ -170,7 +170,7 @@ export default function AccountingPage() {
       align: 'right',
       render: (balance: number) => (
         <Text strong style={{ color: balance >= 0 ? '#52c41a' : '#ff4d4f' }}>
-          ¥{balance.toLocaleString()}
+          ¥{balance ? balance.toLocaleString() : '0.00'}
         </Text>
       )
     },
@@ -224,14 +224,14 @@ export default function AccountingPage() {
       dataIndex: 'totalDebit',
       key: 'totalDebit',
       align: 'right',
-      render: (amount: number) => `¥${amount.toLocaleString()}`
+      render: (amount: number) => `¥${amount ? amount.toLocaleString() : '0.00'}`
     },
     {
       title: '贷方金额',
       dataIndex: 'totalCredit',
       key: 'totalCredit',
       align: 'right',
-      render: (amount: number) => `¥${amount.toLocaleString()}`
+      render: (amount: number) => `¥${amount ? amount.toLocaleString() : '0.00'}`
     },
     {
       title: '状态',

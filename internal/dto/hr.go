@@ -129,7 +129,7 @@ type EmployeeSearchRequest struct {
 	Gender       string `json:"gender,omitempty" form:"gender"`
 }
 
-// EmployeeFilter 员工过滤器
+// EmployeeFilter 员工筛选
 type EmployeeFilter struct {
 	PaginationRequest
 	DepartmentID *uint  `json:"department_id,omitempty" form:"department_id"`
@@ -138,4 +138,157 @@ type EmployeeFilter struct {
 	Name         string `json:"name,omitempty" form:"name"`
 	Code         string `json:"code,omitempty" form:"code"`
 	Email        string `json:"email,omitempty" form:"email"`
+}
+
+// AttendanceCreateRequest 考勤创建请求
+type AttendanceCreateRequest struct {
+	EmployeeID   uint       `json:"employee_id" binding:"required"`
+	Date         time.Time  `json:"date" binding:"required"`
+	CheckInTime  *time.Time `json:"check_in_time,omitempty"`
+	CheckOutTime *time.Time `json:"check_out_time,omitempty"`
+	Status       string     `json:"status" binding:"required,oneof=present absent late early_leave"`
+	Notes        string     `json:"notes,omitempty"`
+}
+
+// AttendanceUpdateRequest 考勤更新请求
+type AttendanceUpdateRequest struct {
+	CheckInTime  *time.Time `json:"check_in_time,omitempty"`
+	CheckOutTime *time.Time `json:"check_out_time,omitempty"`
+	Status       string     `json:"status,omitempty" binding:"omitempty,oneof=present absent late early_leave"`
+	Notes        string     `json:"notes,omitempty"`
+}
+
+// AttendanceResponse 考勤响应
+type AttendanceResponse struct {
+	ID           uint                  `json:"id"`
+	EmployeeID   uint                  `json:"employee_id"`
+	Date         time.Time             `json:"date"`
+	CheckInTime  *time.Time            `json:"check_in_time,omitempty"`
+	CheckOutTime *time.Time            `json:"check_out_time,omitempty"`
+	Status       string                `json:"status"`
+	Notes        string                `json:"notes,omitempty"`
+	Employee     *EmployeeListResponse `json:"employee,omitempty"`
+	CreatedAt    time.Time             `json:"created_at"`
+	UpdatedAt    time.Time             `json:"updated_at"`
+}
+
+// PayrollCreateRequest 薪资创建请求
+type PayrollCreateRequest struct {
+	EmployeeID       uint      `json:"employee_id" binding:"required"`
+	PayPeriodStart   time.Time `json:"pay_period_start" binding:"required"`
+	PayPeriodEnd     time.Time `json:"pay_period_end" binding:"required"`
+	BasicSalary      float64   `json:"basic_salary" binding:"required,min=0"`
+	OvertimePay      float64   `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
+	Allowance        float64   `json:"allowance,omitempty" binding:"omitempty,min=0"`
+	Bonus            float64   `json:"bonus,omitempty" binding:"omitempty,min=0"`
+	Deductions       float64   `json:"deductions,omitempty" binding:"omitempty,min=0"`
+	SocialInsurance  float64   `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
+	HousingFund      float64   `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
+	Tax              float64   `json:"tax,omitempty" binding:"omitempty,min=0"`
+	NetPay           float64   `json:"net_pay" binding:"required,min=0"`
+	Status           string    `json:"status" binding:"required,oneof=draft confirmed paid"`
+}
+
+// PayrollUpdateRequest 薪资更新请求
+type PayrollUpdateRequest struct {
+	BasicSalary      *float64 `json:"basic_salary,omitempty" binding:"omitempty,min=0"`
+	OvertimePay      *float64 `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
+	Allowance        *float64 `json:"allowance,omitempty" binding:"omitempty,min=0"`
+	Bonus            *float64 `json:"bonus,omitempty" binding:"omitempty,min=0"`
+	Deductions       *float64 `json:"deductions,omitempty" binding:"omitempty,min=0"`
+	SocialInsurance  *float64 `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
+	HousingFund      *float64 `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
+	Tax              *float64 `json:"tax,omitempty" binding:"omitempty,min=0"`
+	NetPay           *float64 `json:"net_pay,omitempty" binding:"omitempty,min=0"`
+	Status           string   `json:"status,omitempty" binding:"omitempty,oneof=draft confirmed paid"`
+}
+
+// PayrollResponse 薪资响应
+type PayrollResponse struct {
+	ID              uint                  `json:"id"`
+	EmployeeID      uint                  `json:"employee_id"`
+	PayPeriodStart  time.Time             `json:"pay_period_start"`
+	PayPeriodEnd    time.Time             `json:"pay_period_end"`
+	BasicSalary     float64               `json:"basic_salary"`
+	OvertimePay     float64               `json:"overtime_pay"`
+	Allowance       float64               `json:"allowance"`
+	Bonus           float64               `json:"bonus"`
+	Deductions      float64               `json:"deductions"`
+	SocialInsurance float64               `json:"social_insurance"`
+	HousingFund     float64               `json:"housing_fund"`
+	Tax             float64               `json:"tax"`
+	NetPay          float64               `json:"net_pay"`
+	Status          string                `json:"status"`
+	PaidAt          *time.Time            `json:"paid_at,omitempty"`
+	Employee        *EmployeeListResponse `json:"employee,omitempty"`
+	CreatedAt       time.Time             `json:"created_at"`
+	UpdatedAt       time.Time             `json:"updated_at"`
+}
+
+// ===== 请假管理 =====
+
+// LeaveCreateRequest 请假申请创建请求
+type LeaveCreateRequest struct {
+	EmployeeID uint      `json:"employee_id" binding:"required"`
+	LeaveType  string    `json:"leave_type" binding:"required,oneof=annual sick personal maternity paternity emergency"`
+	StartDate  time.Time `json:"start_date" binding:"required"`
+	EndDate    time.Time `json:"end_date" binding:"required"`
+	Days       float64   `json:"days" binding:"required,min=0.5"`
+	Reason     string    `json:"reason" binding:"required,max=500"`
+}
+
+// LeaveUpdateRequest 请假申请更新请求
+type LeaveUpdateRequest struct {
+	LeaveType *string    `json:"leave_type,omitempty" binding:"omitempty,oneof=annual sick personal maternity paternity emergency"`
+	StartDate *time.Time `json:"start_date,omitempty"`
+	EndDate   *time.Time `json:"end_date,omitempty"`
+	Days      *float64   `json:"days,omitempty" binding:"omitempty,min=0.5"`
+	Reason    *string    `json:"reason,omitempty" binding:"omitempty,max=500"`
+}
+
+// LeaveApprovalRequest 请假审批请求
+type LeaveApprovalRequest struct {
+	Status   string `json:"status" binding:"required,oneof=approved rejected"`
+	Comments string `json:"comments,omitempty" binding:"omitempty,max=500"`
+}
+
+// LeaveResponse 请假申请响应
+type LeaveResponse struct {
+	ID           uint                  `json:"id"`
+	EmployeeID   uint                  `json:"employee_id"`
+	LeaveType    string                `json:"leave_type"`
+	StartDate    time.Time             `json:"start_date"`
+	EndDate      time.Time             `json:"end_date"`
+	Days         float64               `json:"days"`
+	Reason       string                `json:"reason"`
+	Status       string                `json:"status"`
+	ApprovedBy   *uint                 `json:"approved_by,omitempty"`
+	ApprovedAt   *time.Time            `json:"approved_at,omitempty"`
+	Employee     *EmployeeListResponse `json:"employee,omitempty"`
+	ApprovedUser *EmployeeListResponse `json:"approved_user,omitempty"`
+	CreatedAt    time.Time             `json:"created_at"`
+	UpdatedAt    time.Time             `json:"updated_at"`
+}
+
+// LeaveListResponse 请假申请列表响应
+type LeaveListResponse struct {
+	ID           uint      `json:"id"`
+	EmployeeID   uint      `json:"employee_id"`
+	EmployeeName string    `json:"employee_name"`
+	LeaveType    string    `json:"leave_type"`
+	StartDate    time.Time `json:"start_date"`
+	EndDate      time.Time `json:"end_date"`
+	Days         float64   `json:"days"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// LeaveFilter 请假申请筛选条件
+type LeaveFilter struct {
+	PaginationRequest
+	EmployeeID *uint     `json:"employee_id,omitempty" form:"employee_id"`
+	LeaveType  string    `json:"leave_type,omitempty" form:"leave_type"`
+	Status     string    `json:"status,omitempty" form:"status"`
+	StartDate  *time.Time `json:"start_date,omitempty" form:"start_date"`
+	EndDate    *time.Time `json:"end_date,omitempty" form:"end_date"`
 }

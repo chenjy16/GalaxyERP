@@ -157,6 +157,7 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
       return null;
     }
 
+    // Fix: Ensure we're not passing the raw user object as props
     return <Component {...props} />;
   };
 }

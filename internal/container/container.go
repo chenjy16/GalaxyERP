@@ -21,6 +21,7 @@ type Container struct {
 	CustomerService     services.CustomerService
 	SalesOrderService   services.SalesOrderService
 	QuotationService    services.QuotationService
+	SalesInvoiceService services.SalesInvoiceService
 	ProductService      services.ProductService
 	
 	// Purchase Services
@@ -34,6 +35,16 @@ type Container struct {
 	MilestoneService   services.MilestoneService
 	TimeEntryService   services.TimeEntryService
 
+	// HR Services
+	EmployeeService   services.EmployeeService
+	AttendanceService services.AttendanceService
+	PayrollService    services.PayrollService
+	LeaveService      services.LeaveService
+
+	// Accounting Services
+	AccountService      services.AccountService
+	JournalEntryService services.JournalEntryService
+
 	// Controllers
 	UserController       *controllers.UserController
 	InventoryController  *controllers.InventoryController
@@ -42,6 +53,7 @@ type Container struct {
 	SystemController     *controllers.SystemController
 	PurchaseController   *controllers.PurchaseController
 	ProjectController    *controllers.ProjectController
+	AccountingController *controllers.AccountingController
 }
 
 // NewContainer 创建新的依赖注入容器
@@ -83,6 +95,16 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	milestoneRepo := repositories.NewMilestoneRepository(c.DB)
 	timeEntryRepo := repositories.NewTimeEntryRepository(c.DB)
 
+	// HR repositories
+	employeeRepo := repositories.NewEmployeeRepository(c.DB)
+	attendanceRepo := repositories.NewAttendanceRepository(c.DB)
+	payrollRepo := repositories.NewPayrollRepository(c.DB)
+	leaveRepo := repositories.NewLeaveRepository(c.DB)
+
+	// Accounting repositories
+	accountRepo := repositories.NewAccountRepository(c.DB)
+	journalEntryRepo := repositories.NewJournalEntryRepository(c.DB)
+
 	// 初始化服务
 	c.UserService = services.NewUserService(userRepo, jwtSecret, jwtExpiryHours)
 	c.ItemService = services.NewItemService(itemRepo)
@@ -92,6 +114,7 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	c.CustomerService = services.NewCustomerService(customerRepo)
 	c.SalesOrderService = services.NewSalesOrderService(salesOrderRepo, customerRepo)
 	c.QuotationService = services.NewQuotationService(quotationRepo, customerRepo)
+	c.SalesInvoiceService = services.NewSalesInvoiceService(c.DB)
 	c.ProductService = services.NewProductService(productRepo)
 	
 	// Purchase services
@@ -104,6 +127,16 @@ func (c *Container) initServices(jwtSecret string, jwtExpiryHours int) {
 	c.TaskService = services.NewTaskService(taskRepo)
 	c.MilestoneService = services.NewMilestoneService(milestoneRepo)
 	c.TimeEntryService = services.NewTimeEntryService(timeEntryRepo)
+
+	// HR services
+	c.EmployeeService = services.NewEmployeeService(employeeRepo)
+	c.AttendanceService = services.NewAttendanceService(attendanceRepo, employeeRepo)
+	c.PayrollService = services.NewPayrollService(payrollRepo, employeeRepo)
+	c.LeaveService = services.NewLeaveService(leaveRepo, employeeRepo)
+
+	// Accounting services
+	c.AccountService = services.NewAccountService(accountRepo)
+	c.JournalEntryService = services.NewJournalEntryService(journalEntryRepo, accountRepo)
 }
 
 // initControllers 初始化控制器层
@@ -113,7 +146,7 @@ func (c *Container) initControllers() {
 	
 	c.UserController = controllers.NewUserController(c.UserService)
 	c.InventoryController = controllers.NewInventoryController(c.ItemService, c.StockService, c.WarehouseService, c.MovementService)
-	c.SalesController = controllers.NewSalesController(c.CustomerService, c.SalesOrderService, c.QuotationService)
+	c.SalesController = controllers.NewSalesController(c.CustomerService, c.SalesOrderService, c.QuotationService, c.SalesInvoiceService)
 	c.ProductionController = controllers.NewProductionController(c.ProductService)
 	c.SystemController = controllers.NewSystemController()
 	
@@ -131,5 +164,11 @@ func (c *Container) initControllers() {
 		c.TaskService,
 		c.MilestoneService,
 		c.TimeEntryService,
+	)
+
+	// Accounting Controller
+	c.AccountingController = controllers.NewAccountingController(
+		c.AccountService,
+		c.JournalEntryService,
 	)
 }

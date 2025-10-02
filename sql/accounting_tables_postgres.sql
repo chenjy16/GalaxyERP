@@ -10,31 +10,21 @@
 
 -- 会计科目表
 CREATE TABLE IF NOT EXISTS accounts (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
   code VARCHAR(50) NOT NULL,
   name VARCHAR(255) NOT NULL,
   description TEXT NULL,
-  parent_id BIGINT NULL,
-  level INTEGER DEFAULT 1,
-  path VARCHAR(500) NULL,
-  account_type VARCHAR(20) NOT NULL,
-  balance_type VARCHAR(10) NOT NULL,
-  is_leaf BOOLEAN DEFAULT TRUE,
-  is_system BOOLEAN DEFAULT FALSE,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  opening_balance DECIMAL(15,2) DEFAULT 0,
-  current_balance DECIMAL(15,2) DEFAULT 0,
-  status VARCHAR(20) DEFAULT 'ACTIVE',
+  account_type VARCHAR(50) NOT NULL,
+  balance DECIMAL(15,2) DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  parent_id INTEGER NULL,
+  currency VARCHAR(10) DEFAULT 'USD',
   CONSTRAINT uq_accounts_code UNIQUE (code),
   CONSTRAINT fk_accounts_parent FOREIGN KEY (parent_id) REFERENCES accounts(id) ON DELETE SET NULL,
-  CONSTRAINT chk_accounts_account_type CHECK (account_type IN ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
-  CONSTRAINT chk_accounts_balance_type CHECK (balance_type IN ('DEBIT', 'CREDIT'))
+  CONSTRAINT chk_accounts_account_type CHECK (account_type IN ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'))
 );
 CREATE INDEX IF NOT EXISTS idx_accounts_deleted_at ON accounts (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_accounts_is_active ON accounts (is_active);
@@ -54,9 +44,9 @@ CREATE INDEX IF NOT EXISTS idx_accounts_name ON accounts (name);
 -- 会计期间表
 CREATE TABLE IF NOT EXISTS fiscal_periods (
   id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
+  created_at TIMESTAMP WITH TIME ZONE NULL,
+  updated_at TIMESTAMP WITH TIME ZONE NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
   created_by BIGINT NULL,
   updated_by BIGINT NULL,
   is_active BOOLEAN DEFAULT TRUE,
@@ -65,11 +55,11 @@ CREATE TABLE IF NOT EXISTS fiscal_periods (
   description TEXT NULL,
   year INTEGER NOT NULL,
   period INTEGER NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
   is_closed BOOLEAN DEFAULT FALSE,
   closed_by BIGINT NULL,
-  closed_at TIMESTAMP NULL,
+  closed_at TIMESTAMP WITH TIME ZONE NULL,
   status VARCHAR(20) DEFAULT 'OPEN',
   CONSTRAINT uq_fiscal_periods_code UNIQUE (code),
   CONSTRAINT uq_fiscal_periods_year_period UNIQUE (year, period),
@@ -89,408 +79,496 @@ CREATE INDEX IF NOT EXISTS idx_fiscal_periods_status ON fiscal_periods (status);
 -- 会计凭证管理
 -- ============================================================================
 
--- 会计凭证表
+-- 会计分录表
 CREATE TABLE IF NOT EXISTS journal_entries (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  fiscal_period_id BIGINT NOT NULL,
-  entry_date DATE NOT NULL,
-  reference_type VARCHAR(50) NULL,
-  reference_id BIGINT NULL,
-  reference_number VARCHAR(100) NULL,
-  description TEXT NOT NULL,
-  total_debit DECIMAL(15,2) DEFAULT 0,
-  total_credit DECIMAL(15,2) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  exchange_rate DECIMAL(10,4) DEFAULT 1,
-  prepared_by BIGINT NULL,
-  reviewed_by BIGINT NULL,
-  approved_by BIGINT NULL,
-  posted_by BIGINT NULL,
-  posted_at TIMESTAMP NULL,
-  status VARCHAR(20) DEFAULT 'DRAFT',
-  CONSTRAINT uq_journal_entries_code UNIQUE (code),
-  CONSTRAINT fk_journal_entries_fiscal_period FOREIGN KEY (fiscal_period_id) REFERENCES fiscal_periods(id) ON DELETE CASCADE,
-  CONSTRAINT fk_journal_entries_prepared_by FOREIGN KEY (prepared_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT fk_journal_entries_reviewed_by FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT fk_journal_entries_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT fk_journal_entries_posted_by FOREIGN KEY (posted_by) REFERENCES users(id) ON DELETE SET NULL
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  transaction_id INTEGER NOT NULL,
+  account_id INTEGER NOT NULL,
+  debit DECIMAL(15,2) DEFAULT 0,
+  credit DECIMAL(15,2) DEFAULT 0,
+  description TEXT NULL,
+  CONSTRAINT fk_journal_entries_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_journal_entries_deleted_at ON journal_entries (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_is_active ON journal_entries (is_active);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_code ON journal_entries (code);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_fiscal_period_id ON journal_entries (fiscal_period_id);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_entry_date ON journal_entries (entry_date);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_reference_type ON journal_entries (reference_type);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_reference_id ON journal_entries (reference_id);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_status ON journal_entries (status);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_prepared_by ON journal_entries (prepared_by);
-CREATE INDEX IF NOT EXISTS idx_journal_entries_posted_at ON journal_entries (posted_at);
-
--- 会计凭证明细表
-CREATE TABLE IF NOT EXISTS journal_entry_lines (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  journal_entry_id BIGINT NOT NULL,
-  line_number INTEGER NOT NULL,
-  account_id BIGINT NOT NULL,
-  description TEXT NULL,
-  debit_amount DECIMAL(15,2) DEFAULT 0,
-  credit_amount DECIMAL(15,2) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  exchange_rate DECIMAL(10,4) DEFAULT 1,
-  cost_center_id BIGINT NULL,
-  project_id BIGINT NULL,
-  CONSTRAINT fk_journal_entry_lines_journal_entry FOREIGN KEY (journal_entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE,
-  CONSTRAINT fk_journal_entry_lines_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_journal_entry_lines_cost_center FOREIGN KEY (cost_center_id) REFERENCES departments(id) ON DELETE SET NULL,
-  CONSTRAINT fk_journal_entry_lines_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
-  CONSTRAINT chk_journal_entry_lines_amount CHECK ((debit_amount > 0 AND credit_amount = 0) OR (debit_amount = 0 AND credit_amount > 0))
-);
-CREATE INDEX IF NOT EXISTS idx_journal_entry_lines_deleted_at ON journal_entry_lines (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_journal_entry_lines_journal_entry_id ON journal_entry_lines (journal_entry_id);
-CREATE INDEX IF NOT EXISTS idx_journal_entry_lines_account_id ON journal_entry_lines (account_id);
-CREATE INDEX IF NOT EXISTS idx_journal_entry_lines_cost_center_id ON journal_entry_lines (cost_center_id);
-CREATE INDEX IF NOT EXISTS idx_journal_entry_lines_project_id ON journal_entry_lines (project_id);
-CREATE INDEX IF NOT EXISTS idx_journal_entry_lines_line_number ON journal_entry_lines (line_number);
-
--- ============================================================================
--- 总账管理
--- ============================================================================
-
--- 总账余额表
-CREATE TABLE IF NOT EXISTS general_ledger_balances (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  account_id BIGINT NOT NULL,
-  fiscal_period_id BIGINT NOT NULL,
-  opening_balance DECIMAL(15,2) DEFAULT 0,
-  debit_amount DECIMAL(15,2) DEFAULT 0,
-  credit_amount DECIMAL(15,2) DEFAULT 0,
-  closing_balance DECIMAL(15,2) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  CONSTRAINT fk_general_ledger_balances_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-  CONSTRAINT fk_general_ledger_balances_fiscal_period FOREIGN KEY (fiscal_period_id) REFERENCES fiscal_periods(id) ON DELETE CASCADE,
-  CONSTRAINT uq_general_ledger_balances_account_period UNIQUE (account_id, fiscal_period_id)
-);
-CREATE INDEX IF NOT EXISTS idx_general_ledger_balances_deleted_at ON general_ledger_balances (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_general_ledger_balances_account_id ON general_ledger_balances (account_id);
-CREATE INDEX IF NOT EXISTS idx_general_ledger_balances_fiscal_period_id ON general_ledger_balances (fiscal_period_id);
-
--- ============================================================================
--- 应收账款管理
--- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_journal_entries_transaction_id ON journal_entries (transaction_id);
+CREATE INDEX IF NOT EXISTS idx_journal_entries_account_id ON journal_entries (account_id);
 
 -- 应收账款表
-CREATE TABLE IF NOT EXISTS accounts_receivable (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  customer_id BIGINT NOT NULL,
-  sales_invoice_id BIGINT NULL,
+CREATE TABLE IF NOT EXISTS receivables (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  customer_id INTEGER NOT NULL,
+  invoice_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  due_date TIMESTAMP WITH TIME ZONE NOT NULL,
   invoice_number VARCHAR(100) NOT NULL,
-  invoice_date DATE NOT NULL,
-  due_date DATE NOT NULL,
-  original_amount DECIMAL(15,2) NOT NULL,
-  paid_amount DECIMAL(15,2) DEFAULT 0,
-  balance_amount DECIMAL(15,2) NOT NULL,
-  currency VARCHAR(10) DEFAULT 'CNY',
+  description TEXT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  amount_paid DECIMAL(15,2) DEFAULT 0,
+  currency VARCHAR(10) DEFAULT 'USD',
   exchange_rate DECIMAL(10,4) DEFAULT 1,
-  payment_terms INTEGER DEFAULT 30,
-  overdue_days INTEGER DEFAULT 0,
-  aging_bucket VARCHAR(20) DEFAULT 'CURRENT',
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'OPEN',
-  CONSTRAINT uq_accounts_receivable_code UNIQUE (code),
-  CONSTRAINT fk_accounts_receivable_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_accounts_receivable_sales_invoice FOREIGN KEY (sales_invoice_id) REFERENCES sales_invoices(id) ON DELETE SET NULL
+  status VARCHAR(50) DEFAULT 'open',
+  CONSTRAINT fk_receivables_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_deleted_at ON accounts_receivable (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_is_active ON accounts_receivable (is_active);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_code ON accounts_receivable (code);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_customer_id ON accounts_receivable (customer_id);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_sales_invoice_id ON accounts_receivable (sales_invoice_id);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_due_date ON accounts_receivable (due_date);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_aging_bucket ON accounts_receivable (aging_bucket);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_status ON accounts_receivable (status);
-CREATE INDEX IF NOT EXISTS idx_accounts_receivable_invoice_date ON accounts_receivable (invoice_date);
-
--- ============================================================================
--- 应付账款管理
--- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_receivables_deleted_at ON receivables (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_receivables_customer_id ON receivables (customer_id);
+CREATE INDEX IF NOT EXISTS idx_receivables_invoice_date ON receivables (invoice_date);
+CREATE INDEX IF NOT EXISTS idx_receivables_due_date ON receivables (due_date);
+CREATE INDEX IF NOT EXISTS idx_receivables_status ON receivables (status);
 
 -- 应付账款表
-CREATE TABLE IF NOT EXISTS accounts_payable (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  supplier_id BIGINT NOT NULL,
-  purchase_invoice_id BIGINT NULL,
+CREATE TABLE IF NOT EXISTS payables (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  supplier_id INTEGER NOT NULL,
+  invoice_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  due_date TIMESTAMP WITH TIME ZONE NOT NULL,
   invoice_number VARCHAR(100) NOT NULL,
-  invoice_date DATE NOT NULL,
-  due_date DATE NOT NULL,
-  original_amount DECIMAL(15,2) NOT NULL,
-  paid_amount DECIMAL(15,2) DEFAULT 0,
-  balance_amount DECIMAL(15,2) NOT NULL,
-  currency VARCHAR(10) DEFAULT 'CNY',
+  description TEXT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  amount_paid DECIMAL(15,2) DEFAULT 0,
+  currency VARCHAR(10) DEFAULT 'USD',
   exchange_rate DECIMAL(10,4) DEFAULT 1,
-  payment_terms INTEGER DEFAULT 30,
-  overdue_days INTEGER DEFAULT 0,
-  aging_bucket VARCHAR(20) DEFAULT 'CURRENT',
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'OPEN',
-  CONSTRAINT uq_accounts_payable_code UNIQUE (code),
-  CONSTRAINT fk_accounts_payable_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_accounts_payable_purchase_invoice FOREIGN KEY (purchase_invoice_id) REFERENCES purchase_invoices(id) ON DELETE SET NULL
+  status VARCHAR(50) DEFAULT 'open',
+  CONSTRAINT fk_payables_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_deleted_at ON accounts_payable (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_is_active ON accounts_payable (is_active);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_code ON accounts_payable (code);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_supplier_id ON accounts_payable (supplier_id);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_purchase_invoice_id ON accounts_payable (purchase_invoice_id);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_due_date ON accounts_payable (due_date);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_aging_bucket ON accounts_payable (aging_bucket);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_status ON accounts_payable (status);
-CREATE INDEX IF NOT EXISTS idx_accounts_payable_invoice_date ON accounts_payable (invoice_date);
+CREATE INDEX IF NOT EXISTS idx_payables_deleted_at ON payables (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_payables_supplier_id ON payables (supplier_id);
+CREATE INDEX IF NOT EXISTS idx_payables_invoice_date ON payables (invoice_date);
+CREATE INDEX IF NOT EXISTS idx_payables_due_date ON payables (due_date);
+CREATE INDEX IF NOT EXISTS idx_payables_status ON payables (status);
 
--- ============================================================================
--- 付款管理
--- ============================================================================
-
--- 付款单表
+-- 付款表
 CREATE TABLE IF NOT EXISTS payments (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  payment_type VARCHAR(20) NOT NULL,
-  payee_type VARCHAR(20) NOT NULL,
-  payee_id BIGINT NOT NULL,
-  payment_date DATE NOT NULL,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  payment_number VARCHAR(100) NOT NULL,
+  payment_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  payment_type VARCHAR(50) NOT NULL,
   amount DECIMAL(15,2) NOT NULL,
   currency VARCHAR(10) DEFAULT 'CNY',
   exchange_rate DECIMAL(10,4) DEFAULT 1,
-  payment_method VARCHAR(20) NOT NULL,
-  bank_account_id BIGINT NULL,
-  reference_number VARCHAR(100) NULL,
-  description TEXT NULL,
+  payer_type VARCHAR(50) NOT NULL,
+  payer_id INTEGER NOT NULL,
+  payee_type VARCHAR(50) NOT NULL,
+  payee_id INTEGER NOT NULL,
+  bank_account_id INTEGER NULL,
+  reference_type VARCHAR(50) NULL,
+  reference_id INTEGER NULL,
+  status VARCHAR(50) DEFAULT 'pending',
   notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_payments_code UNIQUE (code),
+  CONSTRAINT uq_payments_payment_number UNIQUE (payment_number),
   CONSTRAINT fk_payments_bank_account FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL,
-  CONSTRAINT fk_payments_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT chk_payments_payment_type CHECK (payment_type IN ('SUPPLIER', 'EMPLOYEE', 'OTHER')),
-  CONSTRAINT chk_payments_payee_type CHECK (payee_type IN ('SUPPLIER', 'EMPLOYEE', 'OTHER')),
-  CONSTRAINT chk_payments_payment_method CHECK (payment_method IN ('CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'))
+  CONSTRAINT fk_payments_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_payments_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_payments_deleted_at ON payments (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_payments_is_active ON payments (is_active);
-CREATE INDEX IF NOT EXISTS idx_payments_code ON payments (code);
+CREATE INDEX IF NOT EXISTS idx_payments_payment_number ON payments (payment_number);
+CREATE INDEX IF NOT EXISTS idx_payments_payment_date ON payments (payment_date);
 CREATE INDEX IF NOT EXISTS idx_payments_payment_type ON payments (payment_type);
+CREATE INDEX IF NOT EXISTS idx_payments_payer_type ON payments (payer_type);
+CREATE INDEX IF NOT EXISTS idx_payments_payer_id ON payments (payer_id);
 CREATE INDEX IF NOT EXISTS idx_payments_payee_type ON payments (payee_type);
 CREATE INDEX IF NOT EXISTS idx_payments_payee_id ON payments (payee_id);
-CREATE INDEX IF NOT EXISTS idx_payments_payment_date ON payments (payment_date);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status);
 CREATE INDEX IF NOT EXISTS idx_payments_bank_account_id ON payments (bank_account_id);
 
--- 付款明细表
-CREATE TABLE IF NOT EXISTS payment_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  payment_id BIGINT NOT NULL,
-  reference_type VARCHAR(50) NOT NULL,
-  reference_id BIGINT NOT NULL,
-  amount DECIMAL(15,2) NOT NULL,
-  discount_amount DECIMAL(15,2) DEFAULT 0,
-  notes TEXT NULL,
-  CONSTRAINT fk_payment_items_payment FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_payment_items_deleted_at ON payment_items (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_payment_items_payment_id ON payment_items (payment_id);
-CREATE INDEX IF NOT EXISTS idx_payment_items_reference_type ON payment_items (reference_type);
-CREATE INDEX IF NOT EXISTS idx_payment_items_reference_id ON payment_items (reference_id);
-
--- ============================================================================
--- 收款管理
--- ============================================================================
-
--- 收款单表
-CREATE TABLE IF NOT EXISTS receipts_ar (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  customer_id BIGINT NOT NULL,
-  receipt_date DATE NOT NULL,
-  amount DECIMAL(15,2) NOT NULL,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  exchange_rate DECIMAL(10,4) DEFAULT 1,
-  payment_method VARCHAR(20) NOT NULL,
-  bank_account_id BIGINT NULL,
-  reference_number VARCHAR(100) NULL,
-  description TEXT NULL,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_receipts_ar_code UNIQUE (code),
-  CONSTRAINT fk_receipts_ar_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_receipts_ar_bank_account FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE SET NULL,
-  CONSTRAINT fk_receipts_ar_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT chk_receipts_ar_payment_method CHECK (payment_method IN ('CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'))
-);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_deleted_at ON receipts_ar (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_is_active ON receipts_ar (is_active);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_code ON receipts_ar (code);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_customer_id ON receipts_ar (customer_id);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_receipt_date ON receipts_ar (receipt_date);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_status ON receipts_ar (status);
-CREATE INDEX IF NOT EXISTS idx_receipts_ar_bank_account_id ON receipts_ar (bank_account_id);
-
--- 收款明细表
-CREATE TABLE IF NOT EXISTS receipt_ar_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  receipt_id BIGINT NOT NULL,
-  accounts_receivable_id BIGINT NOT NULL,
-  amount DECIMAL(15,2) NOT NULL,
-  discount_amount DECIMAL(15,2) DEFAULT 0,
-  notes TEXT NULL,
-  CONSTRAINT fk_receipt_ar_items_receipt FOREIGN KEY (receipt_id) REFERENCES receipts_ar(id) ON DELETE CASCADE,
-  CONSTRAINT fk_receipt_ar_items_accounts_receivable FOREIGN KEY (accounts_receivable_id) REFERENCES accounts_receivable(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_receipt_ar_items_deleted_at ON receipt_ar_items (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_receipt_ar_items_receipt_id ON receipt_ar_items (receipt_id);
-CREATE INDEX IF NOT EXISTS idx_receipt_ar_items_accounts_receivable_id ON receipt_ar_items (accounts_receivable_id);
-
--- ============================================================================
--- 银行账户管理
--- ============================================================================
-
 -- 银行账户表
 CREATE TABLE IF NOT EXISTS bank_accounts (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  account_name VARCHAR(255) NOT NULL,
   bank_name VARCHAR(255) NOT NULL,
-  bank_branch VARCHAR(255) NULL,
   account_number VARCHAR(100) NOT NULL,
-  account_type VARCHAR(20) DEFAULT 'CHECKING',
-  currency VARCHAR(10) DEFAULT 'CNY',
-  opening_balance DECIMAL(15,2) DEFAULT 0,
-  current_balance DECIMAL(15,2) DEFAULT 0,
+  iban VARCHAR(100) NULL,
+  swift_code VARCHAR(50) NULL,
+  currency VARCHAR(10) DEFAULT 'USD',
+  balance DECIMAL(15,2) DEFAULT 0,
   is_default BOOLEAN DEFAULT FALSE,
-  status VARCHAR(20) DEFAULT 'ACTIVE',
-  CONSTRAINT uq_bank_accounts_code UNIQUE (code),
+  is_active BOOLEAN DEFAULT TRUE,
+  account_id INTEGER NULL,
   CONSTRAINT uq_bank_accounts_account_number UNIQUE (account_number),
-  CONSTRAINT chk_bank_accounts_account_type CHECK (account_type IN ('CHECKING', 'SAVINGS', 'CREDIT', 'OTHER'))
+  CONSTRAINT fk_bank_accounts_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_deleted_at ON bank_accounts (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_is_active ON bank_accounts (is_active);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_code ON bank_accounts (code);
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_number ON bank_accounts (account_number);
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_currency ON bank_accounts (currency);
 CREATE INDEX IF NOT EXISTS idx_bank_accounts_is_default ON bank_accounts (is_default);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_status ON bank_accounts (status);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_name ON bank_accounts (name);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_is_active ON bank_accounts (is_active);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_name ON bank_accounts (account_name);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_account_id ON bank_accounts (account_id);
+
+-- 预算表
+CREATE TABLE IF NOT EXISTS budgets (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  budget_name VARCHAR(255) NOT NULL,
+  budget_year INTEGER NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  total_amount DECIMAL(15,2) NOT NULL,
+  used_amount DECIMAL(15,2) DEFAULT 0,
+  remaining_amount DECIMAL(15,2) DEFAULT 0,
+  status VARCHAR(50) DEFAULT 'draft',
+  CONSTRAINT fk_budgets_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_budgets_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_budgets_deleted_at ON budgets (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_budgets_budget_year ON budgets (budget_year);
+CREATE INDEX IF NOT EXISTS idx_budgets_start_date ON budgets (start_date);
+CREATE INDEX IF NOT EXISTS idx_budgets_end_date ON budgets (end_date);
+CREATE INDEX IF NOT EXISTS idx_budgets_status ON budgets (status);
+
+-- 预算明细表
+CREATE TABLE IF NOT EXISTS budget_items (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  budget_id INTEGER NOT NULL,
+  account_id INTEGER NOT NULL,
+  budget_amount DECIMAL(15,2) NOT NULL,
+  actual_amount DECIMAL(15,2) DEFAULT 0,
+  variance_amount DECIMAL(15,2) DEFAULT 0,
+  notes TEXT NULL,
+  CONSTRAINT fk_budget_items_budget FOREIGN KEY (budget_id) REFERENCES budgets(id) ON DELETE CASCADE,
+  CONSTRAINT fk_budget_items_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_budget_items_deleted_at ON budget_items (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_budget_items_budget_id ON budget_items (budget_id);
+CREATE INDEX IF NOT EXISTS idx_budget_items_account_id ON budget_items (account_id);
+
+-- 成本中心表
+CREATE TABLE IF NOT EXISTS cost_centers (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  code VARCHAR(50) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  manager_id INTEGER NULL,
+  department_id INTEGER NULL,
+  CONSTRAINT uq_cost_centers_code UNIQUE (code),
+  CONSTRAINT fk_cost_centers_manager FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE SET NULL,
+  CONSTRAINT fk_cost_centers_department FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cost_centers_deleted_at ON cost_centers (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_cost_centers_code ON cost_centers (code);
+CREATE INDEX IF NOT EXISTS idx_cost_centers_is_active ON cost_centers (is_active);
+CREATE INDEX IF NOT EXISTS idx_cost_centers_manager_id ON cost_centers (manager_id);
+CREATE INDEX IF NOT EXISTS idx_cost_centers_department_id ON cost_centers (department_id);
+
+-- 财务报表表
+CREATE TABLE IF NOT EXISTS financial_reports (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  report_name VARCHAR(255) NOT NULL,
+  report_type VARCHAR(50) NOT NULL,
+  period_type VARCHAR(50) NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(50) DEFAULT 'draft',
+  file_path VARCHAR(500) NULL,
+  CONSTRAINT fk_financial_reports_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_financial_reports_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_financial_reports_deleted_at ON financial_reports (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_financial_reports_report_type ON financial_reports (report_type);
+CREATE INDEX IF NOT EXISTS idx_financial_reports_period_type ON financial_reports (period_type);
+CREATE INDEX IF NOT EXISTS idx_financial_reports_start_date ON financial_reports (start_date);
+CREATE INDEX IF NOT EXISTS idx_financial_reports_end_date ON financial_reports (end_date);
+CREATE INDEX IF NOT EXISTS idx_financial_reports_status ON financial_reports (status);
+
+-- 财务报表明细表
+CREATE TABLE IF NOT EXISTS financial_report_items (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  report_id INTEGER NOT NULL,
+  account_id INTEGER NOT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  percentage DECIMAL(5,2) DEFAULT 0,
+  CONSTRAINT fk_financial_report_items_report FOREIGN KEY (report_id) REFERENCES financial_reports(id) ON DELETE CASCADE,
+  CONSTRAINT fk_financial_report_items_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_financial_report_items_deleted_at ON financial_report_items (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_financial_report_items_report_id ON financial_report_items (report_id);
+CREATE INDEX IF NOT EXISTS idx_financial_report_items_account_id ON financial_report_items (account_id);
+
+-- 交易记录表
+CREATE TABLE IF NOT EXISTS transactions (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  transaction_number VARCHAR(100) NOT NULL,
+  transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  transaction_type VARCHAR(50) NOT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  currency VARCHAR(10) DEFAULT 'CNY',
+  exchange_rate DECIMAL(10,4) DEFAULT 1,
+  description TEXT NOT NULL,
+  reference_type VARCHAR(50) NULL,
+  reference_id INTEGER NULL,
+  status VARCHAR(50) DEFAULT 'pending',
+  notes TEXT NULL,
+  CONSTRAINT uq_transactions_transaction_number UNIQUE (transaction_number),
+  CONSTRAINT fk_transactions_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_transactions_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_transactions_deleted_at ON transactions (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_transactions_transaction_number ON transactions (transaction_number);
+CREATE INDEX IF NOT EXISTS idx_transactions_transaction_date ON transactions (transaction_date);
+CREATE INDEX IF NOT EXISTS idx_transactions_transaction_type ON transactions (transaction_type);
+CREATE INDEX IF NOT EXISTS idx_transactions_reference_type ON transactions (reference_type);
+CREATE INDEX IF NOT EXISTS idx_transactions_reference_id ON transactions (reference_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions (status);
+
+-- 固定资产表
+CREATE TABLE IF NOT EXISTS fixed_assets (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  asset_number VARCHAR(100) NOT NULL,
+  asset_name VARCHAR(255) NOT NULL,
+  asset_category VARCHAR(100) NOT NULL,
+  purchase_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  purchase_price DECIMAL(15,2) NOT NULL,
+  current_value DECIMAL(15,2) DEFAULT 0,
+  depreciation_rate DECIMAL(5,2) DEFAULT 0,
+  useful_life INTEGER DEFAULT 0,
+  location VARCHAR(255) NULL,
+  status VARCHAR(50) DEFAULT 'active',
+  notes TEXT NULL,
+  CONSTRAINT uq_fixed_assets_asset_number UNIQUE (asset_number),
+  CONSTRAINT fk_fixed_assets_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_fixed_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fixed_assets_deleted_at ON fixed_assets (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_fixed_assets_asset_number ON fixed_assets (asset_number);
+CREATE INDEX IF NOT EXISTS idx_fixed_assets_asset_category ON fixed_assets (asset_category);
+CREATE INDEX IF NOT EXISTS idx_fixed_assets_purchase_date ON fixed_assets (purchase_date);
+CREATE INDEX IF NOT EXISTS idx_fixed_assets_status ON fixed_assets (status);
+
+-- 折旧记录表
+CREATE TABLE IF NOT EXISTS depreciation_entries (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  asset_id INTEGER NOT NULL,
+  depreciation_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  depreciation_amount DECIMAL(15,2) NOT NULL,
+  accumulated_amount DECIMAL(15,2) DEFAULT 0,
+  book_value DECIMAL(15,2) DEFAULT 0,
+  method VARCHAR(50) NOT NULL,
+  notes TEXT NULL,
+  CONSTRAINT fk_depreciation_entries_asset FOREIGN KEY (asset_id) REFERENCES fixed_assets(id) ON DELETE CASCADE,
+  CONSTRAINT fk_depreciation_entries_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_depreciation_entries_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_depreciation_entries_deleted_at ON depreciation_entries (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_depreciation_entries_asset_id ON depreciation_entries (asset_id);
+CREATE INDEX IF NOT EXISTS idx_depreciation_entries_depreciation_date ON depreciation_entries (depreciation_date);
+
+-- 税务记录表
+CREATE TABLE IF NOT EXISTS tax_entries (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  tax_number VARCHAR(100) NOT NULL,
+  tax_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  tax_type VARCHAR(50) NOT NULL,
+  taxable_amount DECIMAL(15,2) NOT NULL,
+  tax_rate DECIMAL(5,2) NOT NULL,
+  tax_amount DECIMAL(15,2) NOT NULL,
+  status VARCHAR(50) DEFAULT 'pending',
+  notes TEXT NULL,
+  CONSTRAINT uq_tax_entries_tax_number UNIQUE (tax_number),
+  CONSTRAINT fk_tax_entries_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_tax_entries_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tax_entries_deleted_at ON tax_entries (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_tax_entries_tax_number ON tax_entries (tax_number);
+CREATE INDEX IF NOT EXISTS idx_tax_entries_tax_date ON tax_entries (tax_date);
+CREATE INDEX IF NOT EXISTS idx_tax_entries_tax_type ON tax_entries (tax_type);
+CREATE INDEX IF NOT EXISTS idx_tax_entries_status ON tax_entries (status);
+
+-- 货币表
+CREATE TABLE IF NOT EXISTS currencies (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  currency_code VARCHAR(3) NOT NULL,
+  currency_name VARCHAR(100) NOT NULL,
+  symbol VARCHAR(10) NOT NULL,
+  exchange_rate DECIMAL(10,4) DEFAULT 1.0000,
+  is_active BOOLEAN DEFAULT true,
+  CONSTRAINT uq_currencies_currency_code UNIQUE (currency_code),
+  CONSTRAINT fk_currencies_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_currencies_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_currencies_deleted_at ON currencies (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_currencies_currency_code ON currencies (currency_code);
+CREATE INDEX IF NOT EXISTS idx_currencies_is_active ON currencies (is_active);
+
+-- 会计年度表
+CREATE TABLE IF NOT EXISTS fiscal_years (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  year_name VARCHAR(100) NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  is_current BOOLEAN DEFAULT false,
+  is_closed BOOLEAN DEFAULT false,
+  CONSTRAINT uq_fiscal_years_year_name UNIQUE (year_name),
+  CONSTRAINT fk_fiscal_years_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_fiscal_years_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fiscal_years_deleted_at ON fiscal_years (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_fiscal_years_start_date ON fiscal_years (start_date);
+CREATE INDEX IF NOT EXISTS idx_fiscal_years_end_date ON fiscal_years (end_date);
+CREATE INDEX IF NOT EXISTS idx_fiscal_years_is_current ON fiscal_years (is_current);
+
+-- 会计期间表
+CREATE TABLE IF NOT EXISTS accounting_periods (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  fiscal_year_id INTEGER NOT NULL,
+  period_name VARCHAR(100) NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  is_current BOOLEAN DEFAULT false,
+  is_closed BOOLEAN DEFAULT false,
+  CONSTRAINT fk_accounting_periods_fiscal_year FOREIGN KEY (fiscal_year_id) REFERENCES fiscal_years(id) ON DELETE CASCADE,
+  CONSTRAINT fk_accounting_periods_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_accounting_periods_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_accounting_periods_deleted_at ON accounting_periods (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_accounting_periods_fiscal_year_id ON accounting_periods (fiscal_year_id);
+CREATE INDEX IF NOT EXISTS idx_accounting_periods_start_date ON accounting_periods (start_date);
+CREATE INDEX IF NOT EXISTS idx_accounting_periods_end_date ON accounting_periods (end_date);
+CREATE INDEX IF NOT EXISTS idx_accounting_periods_is_current ON accounting_periods (is_current);
 
 -- ============================================================================
 -- 初始数据插入
 -- ============================================================================
 
 -- 插入默认会计科目
-INSERT INTO accounts (code, name, description, account_type, balance_type, level, is_leaf, is_system, status, is_active) VALUES
+INSERT INTO accounts (code, name, description, account_type, balance, is_active, parent_id, currency) VALUES
 -- 资产类
-('1000', '资产', '资产类科目', 'ASSET', 'DEBIT', 1, FALSE, TRUE, 'ACTIVE', TRUE),
-('1001', '流动资产', '流动资产', 'ASSET', 'DEBIT', 2, FALSE, TRUE, 'ACTIVE', TRUE),
-('100101', '库存现金', '库存现金', 'ASSET', 'DEBIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
-('100102', '银行存款', '银行存款', 'ASSET', 'DEBIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
-('100103', '应收账款', '应收账款', 'ASSET', 'DEBIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
-('100104', '预付账款', '预付账款', 'ASSET', 'DEBIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
-('100105', '存货', '存货', 'ASSET', 'DEBIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
+('1000', '资产', '资产类科目', 'ASSET', 0, TRUE, NULL, 'USD'),
+('1001', '流动资产', '流动资产', 'ASSET', 0, TRUE, NULL, 'USD'),
+('100101', '库存现金', '库存现金', 'ASSET', 0, TRUE, NULL, 'USD'),
+('100102', '银行存款', '银行存款', 'ASSET', 0, TRUE, NULL, 'USD'),
+('100103', '应收账款', '应收账款', 'ASSET', 0, TRUE, NULL, 'USD'),
+('100104', '预付账款', '预付账款', 'ASSET', 0, TRUE, NULL, 'USD'),
+('100105', '存货', '存货', 'ASSET', 0, TRUE, NULL, 'USD'),
 -- 负债类
-('2000', '负债', '负债类科目', 'LIABILITY', 'CREDIT', 1, FALSE, TRUE, 'ACTIVE', TRUE),
-('2001', '流动负债', '流动负债', 'LIABILITY', 'CREDIT', 2, FALSE, TRUE, 'ACTIVE', TRUE),
-('200101', '应付账款', '应付账款', 'LIABILITY', 'CREDIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
-('200102', '预收账款', '预收账款', 'LIABILITY', 'CREDIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
-('200103', '应付职工薪酬', '应付职工薪酬', 'LIABILITY', 'CREDIT', 3, TRUE, TRUE, 'ACTIVE', TRUE),
+('2000', '负债', '负债类科目', 'LIABILITY', 0, TRUE, NULL, 'USD'),
+('2001', '流动负债', '流动负债', 'LIABILITY', 0, TRUE, NULL, 'USD'),
+('200101', '应付账款', '应付账款', 'LIABILITY', 0, TRUE, NULL, 'USD'),
+('200102', '预收账款', '预收账款', 'LIABILITY', 0, TRUE, NULL, 'USD'),
+('200103', '应付职工薪酬', '应付职工薪酬', 'LIABILITY', 0, TRUE, NULL, 'USD'),
 -- 所有者权益类
-('3000', '所有者权益', '所有者权益类科目', 'EQUITY', 'CREDIT', 1, FALSE, TRUE, 'ACTIVE', TRUE),
-('300101', '实收资本', '实收资本', 'EQUITY', 'CREDIT', 2, TRUE, TRUE, 'ACTIVE', TRUE),
-('300102', '未分配利润', '未分配利润', 'EQUITY', 'CREDIT', 2, TRUE, TRUE, 'ACTIVE', TRUE),
+('3000', '所有者权益', '所有者权益类科目', 'EQUITY', 0, TRUE, NULL, 'USD'),
+('300101', '实收资本', '实收资本', 'EQUITY', 0, TRUE, NULL, 'USD'),
+('300102', '未分配利润', '未分配利润', 'EQUITY', 0, TRUE, NULL, 'USD'),
 -- 收入类
-('4000', '收入', '收入类科目', 'REVENUE', 'CREDIT', 1, FALSE, TRUE, 'ACTIVE', TRUE),
-('400101', '主营业务收入', '主营业务收入', 'REVENUE', 'CREDIT', 2, TRUE, TRUE, 'ACTIVE', TRUE),
-('400102', '其他业务收入', '其他业务收入', 'REVENUE', 'CREDIT', 2, TRUE, TRUE, 'ACTIVE', TRUE),
+('4000', '收入', '收入类科目', 'REVENUE', 0, TRUE, NULL, 'USD'),
+('400101', '主营业务收入', '主营业务收入', 'REVENUE', 0, TRUE, NULL, 'USD'),
+('400102', '其他业务收入', '其他业务收入', 'REVENUE', 0, TRUE, NULL, 'USD'),
 -- 费用类
-('5000', '费用', '费用类科目', 'EXPENSE', 'DEBIT', 1, FALSE, TRUE, 'ACTIVE', TRUE),
-('500101', '主营业务成本', '主营业务成本', 'EXPENSE', 'DEBIT', 2, TRUE, TRUE, 'ACTIVE', TRUE),
-('500102', '销售费用', '销售费用', 'EXPENSE', 'DEBIT', 2, TRUE, TRUE, 'ACTIVE', TRUE),
-('500103', '管理费用', '管理费用', 'EXPENSE', 'DEBIT', 2, TRUE, TRUE, 'ACTIVE', TRUE)
+('5000', '费用', '费用类科目', 'EXPENSE', 0, TRUE, NULL, 'USD'),
+('500101', '主营业务成本', '主营业务成本', 'EXPENSE', 0, TRUE, NULL, 'USD'),
+('500102', '销售费用', '销售费用', 'EXPENSE', 0, TRUE, NULL, 'USD'),
+('500103', '管理费用', '管理费用', 'EXPENSE', 0, TRUE, NULL, 'USD')
 ON CONFLICT (code) DO NOTHING;
 
 -- 更新父子关系
 UPDATE accounts SET parent_id = (SELECT id FROM accounts WHERE code = '1000') WHERE code IN ('1001');
+
+-- 插入示例数据
+INSERT INTO bank_accounts (account_name, bank_name, account_number, currency, balance, is_default, is_active, created_at, updated_at) VALUES
+('主营业务账户', '中国银行', '6217001234567890123', 'CNY', 100000.00, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('美元账户', '中国银行', '6217001234567890124', 'USD', 15000.00, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('备用账户', '工商银行', '6222001234567890125', 'CNY', 50000.00, FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (account_number) DO NOTHING;
+
+INSERT INTO currencies (currency_code, currency_name, symbol, exchange_rate, is_active, created_at, updated_at) VALUES
+('CNY', '人民币', '¥', 1.0000, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('USD', '美元', '$', 7.2500, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('EUR', '欧元', '€', 7.8500, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('JPY', '日元', '¥', 0.0650, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (currency_code) DO NOTHING;
+
+INSERT INTO fiscal_years (year_name, start_date, end_date, is_current, is_closed, created_at, updated_at) VALUES
+('2024年度', '2024-01-01 00:00:00+00', '2024-12-31 23:59:59+00', TRUE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('2023年度', '2023-01-01 00:00:00+00', '2023-12-31 23:59:59+00', FALSE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('2025年度', '2025-01-01 00:00:00+00', '2025-12-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (year_name) DO NOTHING;
 UPDATE accounts SET parent_id = (SELECT id FROM accounts WHERE code = '1001') WHERE code IN ('100101', '100102', '100103', '100104', '100105');
 UPDATE accounts SET parent_id = (SELECT id FROM accounts WHERE code = '2000') WHERE code IN ('2001');
 UPDATE accounts SET parent_id = (SELECT id FROM accounts WHERE code = '2001') WHERE code IN ('200101', '200102', '200103');
 
 -- 插入当前会计期间
-INSERT INTO fiscal_periods (code, name, year, period, start_date, end_date, status, is_active) VALUES
-('2024-01', '2024年1月', 2024, 1, '2024-01-01', '2024-01-31', 'OPEN', TRUE),
-('2024-02', '2024年2月', 2024, 2, '2024-02-01', '2024-02-29', 'OPEN', TRUE),
-('2024-03', '2024年3月', 2024, 3, '2024-03-01', '2024-03-31', 'OPEN', TRUE),
-('2024-04', '2024年4月', 2024, 4, '2024-04-01', '2024-04-30', 'OPEN', TRUE),
-('2024-05', '2024年5月', 2024, 5, '2024-05-01', '2024-05-31', 'OPEN', TRUE),
-('2024-06', '2024年6月', 2024, 6, '2024-06-01', '2024-06-30', 'OPEN', TRUE),
-('2024-07', '2024年7月', 2024, 7, '2024-07-01', '2024-07-31', 'OPEN', TRUE),
-('2024-08', '2024年8月', 2024, 8, '2024-08-01', '2024-08-31', 'OPEN', TRUE),
-('2024-09', '2024年9月', 2024, 9, '2024-09-01', '2024-09-30', 'OPEN', TRUE),
-('2024-10', '2024年10月', 2024, 10, '2024-10-01', '2024-10-31', 'OPEN', TRUE),
-('2024-11', '2024年11月', 2024, 11, '2024-11-01', '2024-11-30', 'OPEN', TRUE),
-('2024-12', '2024年12月', 2024, 12, '2024-12-01', '2024-12-31', 'OPEN', TRUE)
-ON CONFLICT (code) DO NOTHING;
+INSERT INTO accounting_periods (fiscal_year_id, period_name, start_date, end_date, is_current, is_closed, created_at, updated_at) VALUES
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年1月', '2024-01-01 00:00:00+00', '2024-01-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年2月', '2024-02-01 00:00:00+00', '2024-02-29 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年3月', '2024-03-01 00:00:00+00', '2024-03-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年4月', '2024-04-01 00:00:00+00', '2024-04-30 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年5月', '2024-05-01 00:00:00+00', '2024-05-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年6月', '2024-06-01 00:00:00+00', '2024-06-30 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年7月', '2024-07-01 00:00:00+00', '2024-07-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年8月', '2024-08-01 00:00:00+00', '2024-08-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年9月', '2024-09-01 00:00:00+00', '2024-09-30 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年10月', '2024-10-01 00:00:00+00', '2024-10-31 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年11月', '2024-11-01 00:00:00+00', '2024-11-30 23:59:59+00', FALSE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+((SELECT id FROM fiscal_years WHERE year_name = '2024年度'), '2024年12月', '2024-12-01 00:00:00+00', '2024-12-31 23:59:59+00', TRUE, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- 插入默认银行账户
 INSERT INTO bank_accounts (code, name, description, bank_name, account_number, account_type, currency, opening_balance, current_balance, is_default, status, is_active) VALUES

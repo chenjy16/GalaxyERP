@@ -352,10 +352,10 @@ export default function ProjectPage() {
       key: 'budget',
       render: (record: any) => (
         <div>
-          <Text strong style={{ color: '#52c41a' }}>¥{record.budget.toLocaleString()}</Text>
+          <Text strong style={{ color: '#52c41a' }}>¥{record.budget ? record.budget.toLocaleString() : '0.00'}</Text>
           <br />
           <Text type="secondary" style={{ fontSize: 12 }}>
-            已用: ¥{record.spent.toLocaleString()}
+            已用: ¥{record.spent ? record.spent.toLocaleString() : '0.00'}
           </Text>
         </div>
       ),

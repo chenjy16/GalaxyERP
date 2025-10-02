@@ -315,7 +315,7 @@ export default function HRPage() {
       dataIndex: 'salary',
       key: 'salary',
       render: (salary: number) => (
-        <Text strong style={{ color: '#52c41a' }}>¥{salary.toLocaleString()}</Text>
+        <Text strong style={{ color: '#52c41a' }}>¥{salary ? salary.toLocaleString() : '0.00'}</Text>
       ),
     },
     {
@@ -466,7 +466,7 @@ export default function HRPage() {
       title: '基本工资',
       dataIndex: 'baseSalary',
       key: 'baseSalary',
-      render: (amount: number) => `¥${amount.toLocaleString()}`,
+      render: (amount: number) => `¥${amount ? amount.toLocaleString() : '0.00'}`,
     },
     {
       title: '加班费',
@@ -491,7 +491,7 @@ export default function HRPage() {
       dataIndex: 'netSalary',
       key: 'netSalary',
       render: (amount: number) => (
-        <Text strong style={{ color: '#52c41a' }}>¥{amount.toLocaleString()}</Text>
+        <Text strong style={{ color: '#52c41a' }}>¥{amount ? amount.toLocaleString() : '0.00'}</Text>
       ),
     },
     {

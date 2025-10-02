@@ -8,10 +8,11 @@ import (
 
 // SalesController 销售控制器
 type SalesController struct {
-	customerService    services.CustomerService
-	salesOrderService  services.SalesOrderService
-	quotationService   services.QuotationService
-	utils             *ControllerUtils
+	customerService     services.CustomerService
+	salesOrderService   services.SalesOrderService
+	quotationService    services.QuotationService
+	salesInvoiceService services.SalesInvoiceService
+	utils              *ControllerUtils
 }
 
 // NewSalesController 创建销售控制器实例
@@ -19,12 +20,14 @@ func NewSalesController(
 	customerService services.CustomerService,
 	salesOrderService services.SalesOrderService,
 	quotationService services.QuotationService,
+	salesInvoiceService services.SalesInvoiceService,
 ) *SalesController {
 	return &SalesController{
-		customerService:   customerService,
-		salesOrderService: salesOrderService,
-		quotationService:  quotationService,
-		utils:            NewControllerUtils(),
+		customerService:     customerService,
+		salesOrderService:   salesOrderService,
+		quotationService:    quotationService,
+		salesInvoiceService: salesInvoiceService,
+		utils:              NewControllerUtils(),
 	}
 }
 
@@ -544,4 +547,200 @@ func (c *SalesController) SearchQuotations(ctx *gin.Context) {
 	}
 
 	c.utils.RespondOK(ctx, response)
+}
+
+// ==================== 销售发票管理 ====================
+
+// CreateSalesInvoice 创建销售发票
+// @Summary 创建销售发票
+// @Description 创建新的销售发票
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param invoice body dto.SalesInvoiceCreateRequest true "销售发票信息"
+// @Success 201 {object} dto.SalesInvoiceResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices [post]
+func (c *SalesController) CreateSalesInvoice(ctx *gin.Context) {
+	var req dto.SalesInvoiceCreateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	invoice, err := c.salesInvoiceService.CreateSalesInvoice(ctx, &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "创建销售发票失败")
+		return
+	}
+
+	c.utils.RespondCreated(ctx, invoice)
+}
+
+// GetSalesInvoice 获取销售发票详情
+// @Summary 获取销售发票详情
+// @Description 根据ID获取销售发票详情
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Success 200 {object} dto.SalesInvoiceResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id} [get]
+func (c *SalesController) GetSalesInvoice(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	invoice, err := c.salesInvoiceService.GetSalesInvoice(id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取销售发票失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, invoice)
+}
+
+// UpdateSalesInvoice 更新销售发票
+// @Summary 更新销售发票
+// @Description 更新销售发票信息
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Param invoice body dto.SalesInvoiceUpdateRequest true "销售发票信息"
+// @Success 200 {object} dto.SalesInvoiceResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id} [put]
+func (c *SalesController) UpdateSalesInvoice(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	var req dto.SalesInvoiceUpdateRequest
+	if !c.utils.BindJSON(ctx, &req) {
+		return
+	}
+
+	invoice, err := c.salesInvoiceService.UpdateSalesInvoice(ctx, id, &req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "更新销售发票失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, invoice)
+}
+
+// DeleteSalesInvoice 删除销售发票
+// @Summary 删除销售发票
+// @Description 删除销售发票
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Success 200 {object} dto.BaseResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id} [delete]
+func (c *SalesController) DeleteSalesInvoice(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	err := c.salesInvoiceService.DeleteSalesInvoice(ctx, id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "删除销售发票失败")
+		return
+	}
+
+	c.utils.RespondSuccess(ctx, "删除销售发票成功")
+}
+
+// ListSalesInvoices 获取销售发票列表
+// @Summary 获取销售发票列表
+// @Description 获取销售发票列表，支持分页
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Success 200 {object} dto.PaginatedResponse[dto.SalesInvoiceResponse]
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices [get]
+func (c *SalesController) ListSalesInvoices(ctx *gin.Context) {
+	pagination := c.utils.ParsePaginationParams(ctx)
+	
+	req := &dto.SalesInvoiceListRequest{
+		PaginationRequest: *pagination,
+	}
+
+	response, err := c.salesInvoiceService.ListSalesInvoices(req)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "获取销售发票列表失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, response)
+}
+
+// SubmitSalesInvoice 提交销售发票
+// @Summary 提交销售发票
+// @Description 提交销售发票进行审批
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Success 200 {object} dto.SalesInvoiceResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id}/submit [put]
+func (c *SalesController) SubmitSalesInvoice(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	invoice, err := c.salesInvoiceService.SubmitSalesInvoice(ctx, id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "提交销售发票失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, invoice)
+}
+
+// CancelSalesInvoice 取消销售发票
+// @Summary 取消销售发票
+// @Description 取消销售发票
+// @Tags 销售发票管理
+// @Accept json
+// @Produce json
+// @Param id path int true "销售发票ID"
+// @Success 200 {object} dto.SalesInvoiceResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /api/v1/sales-invoices/{id}/cancel [put]
+func (c *SalesController) CancelSalesInvoice(ctx *gin.Context) {
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return
+	}
+
+	invoice, err := c.salesInvoiceService.CancelSalesInvoice(ctx, id)
+	if err != nil {
+		c.utils.RespondInternalError(ctx, "取消销售发票失败")
+		return
+	}
+
+	c.utils.RespondOK(ctx, invoice)
 }

@@ -265,10 +265,10 @@ export default function ProductionPage() {
       key: 'quantity',
       render: (record: any) => (
         <div>
-          <Text strong>{record.quantity.toLocaleString()}</Text>
+          <Text strong>{record.quantity ? record.quantity.toLocaleString() : '0'}</Text>
           <br />
           <Text type="secondary" style={{ fontSize: 12 }}>
-            已完成: {record.completedQuantity.toLocaleString()}
+            已完成: {record.completedQuantity ? record.completedQuantity.toLocaleString() : '0'}
           </Text>
         </div>
       ),
@@ -407,7 +407,7 @@ export default function ProductionPage() {
       dataIndex: 'totalCost',
       key: 'totalCost',
       render: (cost: number) => (
-        <Text strong style={{ color: '#52c41a' }}>¥{cost.toLocaleString()}</Text>
+        <Text strong style={{ color: '#52c41a' }}>¥{cost ? cost.toLocaleString() : '0.00'}</Text>
       ),
     },
     {

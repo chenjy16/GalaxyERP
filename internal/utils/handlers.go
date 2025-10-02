@@ -61,3 +61,13 @@ func RespondWithSuccess(c *gin.Context, data interface{}, statusCode int) {
 func RespondWithError(c *gin.Context, message string, statusCode int) {
 	c.JSON(statusCode, gin.H{"error": message})
 }
+
+// GetUserIDFromContext extracts user ID from gin context
+func GetUserIDFromContext(c *gin.Context) uint {
+	if userID, exists := c.Get("user_id"); exists {
+		if id, ok := userID.(uint); ok {
+			return id
+		}
+	}
+	return 0 // Return 0 if user ID not found or invalid
+}

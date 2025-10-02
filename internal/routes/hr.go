@@ -3,75 +3,64 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/galaxyerp/galaxyErp/internal/container"
+	"github.com/galaxyerp/galaxyErp/internal/controllers"
 )
 
 // RegisterHRRoutes 注册人力资源相关路由
 func RegisterHRRoutes(router *gin.RouterGroup, container *container.Container) {
+	// 创建HR控制器
+	hrController := controllers.NewHRController(
+		container.EmployeeService,
+		container.AttendanceService,
+		container.PayrollService,
+		container.LeaveService,
+	)
+
+	// HR模块路由组
+	hr := router.Group("/hr")
+
 	// 员工管理
-	employees := router.Group("/employees")
+	employees := hr.Group("/employees")
 	{
-		employees.POST("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		employees.GET("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		employees.GET("/:id", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		employees.PUT("/:id", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		employees.DELETE("/:id", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
+		employees.POST("/", hrController.CreateEmployee)
+		employees.GET("/", hrController.GetEmployees)
+		employees.POST("/search", hrController.SearchEmployees)
+		employees.GET("/:id", hrController.GetEmployee)
+		employees.PUT("/:id", hrController.UpdateEmployee)
+		employees.DELETE("/:id", hrController.DeleteEmployee)
+		employees.GET("/:id/leaves", hrController.GetEmployeeLeaves)
 	}
 
 	// 考勤管理
-	attendance := router.Group("/attendance")
+	attendance := hr.Group("/attendance")
 	{
-		attendance.POST("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		attendance.GET("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		attendance.GET("/employee/:employee_id", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
+		attendance.POST("/", hrController.CreateAttendance)
+		attendance.GET("/", hrController.GetAttendanceList)
+		attendance.GET("/:id", hrController.GetAttendance)
+		attendance.PUT("/:id", hrController.UpdateAttendance)
+		attendance.DELETE("/:id", hrController.DeleteAttendance)
 	}
 
 	// 薪资管理
-	payroll := router.Group("/payroll")
+	payroll := hr.Group("/payroll")
 	{
-		payroll.POST("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		payroll.GET("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		payroll.GET("/employee/:employee_id", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
+		payroll.POST("/", hrController.CreatePayroll)
+		payroll.GET("/", hrController.GetPayrollList)
+		payroll.GET("/:id", hrController.GetPayroll)
+		payroll.PUT("/:id", hrController.UpdatePayroll)
+		payroll.DELETE("/:id", hrController.DeletePayroll)
 	}
 
 	// 请假管理
-	leave := router.Group("/leave")
+	leaves := hr.Group("/leaves")
 	{
-		leave.POST("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		leave.GET("/", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		leave.GET("/employee/:employee_id", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		leave.PUT("/:id/approve", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
-		leave.PUT("/:id/reject", func(c *gin.Context) {
-			c.JSON(501, gin.H{"message": "人力资源功能待实现"})
-		})
+		leaves.POST("/", hrController.CreateLeave)
+		leaves.GET("/", hrController.GetLeaveList)
+		leaves.GET("/pending", hrController.GetPendingLeaves)
+		leaves.GET("/:id", hrController.GetLeave)
+		leaves.PUT("/:id", hrController.UpdateLeave)
+		leaves.DELETE("/:id", hrController.DeleteLeave)
+		leaves.POST("/:id/approve", hrController.ApproveLeave)
+		leaves.POST("/:id/cancel", hrController.CancelLeave)
 	}
 }

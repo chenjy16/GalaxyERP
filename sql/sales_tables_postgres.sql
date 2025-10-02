@@ -10,106 +10,37 @@
 
 -- 客户表
 CREATE TABLE IF NOT EXISTS customers (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  type VARCHAR(20) DEFAULT 'INDIVIDUAL',
-  industry VARCHAR(100) NULL,
-  tax_number VARCHAR(100) NULL,
-  registration_number VARCHAR(100) NULL,
-  website VARCHAR(255) NULL,
-  phone VARCHAR(50) NULL,
-  email VARCHAR(255) NULL,
-  fax VARCHAR(50) NULL,
-  address TEXT NULL,
-  billing_address TEXT NULL,
-  shipping_address TEXT NULL,
-  credit_limit DECIMAL(15,2) DEFAULT 0,
-  payment_terms INTEGER DEFAULT 30,
-  discount_rate DECIMAL(5,2) DEFAULT 0,
-  sales_rep_id BIGINT NULL,
-  status VARCHAR(20) DEFAULT 'ACTIVE',
-  CONSTRAINT uq_customers_code UNIQUE (code),
-  CONSTRAINT fk_customers_sales_rep FOREIGN KEY (sales_rep_id) REFERENCES employees(id) ON DELETE SET NULL
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL,
+    created_by INTEGER NULL,
+    updated_by INTEGER NULL,
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(255),
+    address VARCHAR(255),
+    city VARCHAR(255),
+    state VARCHAR(255),
+    postal_code VARCHAR(255),
+    country VARCHAR(255),
+    contact_person VARCHAR(255),
+    credit_limit DECIMAL(15,2) DEFAULT 0,
+    customer_group VARCHAR(255),
+    territory VARCHAR(255),
+    is_active BOOLEAN DEFAULT true,
+    CONSTRAINT fk_customers_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_customers_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_customers_deleted_at ON customers (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_customers_is_active ON customers (is_active);
 CREATE INDEX IF NOT EXISTS idx_customers_code ON customers (code);
-CREATE INDEX IF NOT EXISTS idx_customers_type ON customers (type);
-CREATE INDEX IF NOT EXISTS idx_customers_status ON customers (status);
-CREATE INDEX IF NOT EXISTS idx_customers_sales_rep_id ON customers (sales_rep_id);
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers (name);
+CREATE INDEX IF NOT EXISTS idx_customers_is_active ON customers (is_active);
+CREATE INDEX IF NOT EXISTS idx_customers_customer_group ON customers (customer_group);
+CREATE INDEX IF NOT EXISTS idx_customers_territory ON customers (territory);
 
--- 客户联系人表
-CREATE TABLE IF NOT EXISTS customer_contacts (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  customer_id BIGINT NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  title VARCHAR(100) NULL,
-  department VARCHAR(100) NULL,
-  phone VARCHAR(50) NULL,
-  mobile VARCHAR(50) NULL,
-  email VARCHAR(255) NULL,
-  is_primary BOOLEAN DEFAULT FALSE,
-  notes TEXT NULL,
-  CONSTRAINT fk_customer_contacts_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_customer_contacts_deleted_at ON customer_contacts (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_customer_contacts_customer_id ON customer_contacts (customer_id);
-CREATE INDEX IF NOT EXISTS idx_customer_contacts_is_primary ON customer_contacts (is_primary);
-CREATE INDEX IF NOT EXISTS idx_customer_contacts_name ON customer_contacts (name);
 
--- ============================================================================
--- 销售机会管理
--- ============================================================================
-
--- 销售机会表
-CREATE TABLE IF NOT EXISTS opportunities (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  customer_id BIGINT NOT NULL,
-  sales_rep_id BIGINT NOT NULL,
-  stage VARCHAR(50) DEFAULT 'PROSPECTING',
-  probability DECIMAL(5,2) DEFAULT 0,
-  estimated_value DECIMAL(15,2) DEFAULT 0,
-  expected_close_date DATE NULL,
-  actual_close_date DATE NULL,
-  source VARCHAR(100) NULL,
-  competitor VARCHAR(255) NULL,
-  next_action TEXT NULL,
-  status VARCHAR(20) DEFAULT 'OPEN',
-  CONSTRAINT uq_opportunities_code UNIQUE (code),
-  CONSTRAINT fk_opportunities_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_opportunities_sales_rep FOREIGN KEY (sales_rep_id) REFERENCES employees(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_opportunities_deleted_at ON opportunities (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_opportunities_is_active ON opportunities (is_active);
-CREATE INDEX IF NOT EXISTS idx_opportunities_code ON opportunities (code);
-CREATE INDEX IF NOT EXISTS idx_opportunities_customer_id ON opportunities (customer_id);
-CREATE INDEX IF NOT EXISTS idx_opportunities_sales_rep_id ON opportunities (sales_rep_id);
-CREATE INDEX IF NOT EXISTS idx_opportunities_stage ON opportunities (stage);
-CREATE INDEX IF NOT EXISTS idx_opportunities_status ON opportunities (status);
-CREATE INDEX IF NOT EXISTS idx_opportunities_expected_close_date ON opportunities (expected_close_date);
 
 -- ============================================================================
 -- 报价管理
@@ -117,62 +48,59 @@ CREATE INDEX IF NOT EXISTS idx_opportunities_expected_close_date ON opportunitie
 
 -- 报价单表
 CREATE TABLE IF NOT EXISTS quotations (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  customer_id BIGINT NOT NULL,
-  opportunity_id BIGINT NULL,
-  sales_rep_id BIGINT NOT NULL,
-  quote_date DATE NOT NULL,
-  valid_until DATE NOT NULL,
-  subtotal DECIMAL(15,2) DEFAULT 0,
-  tax_amount DECIMAL(15,2) DEFAULT 0,
-  discount_amount DECIMAL(15,2) DEFAULT 0,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  quotation_number VARCHAR(255) UNIQUE NOT NULL,
+  customer_id INTEGER NOT NULL,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  valid_till TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(255) DEFAULT 'Draft',
+  subject VARCHAR(255),
   total_amount DECIMAL(15,2) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  payment_terms INTEGER DEFAULT 30,
-  delivery_terms TEXT NULL,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'DRAFT',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_quotations_code UNIQUE (code),
+  discount_amount DECIMAL(15,2) DEFAULT 0,
+  tax_amount DECIMAL(15,2) DEFAULT 0,
+  grand_total DECIMAL(15,2) DEFAULT 0,
+  terms TEXT,
+  notes TEXT,
   CONSTRAINT fk_quotations_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quotations_opportunity FOREIGN KEY (opportunity_id) REFERENCES opportunities(id) ON DELETE SET NULL,
-  CONSTRAINT fk_quotations_sales_rep FOREIGN KEY (sales_rep_id) REFERENCES employees(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quotations_approved_by FOREIGN KEY (approved_by) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT fk_quotations_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_quotations_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_quotations_deleted_at ON quotations (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_quotations_is_active ON quotations (is_active);
-CREATE INDEX IF NOT EXISTS idx_quotations_code ON quotations (code);
+CREATE INDEX IF NOT EXISTS idx_quotations_quotation_number ON quotations (quotation_number);
 CREATE INDEX IF NOT EXISTS idx_quotations_customer_id ON quotations (customer_id);
-CREATE INDEX IF NOT EXISTS idx_quotations_opportunity_id ON quotations (opportunity_id);
-CREATE INDEX IF NOT EXISTS idx_quotations_sales_rep_id ON quotations (sales_rep_id);
 CREATE INDEX IF NOT EXISTS idx_quotations_status ON quotations (status);
-CREATE INDEX IF NOT EXISTS idx_quotations_quote_date ON quotations (quote_date);
-CREATE INDEX IF NOT EXISTS idx_quotations_valid_until ON quotations (valid_until);
+CREATE INDEX IF NOT EXISTS idx_quotations_date ON quotations (date);
+CREATE INDEX IF NOT EXISTS idx_quotations_valid_till ON quotations (valid_till);
+CREATE INDEX IF NOT EXISTS idx_quotations_created_by ON quotations (created_by);
 
 -- 报价单明细表
 CREATE TABLE IF NOT EXISTS quotation_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  quotation_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
-  quantity DECIMAL(15,4) NOT NULL,
-  unit_price DECIMAL(15,2) NOT NULL,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  quotation_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  description VARCHAR(255),
+  quantity DECIMAL(15,4) DEFAULT 1,
+  rate DECIMAL(15,2) DEFAULT 0,
+  amount DECIMAL(15,2) DEFAULT 0,
   discount_rate DECIMAL(5,2) DEFAULT 0,
   discount_amount DECIMAL(15,2) DEFAULT 0,
-  line_total DECIMAL(15,2) NOT NULL,
-  notes TEXT NULL,
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  tax_amount DECIMAL(15,2) DEFAULT 0,
+  total_amount DECIMAL(15,2) DEFAULT 0,
   CONSTRAINT fk_quotation_items_quotation FOREIGN KEY (quotation_id) REFERENCES quotations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quotation_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+  CONSTRAINT fk_quotation_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quotation_items_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_quotation_items_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_quotation_items_deleted_at ON quotation_items (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_quotation_items_quotation_id ON quotation_items (quotation_id);
@@ -184,129 +112,134 @@ CREATE INDEX IF NOT EXISTS idx_quotation_items_item_id ON quotation_items (item_
 
 -- 销售订单表
 CREATE TABLE IF NOT EXISTS sales_orders (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  customer_id BIGINT NOT NULL,
-  quotation_id BIGINT NULL,
-  sales_rep_id BIGINT NOT NULL,
-  order_date DATE NOT NULL,
-  required_date DATE NULL,
-  promised_date DATE NULL,
-  subtotal DECIMAL(15,2) DEFAULT 0,
-  tax_amount DECIMAL(15,2) DEFAULT 0,
-  discount_amount DECIMAL(15,2) DEFAULT 0,
-  shipping_amount DECIMAL(15,2) DEFAULT 0,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  order_number VARCHAR(255) UNIQUE NOT NULL,
+  customer_id INTEGER NOT NULL,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  delivery_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(255) DEFAULT 'Draft',
+  quotation_id INTEGER,
   total_amount DECIMAL(15,2) DEFAULT 0,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  payment_terms INTEGER DEFAULT 30,
-  shipping_address TEXT NULL,
-  billing_address TEXT NULL,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_sales_orders_code UNIQUE (code),
+  discount_amount DECIMAL(15,2) DEFAULT 0,
+  tax_amount DECIMAL(15,2) DEFAULT 0,
+  grand_total DECIMAL(15,2) DEFAULT 0,
+  terms TEXT,
+  notes TEXT,
   CONSTRAINT fk_sales_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
   CONSTRAINT fk_sales_orders_quotation FOREIGN KEY (quotation_id) REFERENCES quotations(id) ON DELETE SET NULL,
-  CONSTRAINT fk_sales_orders_sales_rep FOREIGN KEY (sales_rep_id) REFERENCES employees(id) ON DELETE CASCADE,
-  CONSTRAINT fk_sales_orders_approved_by FOREIGN KEY (approved_by) REFERENCES employees(id) ON DELETE SET NULL
+  CONSTRAINT fk_sales_orders_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_orders_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sales_orders_deleted_at ON sales_orders (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_sales_orders_is_active ON sales_orders (is_active);
-CREATE INDEX IF NOT EXISTS idx_sales_orders_code ON sales_orders (code);
+CREATE INDEX IF NOT EXISTS idx_sales_orders_order_number ON sales_orders (order_number);
 CREATE INDEX IF NOT EXISTS idx_sales_orders_customer_id ON sales_orders (customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_orders_quotation_id ON sales_orders (quotation_id);
-CREATE INDEX IF NOT EXISTS idx_sales_orders_sales_rep_id ON sales_orders (sales_rep_id);
 CREATE INDEX IF NOT EXISTS idx_sales_orders_status ON sales_orders (status);
-CREATE INDEX IF NOT EXISTS idx_sales_orders_order_date ON sales_orders (order_date);
-CREATE INDEX IF NOT EXISTS idx_sales_orders_required_date ON sales_orders (required_date);
+CREATE INDEX IF NOT EXISTS idx_sales_orders_date ON sales_orders (date);
+CREATE INDEX IF NOT EXISTS idx_sales_orders_delivery_date ON sales_orders (delivery_date);
+CREATE INDEX IF NOT EXISTS idx_sales_orders_created_by ON sales_orders (created_by);
 
 -- 销售订单明细表
 CREATE TABLE IF NOT EXISTS sales_order_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  sales_order_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
-  quantity DECIMAL(15,4) NOT NULL,
-  unit_price DECIMAL(15,2) NOT NULL,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  sales_order_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  description VARCHAR(255),
+  quantity DECIMAL(15,4) DEFAULT 1,
+  delivered_qty DECIMAL(15,4) DEFAULT 0,
+  rate DECIMAL(15,2) DEFAULT 0,
+  amount DECIMAL(15,2) DEFAULT 0,
   discount_rate DECIMAL(5,2) DEFAULT 0,
   discount_amount DECIMAL(15,2) DEFAULT 0,
-  line_total DECIMAL(15,2) NOT NULL,
-  delivered_quantity DECIMAL(15,4) DEFAULT 0,
-  remaining_quantity DECIMAL(15,4) NOT NULL,
-  notes TEXT NULL,
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  tax_amount DECIMAL(15,2) DEFAULT 0,
+  total_amount DECIMAL(15,2) DEFAULT 0,
+  warehouse_id INTEGER,
   CONSTRAINT fk_sales_order_items_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_sales_order_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+  CONSTRAINT fk_sales_order_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_sales_order_items_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_order_items_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_order_items_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sales_order_items_deleted_at ON sales_order_items (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_sales_order_items_sales_order_id ON sales_order_items (sales_order_id);
 CREATE INDEX IF NOT EXISTS idx_sales_order_items_item_id ON sales_order_items (item_id);
+CREATE INDEX IF NOT EXISTS idx_sales_order_items_warehouse_id ON sales_order_items (warehouse_id);
 
 -- ============================================================================
--- 发货管理
+-- 送货管理
 -- ============================================================================
 
--- 发货单表
-CREATE TABLE IF NOT EXISTS shipments (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  sales_order_id BIGINT NOT NULL,
-  customer_id BIGINT NOT NULL,
-  shipment_date DATE NOT NULL,
-  expected_delivery_date DATE NULL,
-  actual_delivery_date DATE NULL,
-  shipping_address TEXT NOT NULL,
-  carrier VARCHAR(255) NULL,
-  tracking_number VARCHAR(255) NULL,
-  shipping_cost DECIMAL(15,2) DEFAULT 0,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'PREPARING',
-  CONSTRAINT uq_shipments_code UNIQUE (code),
-  CONSTRAINT fk_shipments_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_shipments_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+-- 送货单表
+CREATE TABLE IF NOT EXISTS delivery_notes (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  delivery_number VARCHAR(255) UNIQUE NOT NULL,
+  customer_id INTEGER NOT NULL,
+  sales_order_id INTEGER,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(255) DEFAULT 'Draft',
+  total_quantity DECIMAL(15,4) DEFAULT 0,
+  transporter VARCHAR(255),
+  driver_name VARCHAR(255),
+  vehicle_number VARCHAR(255),
+  destination VARCHAR(255),
+  notes TEXT,
+  CONSTRAINT fk_delivery_notes_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+  CONSTRAINT fk_delivery_notes_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE SET NULL,
+  CONSTRAINT fk_delivery_notes_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_delivery_notes_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
-CREATE INDEX IF NOT EXISTS idx_shipments_deleted_at ON shipments (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_shipments_is_active ON shipments (is_active);
-CREATE INDEX IF NOT EXISTS idx_shipments_code ON shipments (code);
-CREATE INDEX IF NOT EXISTS idx_shipments_sales_order_id ON shipments (sales_order_id);
-CREATE INDEX IF NOT EXISTS idx_shipments_customer_id ON shipments (customer_id);
-CREATE INDEX IF NOT EXISTS idx_shipments_status ON shipments (status);
-CREATE INDEX IF NOT EXISTS idx_shipments_shipment_date ON shipments (shipment_date);
-CREATE INDEX IF NOT EXISTS idx_shipments_tracking_number ON shipments (tracking_number);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_deleted_at ON delivery_notes (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_delivery_number ON delivery_notes (delivery_number);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_customer_id ON delivery_notes (customer_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_sales_order_id ON delivery_notes (sales_order_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_date ON delivery_notes (date);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_status ON delivery_notes (status);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_created_by ON delivery_notes (created_by);
 
--- 发货单明细表
-CREATE TABLE IF NOT EXISTS shipment_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  shipment_id BIGINT NOT NULL,
-  sales_order_item_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
+-- 送货单明细表
+CREATE TABLE IF NOT EXISTS delivery_note_items (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  delivery_note_id INTEGER NOT NULL,
+  sales_order_item_id INTEGER,
+  item_id INTEGER NOT NULL,
+  description VARCHAR(255),
   quantity DECIMAL(15,4) NOT NULL,
-  notes TEXT NULL,
-  CONSTRAINT fk_shipment_items_shipment FOREIGN KEY (shipment_id) REFERENCES shipments(id) ON DELETE CASCADE,
-  CONSTRAINT fk_shipment_items_sales_order_item FOREIGN KEY (sales_order_item_id) REFERENCES sales_order_items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_shipment_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+  batch_no VARCHAR(255),
+  serial_no VARCHAR(255),
+  warehouse_id INTEGER,
+  CONSTRAINT fk_delivery_note_items_delivery_note FOREIGN KEY (delivery_note_id) REFERENCES delivery_notes(id) ON DELETE CASCADE,
+  CONSTRAINT fk_delivery_note_items_sales_order_item FOREIGN KEY (sales_order_item_id) REFERENCES sales_order_items(id) ON DELETE SET NULL,
+  CONSTRAINT fk_delivery_note_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_delivery_note_items_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL,
+  CONSTRAINT fk_delivery_note_items_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_delivery_note_items_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
-CREATE INDEX IF NOT EXISTS idx_shipment_items_deleted_at ON shipment_items (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_shipment_items_shipment_id ON shipment_items (shipment_id);
-CREATE INDEX IF NOT EXISTS idx_shipment_items_sales_order_item_id ON shipment_items (sales_order_item_id);
-CREATE INDEX IF NOT EXISTS idx_shipment_items_item_id ON shipment_items (item_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_note_items_deleted_at ON delivery_note_items (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_note_items_delivery_note_id ON delivery_note_items (delivery_note_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_note_items_sales_order_item_id ON delivery_note_items (sales_order_item_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_note_items_item_id ON delivery_note_items (item_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_note_items_warehouse_id ON delivery_note_items (warehouse_id);
 
 -- ============================================================================
 -- 销售发票管理
@@ -314,70 +247,196 @@ CREATE INDEX IF NOT EXISTS idx_shipment_items_item_id ON shipment_items (item_id
 
 -- 销售发票表
 CREATE TABLE IF NOT EXISTS sales_invoices (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  customer_id BIGINT NOT NULL,
-  sales_order_id BIGINT NULL,
-  invoice_date DATE NOT NULL,
-  due_date DATE NOT NULL,
-  subtotal DECIMAL(15,2) DEFAULT 0,
-  tax_amount DECIMAL(15,2) DEFAULT 0,
-  discount_amount DECIMAL(15,2) DEFAULT 0,
-  total_amount DECIMAL(15,2) DEFAULT 0,
-  paid_amount DECIMAL(15,2) DEFAULT 0,
-  balance_amount DECIMAL(15,2) DEFAULT 0,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  invoice_number VARCHAR(255) UNIQUE NOT NULL,
+  customer_id INTEGER NOT NULL,
+  sales_order_id INTEGER,
+  delivery_note_id INTEGER,
+  invoice_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  posting_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  doc_status VARCHAR(255) DEFAULT 'Draft',
+  payment_status VARCHAR(255) DEFAULT 'Unpaid',
   currency VARCHAR(10) DEFAULT 'CNY',
-  payment_terms INTEGER DEFAULT 30,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'DRAFT',
-  CONSTRAINT uq_sales_invoices_code UNIQUE (code),
+  exchange_rate DECIMAL(15,6) DEFAULT 1,
+  sub_total DECIMAL(15,2) DEFAULT 0,
+  discount_amount DECIMAL(15,2) DEFAULT 0,
+  tax_amount DECIMAL(15,2) DEFAULT 0,
+  shipping_amount DECIMAL(15,2) DEFAULT 0,
+  grand_total DECIMAL(15,2) DEFAULT 0,
+  outstanding_amount DECIMAL(15,2) DEFAULT 0,
+  paid_amount DECIMAL(15,2) DEFAULT 0,
+  billing_address TEXT,
+  shipping_address TEXT,
+  payment_terms VARCHAR(255),
+  payment_terms_days INTEGER,
+  sales_person_id INTEGER,
+  territory VARCHAR(255),
+  customer_po_number VARCHAR(255),
+  project VARCHAR(255),
+  cost_center VARCHAR(255),
+  terms TEXT,
+  notes TEXT,
   CONSTRAINT fk_sales_invoices_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_sales_invoices_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE SET NULL
+  CONSTRAINT fk_sales_invoices_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoices_delivery_note FOREIGN KEY (delivery_note_id) REFERENCES delivery_notes(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoices_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoices_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_deleted_at ON sales_invoices (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_sales_invoices_is_active ON sales_invoices (is_active);
-CREATE INDEX IF NOT EXISTS idx_sales_invoices_code ON sales_invoices (code);
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_invoice_number ON sales_invoices (invoice_number);
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_customer_id ON sales_invoices (customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_sales_order_id ON sales_invoices (sales_order_id);
-CREATE INDEX IF NOT EXISTS idx_sales_invoices_status ON sales_invoices (status);
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_delivery_note_id ON sales_invoices (delivery_note_id);
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_invoice_date ON sales_invoices (invoice_date);
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_due_date ON sales_invoices (due_date);
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_doc_status ON sales_invoices (doc_status);
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_payment_status ON sales_invoices (payment_status);
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_created_by ON sales_invoices (created_by);
 
 -- 销售发票明细表
 CREATE TABLE IF NOT EXISTS sales_invoice_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  sales_invoice_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  sales_invoice_id INTEGER NOT NULL,
+  sales_order_item_id INTEGER,
+  delivery_note_item_id INTEGER,
+  item_id INTEGER NOT NULL,
+  item_code VARCHAR(255) NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  description VARCHAR(255),
   quantity DECIMAL(15,4) NOT NULL,
-  unit_price DECIMAL(15,2) NOT NULL,
-  discount_rate DECIMAL(5,2) DEFAULT 0,
+  uom VARCHAR(50) NOT NULL,
+  conversion_factor DECIMAL(15,4) DEFAULT 1,
+  stock_uom VARCHAR(50),
+  rate DECIMAL(15,2) NOT NULL,
+  price_list_rate DECIMAL(15,2) DEFAULT 0,
+  amount DECIMAL(15,2) NOT NULL,
+  discount_percentage DECIMAL(5,2) DEFAULT 0,
   discount_amount DECIMAL(15,2) DEFAULT 0,
-  line_total DECIMAL(15,2) NOT NULL,
-  notes TEXT NULL,
+  tax_category VARCHAR(255),
+  tax_rate DECIMAL(5,2) DEFAULT 0,
+  tax_amount DECIMAL(15,2) DEFAULT 0,
+  net_rate DECIMAL(15,2) NOT NULL,
+  net_amount DECIMAL(15,2) NOT NULL,
+  warehouse_id INTEGER,
+  batch_no VARCHAR(255),
+  serial_no VARCHAR(255),
+  project VARCHAR(255),
+  cost_center VARCHAR(255),
   CONSTRAINT fk_sales_invoice_items_sales_invoice FOREIGN KEY (sales_invoice_id) REFERENCES sales_invoices(id) ON DELETE CASCADE,
-  CONSTRAINT fk_sales_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+  CONSTRAINT fk_sales_invoice_items_sales_order_item FOREIGN KEY (sales_order_item_id) REFERENCES sales_order_items(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoice_items_delivery_note_item FOREIGN KEY (delivery_note_item_id) REFERENCES delivery_note_items(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_sales_invoice_items_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoice_items_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_sales_invoice_items_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_deleted_at ON sales_invoice_items (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_sales_invoice_id ON sales_invoice_items (sales_invoice_id);
+CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_sales_order_item_id ON sales_invoice_items (sales_order_item_id);
+CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_delivery_note_item_id ON sales_invoice_items (delivery_note_item_id);
 CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_item_id ON sales_invoice_items (item_id);
+CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_warehouse_id ON sales_invoice_items (warehouse_id);
+
+-- 发票付款记录表
+CREATE TABLE IF NOT EXISTS invoice_payments (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP WITH TIME ZONE NULL,
+  created_by INTEGER NULL,
+  updated_by INTEGER NULL,
+  sales_invoice_id INTEGER NOT NULL,
+  payment_entry_id INTEGER,
+  payment_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  payment_method VARCHAR(255) NOT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  currency VARCHAR(10) DEFAULT 'CNY',
+  exchange_rate DECIMAL(15,6) DEFAULT 1,
+  reference_number VARCHAR(255),
+  bank_account_id INTEGER,
+  notes TEXT,
+  status VARCHAR(255) DEFAULT 'Pending',
+  CONSTRAINT fk_invoice_payments_sales_invoice FOREIGN KEY (sales_invoice_id) REFERENCES sales_invoices(id) ON DELETE CASCADE,
+  CONSTRAINT fk_invoice_payments_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_invoice_payments_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_deleted_at ON invoice_payments (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_sales_invoice_id ON invoice_payments (sales_invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_payment_entry_id ON invoice_payments (payment_entry_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_payment_date ON invoice_payments (payment_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_status ON invoice_payments (status);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_created_by ON invoice_payments (created_by);
+
+
+
+
+-- 定价规则表
+CREATE TABLE IF NOT EXISTS pricing_rules (
+  id SERIAL PRIMARY KEY,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_type VARCHAR(255) NOT NULL, -- 'discount', 'markup', 'fixed_price'
+  applicable_for VARCHAR(255) NOT NULL, -- 'item', 'item_group', 'customer', 'customer_group'
+  item_id INTEGER,
+  item_group VARCHAR(255),
+  customer_id INTEGER,
+  customer_group VARCHAR(255),
+  territory VARCHAR(255),
+  sales_person_id INTEGER,
+  min_quantity DECIMAL(15,4) DEFAULT 0,
+  max_quantity DECIMAL(15,4),
+  min_amount DECIMAL(15,2) DEFAULT 0,
+  max_amount DECIMAL(15,2),
+  valid_from TIMESTAMP WITH TIME ZONE,
+  valid_to TIMESTAMP WITH TIME ZONE,
+  rate DECIMAL(15,2),
+  discount_percentage DECIMAL(5,2),
+  margin_type VARCHAR(255),
+  margin_rate_or_amount DECIMAL(15,2),
+  currency VARCHAR(10) DEFAULT 'CNY',
+  price_list VARCHAR(255),
+  warehouse VARCHAR(255),
+  is_active BOOLEAN DEFAULT TRUE,
+  priority INTEGER DEFAULT 1,
+  company VARCHAR(255),
+  created_by INTEGER,
+  updated_by INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pricing_rules_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pricing_rules_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_pricing_rules_rule_type ON pricing_rules (rule_type);
+CREATE INDEX idx_pricing_rules_applicable_for ON pricing_rules (applicable_for);
+CREATE INDEX idx_pricing_rules_customer_group ON pricing_rules (customer_group);
+CREATE INDEX idx_pricing_rules_item_group ON pricing_rules (item_group);
+CREATE INDEX idx_pricing_rules_item_id ON pricing_rules (item_id);
+CREATE INDEX idx_pricing_rules_customer_id ON pricing_rules (customer_id);
+CREATE INDEX idx_pricing_rules_territory ON pricing_rules (territory);
+CREATE INDEX idx_pricing_rules_sales_person_id ON pricing_rules (sales_person_id);
+CREATE INDEX idx_pricing_rules_valid_from ON pricing_rules (valid_from);
+CREATE INDEX idx_pricing_rules_valid_to ON pricing_rules (valid_to);
+CREATE INDEX idx_pricing_rules_is_active ON pricing_rules (is_active);
+CREATE INDEX idx_pricing_rules_priority ON pricing_rules (priority);
 
 -- ============================================================================
 -- 初始数据插入
 -- ============================================================================
 
--- 插入默认客户类型数据
-INSERT INTO customers (code, name, description, type, phone, email, address, credit_limit, payment_terms, status, is_active) VALUES
-('CUST_DEFAULT', '默认客户', '系统默认客户', 'INDIVIDUAL', '400-000-0000', 'default@example.com', '默认地址', 100000.00, 30, 'ACTIVE', TRUE)
-ON CONFLICT (code) DO NOTHING;
+-- 插入默认客户数据
+INSERT INTO customers (name, code, customer_group, territory, phone, email, address, is_active) VALUES
+('默认客户', 'DEFAULT001', 'Default', 'Default', '400-000-0000', 'default@example.com', '默认地址', TRUE)
+ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- 结束

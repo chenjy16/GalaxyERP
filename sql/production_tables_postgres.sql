@@ -5,76 +5,65 @@
 -- ============================================================================
 
 -- ============================================================================
--- 物料清单(BOM)管理
+-- 生产管理模块数据库表结构
 -- ============================================================================
 
--- BOM表
-CREATE TABLE IF NOT EXISTS boms (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
+-- 产品表
+CREATE TABLE IF NOT EXISTS products (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  item_id BIGINT NOT NULL,
-  version VARCHAR(20) DEFAULT '1.0',
-  quantity DECIMAL(15,4) DEFAULT 1,
-  unit_id BIGINT NOT NULL,
-  bom_type VARCHAR(20) DEFAULT 'PRODUCTION',
-  effective_date DATE NOT NULL,
-  expiry_date DATE NULL,
-  is_default BOOLEAN DEFAULT FALSE,
-  status VARCHAR(20) DEFAULT 'DRAFT',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_boms_code UNIQUE (code),
-  CONSTRAINT fk_boms_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_boms_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
-  CONSTRAINT fk_boms_approved_by FOREIGN KEY (approved_by) REFERENCES employees(id) ON DELETE SET NULL,
-  CONSTRAINT chk_boms_bom_type CHECK (bom_type IN ('PRODUCTION', 'ENGINEERING', 'SALES', 'COSTING'))
+  description TEXT,
+  category VARCHAR(255) NOT NULL,
+  unit VARCHAR(255) NOT NULL,
+  price DECIMAL(15,2) DEFAULT 0,
+  cost DECIMAL(15,2) DEFAULT 0,
+  status VARCHAR(255) DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_boms_deleted_at ON boms (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_boms_is_active ON boms (is_active);
-CREATE INDEX IF NOT EXISTS idx_boms_code ON boms (code);
-CREATE INDEX IF NOT EXISTS idx_boms_item_id ON boms (item_id);
-CREATE INDEX IF NOT EXISTS idx_boms_bom_type ON boms (bom_type);
-CREATE INDEX IF NOT EXISTS idx_boms_status ON boms (status);
+CREATE INDEX IF NOT EXISTS idx_products_code ON products (code);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
+CREATE INDEX IF NOT EXISTS idx_products_status ON products (status);
+
+-- 物料清单表
+CREATE TABLE IF NOT EXISTS boms (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL,
+  version VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  expiry_date TIMESTAMP WITH TIME ZONE,
+  quantity DECIMAL(15,4) NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  notes TEXT,
+  created_by INTEGER NOT NULL,
+  updated_by INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_boms_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_boms_product_id ON boms (product_id);
 CREATE INDEX IF NOT EXISTS idx_boms_effective_date ON boms (effective_date);
-CREATE INDEX IF NOT EXISTS idx_boms_is_default ON boms (is_default);
-CREATE INDEX IF NOT EXISTS idx_boms_name ON boms (name);
+CREATE INDEX IF NOT EXISTS idx_boms_expiry_date ON boms (expiry_date);
+CREATE INDEX IF NOT EXISTS idx_boms_is_active ON boms (is_active);
 
 -- BOM明细表
 CREATE TABLE IF NOT EXISTS bom_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  bom_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
-  sequence INTEGER DEFAULT 1,
+  id SERIAL PRIMARY KEY,
+  bom_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
   quantity DECIMAL(15,4) NOT NULL,
-  unit_id BIGINT NOT NULL,
-  scrap_rate DECIMAL(5,2) DEFAULT 0,
-  yield_rate DECIMAL(5,2) DEFAULT 100,
-  is_phantom BOOLEAN DEFAULT FALSE,
-  is_optional BOOLEAN DEFAULT FALSE,
-  effective_date DATE NOT NULL,
-  expiry_date DATE NULL,
-  notes TEXT NULL,
+  unit_cost DECIMAL(15,2) DEFAULT 0,
+  total_cost DECIMAL(15,2) DEFAULT 0,
+  scrap_rate DECIMAL(15,4) DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_bom_items_bom FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE,
-  CONSTRAINT fk_bom_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_bom_items_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
+  CONSTRAINT fk_bom_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_bom_items_deleted_at ON bom_items (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_bom_items_bom_id ON bom_items (bom_id);
 CREATE INDEX IF NOT EXISTS idx_bom_items_item_id ON bom_items (item_id);
-CREATE INDEX IF NOT EXISTS idx_bom_items_sequence ON bom_items (sequence);
-CREATE INDEX IF NOT EXISTS idx_bom_items_effective_date ON bom_items (effective_date);
-CREATE INDEX IF NOT EXISTS idx_bom_items_is_phantom ON bom_items (is_phantom);
 
 -- ============================================================================
 -- 工艺路线管理
@@ -82,407 +71,423 @@ CREATE INDEX IF NOT EXISTS idx_bom_items_is_phantom ON bom_items (is_phantom);
 
 -- 工作中心表
 CREATE TABLE IF NOT EXISTS work_centers (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  work_center_type VARCHAR(20) DEFAULT 'MACHINE',
-  department_id BIGINT NULL,
-  capacity_per_hour DECIMAL(10,2) DEFAULT 1,
-  efficiency_rate DECIMAL(5,2) DEFAULT 100,
-  utilization_rate DECIMAL(5,2) DEFAULT 80,
-  setup_time_minutes INTEGER DEFAULT 0,
-  teardown_time_minutes INTEGER DEFAULT 0,
-  cost_per_hour DECIMAL(10,2) DEFAULT 0,
-  is_bottleneck BOOLEAN DEFAULT FALSE,
-  status VARCHAR(20) DEFAULT 'ACTIVE',
-  CONSTRAINT uq_work_centers_code UNIQUE (code),
-  CONSTRAINT fk_work_centers_department FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
-  CONSTRAINT chk_work_centers_type CHECK (work_center_type IN ('MACHINE', 'LABOR', 'ASSEMBLY', 'INSPECTION', 'OTHER'))
+  description TEXT,
+  work_center_type VARCHAR(255) NOT NULL,
+  capacity DECIMAL(15,2) DEFAULT 8,
+  efficiency DECIMAL(15,2) DEFAULT 100,
+  cost_per_hour DECIMAL(15,2) DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_work_centers_deleted_at ON work_centers (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_work_centers_is_active ON work_centers (is_active);
 CREATE INDEX IF NOT EXISTS idx_work_centers_code ON work_centers (code);
 CREATE INDEX IF NOT EXISTS idx_work_centers_work_center_type ON work_centers (work_center_type);
-CREATE INDEX IF NOT EXISTS idx_work_centers_department_id ON work_centers (department_id);
-CREATE INDEX IF NOT EXISTS idx_work_centers_status ON work_centers (status);
-CREATE INDEX IF NOT EXISTS idx_work_centers_is_bottleneck ON work_centers (is_bottleneck);
-CREATE INDEX IF NOT EXISTS idx_work_centers_name ON work_centers (name);
 
--- 工艺路线表
-CREATE TABLE IF NOT EXISTS routings (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
+-- 操作表
+CREATE TABLE IF NOT EXISTS operations (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  item_id BIGINT NOT NULL,
-  version VARCHAR(20) DEFAULT '1.0',
-  routing_type VARCHAR(20) DEFAULT 'PRODUCTION',
-  effective_date DATE NOT NULL,
-  expiry_date DATE NULL,
-  is_default BOOLEAN DEFAULT FALSE,
-  total_setup_time INTEGER DEFAULT 0,
-  total_run_time INTEGER DEFAULT 0,
-  status VARCHAR(20) DEFAULT 'DRAFT',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_routings_code UNIQUE (code),
-  CONSTRAINT fk_routings_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_routings_approved_by FOREIGN KEY (approved_by) REFERENCES employees(id) ON DELETE SET NULL,
-  CONSTRAINT chk_routings_routing_type CHECK (routing_type IN ('PRODUCTION', 'ENGINEERING', 'ALTERNATE'))
+  description TEXT,
+  work_center_id INTEGER NOT NULL,
+  setup_time DECIMAL(15,2) DEFAULT 0,
+  run_time DECIMAL(15,2) DEFAULT 0,
+  standard_cost DECIMAL(15,2) DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_operations_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_routings_deleted_at ON routings (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_routings_is_active ON routings (is_active);
-CREATE INDEX IF NOT EXISTS idx_routings_code ON routings (code);
-CREATE INDEX IF NOT EXISTS idx_routings_item_id ON routings (item_id);
-CREATE INDEX IF NOT EXISTS idx_routings_routing_type ON routings (routing_type);
-CREATE INDEX IF NOT EXISTS idx_routings_status ON routings (status);
-CREATE INDEX IF NOT EXISTS idx_routings_effective_date ON routings (effective_date);
-CREATE INDEX IF NOT EXISTS idx_routings_is_default ON routings (is_default);
-CREATE INDEX IF NOT EXISTS idx_routings_name ON routings (name);
-
--- 工艺路线操作表
-CREATE TABLE IF NOT EXISTS routing_operations (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  routing_id BIGINT NOT NULL,
-  operation_number INTEGER NOT NULL,
-  operation_name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  work_center_id BIGINT NOT NULL,
-  setup_time_minutes INTEGER DEFAULT 0,
-  run_time_minutes DECIMAL(10,2) DEFAULT 0,
-  teardown_time_minutes INTEGER DEFAULT 0,
-  move_time_minutes INTEGER DEFAULT 0,
-  queue_time_minutes INTEGER DEFAULT 0,
-  overlap_percentage DECIMAL(5,2) DEFAULT 0,
-  is_subcontract BOOLEAN DEFAULT FALSE,
-  cost_per_unit DECIMAL(10,2) DEFAULT 0,
-  notes TEXT NULL,
-  CONSTRAINT fk_routing_operations_routing FOREIGN KEY (routing_id) REFERENCES routings(id) ON DELETE CASCADE,
-  CONSTRAINT fk_routing_operations_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE CASCADE,
-  CONSTRAINT uq_routing_operations_routing_number UNIQUE (routing_id, operation_number)
-);
-CREATE INDEX IF NOT EXISTS idx_routing_operations_deleted_at ON routing_operations (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_routing_operations_routing_id ON routing_operations (routing_id);
-CREATE INDEX IF NOT EXISTS idx_routing_operations_work_center_id ON routing_operations (work_center_id);
-CREATE INDEX IF NOT EXISTS idx_routing_operations_operation_number ON routing_operations (operation_number);
-CREATE INDEX IF NOT EXISTS idx_routing_operations_is_subcontract ON routing_operations (is_subcontract);
-
--- ============================================================================
--- 生产计划管理
--- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_operations_code ON operations (code);
+CREATE INDEX IF NOT EXISTS idx_operations_work_center_id ON operations (work_center_id);
 
 -- 生产计划表
 CREATE TABLE IF NOT EXISTS production_plans (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
+  id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  plan_type VARCHAR(20) DEFAULT 'MASTER',
-  plan_period VARCHAR(20) DEFAULT 'MONTHLY',
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  planner_id BIGINT NULL,
-  status VARCHAR(20) DEFAULT 'DRAFT',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT uq_production_plans_code UNIQUE (code),
-  CONSTRAINT fk_production_plans_planner FOREIGN KEY (planner_id) REFERENCES employees(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_plans_approved_by FOREIGN KEY (approved_by) REFERENCES employees(id) ON DELETE SET NULL,
-  CONSTRAINT chk_production_plans_plan_type CHECK (plan_type IN ('MASTER', 'DETAILED', 'CAPACITY')),
-  CONSTRAINT chk_production_plans_plan_period CHECK (plan_period IN ('DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY'))
+  description TEXT,
+  plan_type VARCHAR(255) NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(255) DEFAULT 'draft',
+  created_by INTEGER NOT NULL,
+  approved_by INTEGER,
+  approved_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_production_plans_deleted_at ON production_plans (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_production_plans_is_active ON production_plans (is_active);
-CREATE INDEX IF NOT EXISTS idx_production_plans_code ON production_plans (code);
-CREATE INDEX IF NOT EXISTS idx_production_plans_plan_type ON production_plans (plan_type);
-CREATE INDEX IF NOT EXISTS idx_production_plans_plan_period ON production_plans (plan_period);
+CREATE INDEX IF NOT EXISTS idx_production_plans_status ON production_plans (status);
 CREATE INDEX IF NOT EXISTS idx_production_plans_start_date ON production_plans (start_date);
 CREATE INDEX IF NOT EXISTS idx_production_plans_end_date ON production_plans (end_date);
-CREATE INDEX IF NOT EXISTS idx_production_plans_status ON production_plans (status);
-CREATE INDEX IF NOT EXISTS idx_production_plans_planner_id ON production_plans (planner_id);
+CREATE INDEX IF NOT EXISTS idx_production_plans_created_by ON production_plans (created_by);
 
--- 生产计划明细表
-CREATE TABLE IF NOT EXISTS production_plan_items (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  production_plan_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
-  planned_quantity DECIMAL(15,4) NOT NULL,
-  unit_id BIGINT NOT NULL,
-  planned_start_date DATE NOT NULL,
-  planned_end_date DATE NOT NULL,
-  priority INTEGER DEFAULT 5,
-  sales_order_id BIGINT NULL,
-  notes TEXT NULL,
-  CONSTRAINT fk_production_plan_items_production_plan FOREIGN KEY (production_plan_id) REFERENCES production_plans(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_plan_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_plan_items_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_plan_items_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE SET NULL
+-- 物料需求表
+CREATE TABLE IF NOT EXISTS material_requirements (
+  id SERIAL PRIMARY KEY,
+  plan_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  required_quantity DECIMAL(15,4) NOT NULL,
+  available_quantity DECIMAL(15,4) DEFAULT 0,
+  net_requirement DECIMAL(15,4) NOT NULL,
+  due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  priority INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_material_requirements_plan FOREIGN KEY (plan_id) REFERENCES production_plans(id) ON DELETE CASCADE,
+  CONSTRAINT fk_material_requirements_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_deleted_at ON production_plan_items (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_production_plan_id ON production_plan_items (production_plan_id);
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_item_id ON production_plan_items (item_id);
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_planned_start_date ON production_plan_items (planned_start_date);
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_planned_end_date ON production_plan_items (planned_end_date);
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_priority ON production_plan_items (priority);
-CREATE INDEX IF NOT EXISTS idx_production_plan_items_sales_order_id ON production_plan_items (sales_order_id);
+CREATE INDEX IF NOT EXISTS idx_material_requirements_plan_id ON material_requirements (plan_id);
+CREATE INDEX IF NOT EXISTS idx_material_requirements_item_id ON material_requirements (item_id);
+CREATE INDEX IF NOT EXISTS idx_material_requirements_due_date ON material_requirements (due_date);
 
--- ============================================================================
--- 生产订单管理
--- ============================================================================
+-- 工艺路线表
+CREATE TABLE IF NOT EXISTS process_routes (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  code VARCHAR(255) NOT NULL UNIQUE,
+  description TEXT,
+  item_id INTEGER NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_process_routes_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_process_routes_code ON process_routes (code);
+CREATE INDEX IF NOT EXISTS idx_process_routes_item_id ON process_routes (item_id);
+CREATE INDEX IF NOT EXISTS idx_process_routes_is_active ON process_routes (is_active);
+
+-- 工艺操作表
+CREATE TABLE IF NOT EXISTS process_operations (
+  id SERIAL PRIMARY KEY,
+  route_id INTEGER NOT NULL,
+  operation_number INTEGER NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  work_center_id INTEGER,
+  standard_hours DECIMAL(15,2) DEFAULT 0,
+  setup_hours DECIMAL(15,2) DEFAULT 0,
+  wait_hours DECIMAL(15,2) DEFAULT 0,
+  move_hours DECIMAL(15,2) DEFAULT 0,
+  sequence INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_process_operations_route FOREIGN KEY (route_id) REFERENCES process_routes(id) ON DELETE CASCADE,
+  CONSTRAINT fk_process_operations_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_process_operations_route_id ON process_operations (route_id);
+CREATE INDEX IF NOT EXISTS idx_process_operations_work_center_id ON process_operations (work_center_id);
+CREATE INDEX IF NOT EXISTS idx_process_operations_sequence ON process_operations (sequence);
 
 -- 生产订单表
 CREATE TABLE IF NOT EXISTS production_orders (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  item_id BIGINT NOT NULL,
-  bom_id BIGINT NULL,
-  routing_id BIGINT NULL,
-  planned_quantity DECIMAL(15,4) NOT NULL,
+  id SERIAL PRIMARY KEY,
+  order_number VARCHAR(255) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  item_id INTEGER NOT NULL,
+  quantity DECIMAL(15,4) NOT NULL,
   produced_quantity DECIMAL(15,4) DEFAULT 0,
-  scrapped_quantity DECIMAL(15,4) DEFAULT 0,
-  unit_id BIGINT NOT NULL,
-  planned_start_date DATE NOT NULL,
-  planned_end_date DATE NOT NULL,
-  actual_start_date DATE NULL,
-  actual_end_date DATE NULL,
-  priority INTEGER DEFAULT 5,
-  sales_order_id BIGINT NULL,
-  production_plan_item_id BIGINT NULL,
-  supervisor_id BIGINT NULL,
-  warehouse_id BIGINT NOT NULL,
-  location_id BIGINT NULL,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'PLANNED',
-  CONSTRAINT uq_production_orders_code UNIQUE (code),
+  unit VARCHAR(255),
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  actual_start_date TIMESTAMP WITH TIME ZONE,
+  actual_end_date TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(255) DEFAULT 'draft',
+  priority INTEGER DEFAULT 0,
+  route_id INTEGER,
+  created_by INTEGER NOT NULL,
+  approved_by INTEGER,
+  approved_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_production_orders_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_orders_bom FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_orders_routing FOREIGN KEY (routing_id) REFERENCES routings(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_orders_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_orders_sales_order FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_orders_production_plan_item FOREIGN KEY (production_plan_item_id) REFERENCES production_plan_items(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_orders_supervisor FOREIGN KEY (supervisor_id) REFERENCES employees(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_orders_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_orders_location FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL,
-  CONSTRAINT chk_production_orders_status CHECK (status IN ('PLANNED', 'RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'ON_HOLD'))
+  CONSTRAINT fk_production_orders_route FOREIGN KEY (route_id) REFERENCES process_routes(id) ON DELETE SET NULL
 );
-CREATE INDEX IF NOT EXISTS idx_production_orders_deleted_at ON production_orders (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_production_orders_is_active ON production_orders (is_active);
-CREATE INDEX IF NOT EXISTS idx_production_orders_code ON production_orders (code);
+CREATE INDEX IF NOT EXISTS idx_production_orders_order_number ON production_orders (order_number);
 CREATE INDEX IF NOT EXISTS idx_production_orders_item_id ON production_orders (item_id);
-CREATE INDEX IF NOT EXISTS idx_production_orders_bom_id ON production_orders (bom_id);
-CREATE INDEX IF NOT EXISTS idx_production_orders_routing_id ON production_orders (routing_id);
-CREATE INDEX IF NOT EXISTS idx_production_orders_planned_start_date ON production_orders (planned_start_date);
-CREATE INDEX IF NOT EXISTS idx_production_orders_planned_end_date ON production_orders (planned_end_date);
+CREATE INDEX IF NOT EXISTS idx_production_orders_route_id ON production_orders (route_id);
 CREATE INDEX IF NOT EXISTS idx_production_orders_status ON production_orders (status);
-CREATE INDEX IF NOT EXISTS idx_production_orders_priority ON production_orders (priority);
-CREATE INDEX IF NOT EXISTS idx_production_orders_sales_order_id ON production_orders (sales_order_id);
-CREATE INDEX IF NOT EXISTS idx_production_orders_supervisor_id ON production_orders (supervisor_id);
-CREATE INDEX IF NOT EXISTS idx_production_orders_warehouse_id ON production_orders (warehouse_id);
+CREATE INDEX IF NOT EXISTS idx_production_orders_start_date ON production_orders (start_date);
+CREATE INDEX IF NOT EXISTS idx_production_orders_end_date ON production_orders (end_date);
+CREATE INDEX IF NOT EXISTS idx_production_orders_created_by ON production_orders (created_by);
 
--- 生产订单物料需求表
-CREATE TABLE IF NOT EXISTS production_order_materials (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  production_order_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
+-- 生产订单明细表
+CREATE TABLE IF NOT EXISTS production_order_items (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
   required_quantity DECIMAL(15,4) NOT NULL,
   issued_quantity DECIMAL(15,4) DEFAULT 0,
   consumed_quantity DECIMAL(15,4) DEFAULT 0,
-  returned_quantity DECIMAL(15,4) DEFAULT 0,
-  unit_id BIGINT NOT NULL,
-  unit_cost DECIMAL(15,2) DEFAULT 0,
-  warehouse_id BIGINT NULL,
-  location_id BIGINT NULL,
-  notes TEXT NULL,
-  CONSTRAINT fk_production_order_materials_production_order FOREIGN KEY (production_order_id) REFERENCES production_orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_order_materials_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_order_materials_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_order_materials_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL,
-  CONSTRAINT fk_production_order_materials_location FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
+  unit VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_production_order_items_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_production_order_items_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_production_order_materials_deleted_at ON production_order_materials (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_production_order_materials_production_order_id ON production_order_materials (production_order_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_materials_item_id ON production_order_materials (item_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_materials_warehouse_id ON production_order_materials (warehouse_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_materials_location_id ON production_order_materials (location_id);
+CREATE INDEX IF NOT EXISTS idx_production_order_items_order_id ON production_order_items (order_id);
+CREATE INDEX IF NOT EXISTS idx_production_order_items_item_id ON production_order_items (item_id);
 
--- 生产订单操作表
-CREATE TABLE IF NOT EXISTS production_order_operations (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  production_order_id BIGINT NOT NULL,
-  routing_operation_id BIGINT NOT NULL,
-  operation_number INTEGER NOT NULL,
-  operation_name VARCHAR(255) NOT NULL,
-  work_center_id BIGINT NOT NULL,
-  planned_setup_time INTEGER DEFAULT 0,
-  planned_run_time DECIMAL(10,2) DEFAULT 0,
-  actual_setup_time INTEGER DEFAULT 0,
-  actual_run_time DECIMAL(10,2) DEFAULT 0,
-  planned_start_date TIMESTAMP NULL,
-  planned_end_date TIMESTAMP NULL,
-  actual_start_date TIMESTAMP NULL,
-  actual_end_date TIMESTAMP NULL,
-  quantity_completed DECIMAL(15,4) DEFAULT 0,
-  quantity_scrapped DECIMAL(15,4) DEFAULT 0,
-  operator_id BIGINT NULL,
-  status VARCHAR(20) DEFAULT 'PLANNED',
-  notes TEXT NULL,
-  CONSTRAINT fk_production_order_operations_production_order FOREIGN KEY (production_order_id) REFERENCES production_orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_order_operations_routing_operation FOREIGN KEY (routing_operation_id) REFERENCES routing_operations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_order_operations_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_production_order_operations_operator FOREIGN KEY (operator_id) REFERENCES employees(id) ON DELETE SET NULL,
-  CONSTRAINT chk_production_order_operations_status CHECK (status IN ('PLANNED', 'QUEUED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'))
-);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_deleted_at ON production_order_operations (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_production_order_id ON production_order_operations (production_order_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_routing_operation_id ON production_order_operations (routing_operation_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_work_center_id ON production_order_operations (work_center_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_operation_number ON production_order_operations (operation_number);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_status ON production_order_operations (status);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_operator_id ON production_order_operations (operator_id);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_planned_start_date ON production_order_operations (planned_start_date);
-CREATE INDEX IF NOT EXISTS idx_production_order_operations_actual_start_date ON production_order_operations (actual_start_date);
-
--- ============================================================================
--- 生产报工管理
--- ============================================================================
-
--- 生产报工表
+-- 工作订单表
 CREATE TABLE IF NOT EXISTS work_orders (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  production_order_id BIGINT NOT NULL,
-  production_order_operation_id BIGINT NOT NULL,
-  work_center_id BIGINT NOT NULL,
-  operator_id BIGINT NOT NULL,
-  start_time TIMESTAMP NOT NULL,
-  end_time TIMESTAMP NULL,
-  setup_time_minutes INTEGER DEFAULT 0,
-  run_time_minutes DECIMAL(10,2) DEFAULT 0,
-  quantity_completed DECIMAL(15,4) DEFAULT 0,
-  quantity_scrapped DECIMAL(15,4) DEFAULT 0,
-  scrap_reason TEXT NULL,
-  efficiency_rate DECIMAL(5,2) DEFAULT 100,
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'IN_PROGRESS',
-  CONSTRAINT uq_work_orders_code UNIQUE (code),
-  CONSTRAINT fk_work_orders_production_order FOREIGN KEY (production_order_id) REFERENCES production_orders(id) ON DELETE CASCADE,
-  CONSTRAINT fk_work_orders_production_order_operation FOREIGN KEY (production_order_operation_id) REFERENCES production_order_operations(id) ON DELETE CASCADE,
-  CONSTRAINT fk_work_orders_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE CASCADE,
-  CONSTRAINT fk_work_orders_operator FOREIGN KEY (operator_id) REFERENCES employees(id) ON DELETE CASCADE,
-  CONSTRAINT chk_work_orders_status CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'CANCELLED'))
+  id SERIAL PRIMARY KEY,
+  work_order_number VARCHAR(255) NOT NULL UNIQUE,
+  product_id INTEGER NOT NULL,
+  bom_id INTEGER NOT NULL,
+  planned_qty DECIMAL(15,4) NOT NULL,
+  produced_qty DECIMAL(15,4) DEFAULT 0,
+  scrap_qty DECIMAL(15,4) DEFAULT 0,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  actual_start_date TIMESTAMP WITH TIME ZONE,
+  actual_end_date TIMESTAMP WITH TIME ZONE,
+  priority VARCHAR(255) DEFAULT 'normal',
+  status VARCHAR(255) DEFAULT 'planned',
+  notes TEXT,
+  created_by INTEGER NOT NULL,
+  updated_by INTEGER,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_work_orders_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  CONSTRAINT fk_work_orders_bom FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_work_orders_deleted_at ON work_orders (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_work_orders_is_active ON work_orders (is_active);
-CREATE INDEX IF NOT EXISTS idx_work_orders_code ON work_orders (code);
-CREATE INDEX IF NOT EXISTS idx_work_orders_production_order_id ON work_orders (production_order_id);
-CREATE INDEX IF NOT EXISTS idx_work_orders_production_order_operation_id ON work_orders (production_order_operation_id);
-CREATE INDEX IF NOT EXISTS idx_work_orders_work_center_id ON work_orders (work_center_id);
-CREATE INDEX IF NOT EXISTS idx_work_orders_operator_id ON work_orders (operator_id);
-CREATE INDEX IF NOT EXISTS idx_work_orders_start_time ON work_orders (start_time);
+CREATE INDEX IF NOT EXISTS idx_work_orders_work_order_number ON work_orders (work_order_number);
+CREATE INDEX IF NOT EXISTS idx_work_orders_product_id ON work_orders (product_id);
+CREATE INDEX IF NOT EXISTS idx_work_orders_bom_id ON work_orders (bom_id);
+CREATE INDEX IF NOT EXISTS idx_work_orders_start_date ON work_orders (start_date);
+CREATE INDEX IF NOT EXISTS idx_work_orders_end_date ON work_orders (end_date);
+CREATE INDEX IF NOT EXISTS idx_work_orders_priority ON work_orders (priority);
 CREATE INDEX IF NOT EXISTS idx_work_orders_status ON work_orders (status);
 
--- ============================================================================
--- 质量检验管理
--- ============================================================================
-
--- 质量检验表
-CREATE TABLE IF NOT EXISTS quality_inspections (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  code VARCHAR(50) NOT NULL,
-  inspection_type VARCHAR(20) NOT NULL,
-  reference_type VARCHAR(50) NOT NULL,
-  reference_id BIGINT NOT NULL,
-  item_id BIGINT NOT NULL,
-  batch_number VARCHAR(100) NULL,
-  inspection_date DATE NOT NULL,
-  inspector_id BIGINT NOT NULL,
-  sample_size DECIMAL(15,4) DEFAULT 0,
-  inspected_quantity DECIMAL(15,4) NOT NULL,
-  passed_quantity DECIMAL(15,4) DEFAULT 0,
-  failed_quantity DECIMAL(15,4) DEFAULT 0,
-  unit_id BIGINT NOT NULL,
-  inspection_result VARCHAR(20) DEFAULT 'PENDING',
-  notes TEXT NULL,
-  status VARCHAR(20) DEFAULT 'PENDING',
-  CONSTRAINT uq_quality_inspections_code UNIQUE (code),
-  CONSTRAINT fk_quality_inspections_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quality_inspections_inspector FOREIGN KEY (inspector_id) REFERENCES employees(id) ON DELETE CASCADE,
-  CONSTRAINT fk_quality_inspections_unit FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
-  CONSTRAINT chk_quality_inspections_inspection_type CHECK (inspection_type IN ('INCOMING', 'IN_PROCESS', 'FINAL', 'OUTGOING')),
-  CONSTRAINT chk_quality_inspections_inspection_result CHECK (inspection_result IN ('PENDING', 'PASSED', 'FAILED', 'CONDITIONAL')),
-  CONSTRAINT chk_quality_inspections_status CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'))
+-- 工作订单操作表
+CREATE TABLE IF NOT EXISTS work_order_operations (
+  id SERIAL PRIMARY KEY,
+  work_order_id INTEGER NOT NULL,
+  operation_number INTEGER NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  work_center_id INTEGER NOT NULL,
+  planned_hours DECIMAL(15,2) DEFAULT 0,
+  actual_hours DECIMAL(15,2) DEFAULT 0,
+  setup_hours DECIMAL(15,2) DEFAULT 0,
+  wait_hours DECIMAL(15,2) DEFAULT 0,
+  move_hours DECIMAL(15,2) DEFAULT 0,
+  status VARCHAR(255) DEFAULT 'pending',
+  start_time TIMESTAMP WITH TIME ZONE,
+  end_time TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_work_order_operations_work_order FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_work_order_operations_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_deleted_at ON quality_inspections (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_is_active ON quality_inspections (is_active);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_code ON quality_inspections (code);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_inspection_type ON quality_inspections (inspection_type);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_reference_type ON quality_inspections (reference_type);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_reference_id ON quality_inspections (reference_id);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_item_id ON quality_inspections (item_id);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_inspection_date ON quality_inspections (inspection_date);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_inspector_id ON quality_inspections (inspector_id);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_inspection_result ON quality_inspections (inspection_result);
-CREATE INDEX IF NOT EXISTS idx_quality_inspections_status ON quality_inspections (status);
+CREATE INDEX IF NOT EXISTS idx_work_order_operations_work_order_id ON work_order_operations (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_work_order_operations_work_center_id ON work_order_operations (work_center_id);
+CREATE INDEX IF NOT EXISTS idx_work_order_operations_operation_number ON work_order_operations (operation_number);
+CREATE INDEX IF NOT EXISTS idx_work_order_operations_status ON work_order_operations (status);
+
+-- 工作订单物料表
+CREATE TABLE IF NOT EXISTS work_order_materials (
+  id SERIAL PRIMARY KEY,
+  work_order_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  required_quantity DECIMAL(15,4) NOT NULL,
+  issued_quantity DECIMAL(15,4) DEFAULT 0,
+  consumed_quantity DECIMAL(15,4) DEFAULT 0,
+  unit VARCHAR(255),
+  unit_cost DECIMAL(15,2) DEFAULT 0,
+  total_cost DECIMAL(15,2) DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_work_order_materials_work_order FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_work_order_materials_item FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_work_order_materials_work_order_id ON work_order_materials (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_work_order_materials_item_id ON work_order_materials (item_id);
+
+-- 生产进度表
+CREATE TABLE IF NOT EXISTS production_progress (
+  id SERIAL PRIMARY KEY,
+  work_order_id INTEGER NOT NULL,
+  operation_id INTEGER NOT NULL,
+  quantity_completed DECIMAL(15,4) NOT NULL,
+  quantity_scrapped DECIMAL(15,4) DEFAULT 0,
+  progress_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  shift VARCHAR(255),
+  operator_id INTEGER,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_production_progress_work_order FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_production_progress_operation FOREIGN KEY (operation_id) REFERENCES work_order_operations(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_production_progress_work_order_id ON production_progress (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_production_progress_operation_id ON production_progress (operation_id);
+CREATE INDEX IF NOT EXISTS idx_production_progress_progress_date ON production_progress (progress_date);
+CREATE INDEX IF NOT EXISTS idx_production_progress_operator_id ON production_progress (operator_id);
+
+-- 设备表
+CREATE TABLE IF NOT EXISTS equipment (
+  id SERIAL PRIMARY KEY,
+  code VARCHAR(255) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(255),
+  model VARCHAR(255),
+  manufacturer VARCHAR(255),
+  purchase_date TIMESTAMP WITH TIME ZONE,
+  purchase_cost DECIMAL(15,2),
+  work_center_id INTEGER,
+  status VARCHAR(255) DEFAULT 'active',
+  location VARCHAR(255),
+  specifications TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_equipment_work_center FOREIGN KEY (work_center_id) REFERENCES work_centers(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_equipment_code ON equipment (code);
+CREATE INDEX IF NOT EXISTS idx_equipment_name ON equipment (name);
+CREATE INDEX IF NOT EXISTS idx_equipment_type ON equipment (type);
+CREATE INDEX IF NOT EXISTS idx_equipment_work_center_id ON equipment (work_center_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment (status);
+
+-- 设备维护表
+CREATE TABLE IF NOT EXISTS equipment_maintenance (
+  id SERIAL PRIMARY KEY,
+  equipment_id INTEGER NOT NULL,
+  maintenance_type VARCHAR(255) NOT NULL,
+  scheduled_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  completed_date TIMESTAMP WITH TIME ZONE,
+  description TEXT,
+  cost DECIMAL(15,2) DEFAULT 0,
+  performed_by VARCHAR(255),
+  status VARCHAR(255) DEFAULT 'scheduled',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_equipment_maintenance_equipment FOREIGN KEY (equipment_id) REFERENCES equipment(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_equipment_maintenance_equipment_id ON equipment_maintenance (equipment_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_maintenance_type ON equipment_maintenance (maintenance_type);
+CREATE INDEX IF NOT EXISTS idx_equipment_maintenance_scheduled_date ON equipment_maintenance (scheduled_date);
+CREATE INDEX IF NOT EXISTS idx_equipment_maintenance_status ON equipment_maintenance (status);
+
+-- 质量检查表
+CREATE TABLE IF NOT EXISTS quality_checks (
+  id SERIAL PRIMARY KEY,
+  work_order_id INTEGER NOT NULL,
+  operation_id INTEGER NOT NULL,
+  check_type VARCHAR(255) NOT NULL,
+  check_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  inspector_id INTEGER NOT NULL,
+  sample_size INTEGER DEFAULT 0,
+  defect_count INTEGER DEFAULT 0,
+  pass_count INTEGER DEFAULT 0,
+  fail_count INTEGER DEFAULT 0,
+  status VARCHAR(255) DEFAULT 'pending',
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_quality_checks_work_order FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_quality_checks_operation FOREIGN KEY (operation_id) REFERENCES work_order_operations(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_work_order_id ON quality_checks (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_operation_id ON quality_checks (operation_id);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_check_type ON quality_checks (check_type);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_check_date ON quality_checks (check_date);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_inspector_id ON quality_checks (inspector_id);
+CREATE INDEX IF NOT EXISTS idx_quality_checks_status ON quality_checks (status);
+
+-- 生产成本表
+CREATE TABLE IF NOT EXISTS production_costs (
+  id SERIAL PRIMARY KEY,
+  work_order_id INTEGER NOT NULL,
+  cost_type VARCHAR(255) NOT NULL,
+  cost_category VARCHAR(255) NOT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  currency VARCHAR(10) DEFAULT 'CNY',
+  cost_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  description TEXT,
+  reference_id INTEGER,
+  reference_type VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_production_costs_work_order FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_production_costs_work_order_id ON production_costs (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_production_costs_cost_type ON production_costs (cost_type);
+CREATE INDEX IF NOT EXISTS idx_production_costs_cost_category ON production_costs (cost_category);
+CREATE INDEX IF NOT EXISTS idx_production_costs_cost_date ON production_costs (cost_date);
+CREATE INDEX IF NOT EXISTS idx_production_costs_reference ON production_costs (reference_id, reference_type);
+
+-- 生产报告表
+CREATE TABLE IF NOT EXISTS production_reports (
+  id SERIAL PRIMARY KEY,
+  report_number VARCHAR(255) NOT NULL UNIQUE,
+  report_type VARCHAR(255) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  report_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  period_start TIMESTAMP WITH TIME ZONE NOT NULL,
+  period_end TIMESTAMP WITH TIME ZONE NOT NULL,
+  status VARCHAR(255) DEFAULT 'draft',
+  data JSONB,
+  generated_by INTEGER NOT NULL,
+  approved_by INTEGER,
+  approved_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_production_reports_report_number ON production_reports (report_number);
+CREATE INDEX IF NOT EXISTS idx_production_reports_report_type ON production_reports (report_type);
+CREATE INDEX IF NOT EXISTS idx_production_reports_report_date ON production_reports (report_date);
+CREATE INDEX IF NOT EXISTS idx_production_reports_period ON production_reports (period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_production_reports_status ON production_reports (status);
+CREATE INDEX IF NOT EXISTS idx_production_reports_generated_by ON production_reports (generated_by);
 
 -- ============================================================================
 -- 初始数据插入
 -- ============================================================================
 
--- 插入默认工作中心
-INSERT INTO work_centers (code, name, description, work_center_type, capacity_per_hour, efficiency_rate, utilization_rate, cost_per_hour, status, is_active) VALUES
-('WC_ASSEMBLY', '装配线', '产品装配工作中心', 'ASSEMBLY', 10.00, 95.00, 85.00, 50.00, 'ACTIVE', TRUE),
-('WC_MACHINE', '机加工', '机械加工工作中心', 'MACHINE', 5.00, 90.00, 80.00, 80.00, 'ACTIVE', TRUE),
-('WC_INSPECTION', '质检', '质量检验工作中心', 'INSPECTION', 20.00, 98.00, 90.00, 30.00, 'ACTIVE', TRUE)
-ON CONFLICT (code) DO NOTHING;
+-- 插入示例产品数据
+INSERT INTO products (id, code, name, description, category, unit, price, cost, status) VALUES
+(1, 'PROD001', '产品A', '高质量产品A', '电子产品', 'pcs', 299.99, 150.00, 'active'),
+(2, 'PROD002', '产品B', '经济型产品B', '电子产品', 'pcs', 199.99, 100.00, 'active'),
+(3, 'MAT001', '原材料A', '基础原材料A', '原材料', 'kg', 50.00, 30.00, 'active'),
+(4, 'MAT002', '原材料B', '基础原材料B', '原材料', 'kg', 75.00, 45.00, 'active'),
+(5, 'MAT003', '原材料C', '基础原材料C', '原材料', 'kg', 25.00, 15.00, 'active');
+
+-- 插入示例BOM数据
+INSERT INTO boms (id, product_id, version, effective_date, quantity, notes, created_by) VALUES
+(1, 1, '1.0', CURRENT_TIMESTAMP, 1.00, '产品A物料清单', 1),
+(2, 2, '1.0', CURRENT_TIMESTAMP, 1.00, '产品B物料清单', 1);
+
+-- 插入示例BOM明细数据
+INSERT INTO bom_items (id, bom_id, item_id, quantity, unit_cost, total_cost, scrap_rate) VALUES
+(1, 1, 3, 2.00, 30.00, 60.00, 0.05),
+(2, 1, 4, 1.50, 45.00, 67.50, 0.03),
+(3, 2, 3, 1.00, 30.00, 30.00, 0.05),
+(4, 2, 5, 3.00, 15.00, 45.00, 0.02);
+
+-- 插入示例工作中心数据
+INSERT INTO work_centers (id, code, name, description, work_center_type, capacity, efficiency, cost_per_hour) VALUES
+(1, 'WC001', '装配线1', '主要装配线', 'assembly', 10.00, 95.00, 50.00),
+(2, 'WC002', '包装线1', '产品包装线', 'packaging', 20.00, 98.00, 30.00),
+(3, 'WC003', '质检站1', '质量检验工作站', 'inspection', 15.00, 90.00, 40.00);
+
+-- 插入示例操作数据
+INSERT INTO operations (id, code, name, description, work_center_id, setup_time, run_time, standard_cost) VALUES
+(1, 'OP001', '装配操作', '产品装配操作', 1, 30.00, 60.00, 50.00),
+(2, 'OP002', '包装操作', '产品包装操作', 2, 15.00, 30.00, 30.00),
+(3, 'OP003', '质检操作', '质量检验操作', 3, 10.00, 20.00, 40.00);
+
+-- 插入示例设备数据
+INSERT INTO equipment (id, code, name, type, model, manufacturer, status, location, work_center_id) VALUES
+(1, 'EQ001', '装配机器人', '机器人', 'AR-2000', 'RoboCorp', 'active', '车间A', 1),
+(2, 'EQ002', '包装机', '包装设备', 'PK-500', 'PackTech', 'active', '车间B', 2),
+(3, 'EQ003', '检测仪器', '检测设备', 'QC-100', 'QualityTech', 'active', '质检室', 3);
 
 -- ============================================================================
 -- 结束

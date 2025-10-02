@@ -39,4 +39,16 @@ func RegisterSalesRoutes(router *gin.RouterGroup, container *container.Container
 		quotations.GET("/", container.SalesController.ListQuotations)
 		quotations.GET("/search", container.SalesController.SearchQuotations)
 	}
+
+	// 销售发票管理
+	invoices := router.Group("/sales-invoices")
+	{
+		invoices.POST("/", container.SalesController.CreateSalesInvoice)
+		invoices.GET("/:id", container.SalesController.GetSalesInvoice)
+		invoices.PUT("/:id", container.SalesController.UpdateSalesInvoice)
+		invoices.DELETE("/:id", container.SalesController.DeleteSalesInvoice)
+		invoices.GET("/", container.SalesController.ListSalesInvoices)
+		invoices.PUT("/:id/submit", container.SalesController.SubmitSalesInvoice)
+		invoices.PUT("/:id/cancel", container.SalesController.CancelSalesInvoice)
+	}
 }

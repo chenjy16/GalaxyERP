@@ -217,7 +217,7 @@ function PurchasePage() {
         <div>
           <div style={{ marginBottom: 4 }}>
             <Text type="secondary">信用额度: </Text>
-            <Text strong style={{ color: '#52c41a' }}>¥{record.creditLimit.toLocaleString()}</Text>
+            <Text strong style={{ color: '#52c41a' }}>¥{record.creditLimit ? record.creditLimit.toLocaleString() : '0.00'}</Text>
           </div>
           <div>
             <Text type="secondary">付款条款: </Text>

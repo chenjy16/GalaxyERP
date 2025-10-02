@@ -246,6 +246,17 @@ function SalesPage() {
       title: '客户',
       dataIndex: 'customerName',
       key: 'customerName',
+      render: (text: any, record: any) => {
+        // Fix: Properly handle customer object rendering
+        if (typeof text === 'object' && text !== null) {
+          return text.name || text.id || '-';
+        }
+        // Also check if record has a customer object
+        if (record.customer && typeof record.customer === 'object' && record.customer !== null) {
+          return record.customer.name || record.customer.id || '-';
+        }
+        return text || '-';
+      }
     },
     {
       title: '总金额',
@@ -315,6 +326,17 @@ function SalesPage() {
       title: '客户',
       dataIndex: 'customerName',
       key: 'customerName',
+      render: (text: any, record: any) => {
+        // Fix: Properly handle customer object rendering
+        if (typeof text === 'object' && text !== null) {
+          return text.name || text.id || '-';
+        }
+        // Also check if record has a customer object
+        if (record.customer && typeof record.customer === 'object' && record.customer !== null) {
+          return record.customer.name || record.customer.id || '-';
+        }
+        return text || '-';
+      }
     },
     {
       title: '总金额',

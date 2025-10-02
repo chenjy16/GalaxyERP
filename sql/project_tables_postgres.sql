@@ -117,29 +117,28 @@ CREATE INDEX IF NOT EXISTS idx_customers_is_active ON customers (is_active);
 -- 项目管理核心表
 -- ============================================================================
 
--- 项目表（参考 models，字段包含编号、名称、客户、经理、计划/实际日期等）
+-- 项目表
 CREATE TABLE IF NOT EXISTS projects (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  project_number VARCHAR(100) NOT NULL,
+  id SERIAL PRIMARY KEY,
+  project_number VARCHAR(100) NOT NULL UNIQUE,
   project_name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  customer_id BIGINT NULL,
-  manager_id BIGINT NOT NULL,
-  start_date TIMESTAMP NOT NULL,
-  end_date TIMESTAMP NOT NULL,
-  actual_start_date TIMESTAMP NULL,
-  actual_end_date TIMESTAMP NULL,
-  budget NUMERIC(15,2) DEFAULT 0,
-  actual_cost NUMERIC(15,2) DEFAULT 0,
-  progress NUMERIC(5,2) DEFAULT 0,
+  description TEXT,
+  customer_id INTEGER,
+  manager_id INTEGER NOT NULL,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  actual_start_date TIMESTAMP WITH TIME ZONE,
+  actual_end_date TIMESTAMP WITH TIME ZONE,
+  budget DECIMAL(15,2) DEFAULT 0,
+  actual_cost DECIMAL(15,2) DEFAULT 0,
+  progress DECIMAL(5,2) DEFAULT 0,
   priority VARCHAR(20) DEFAULT 'normal',
   status VARCHAR(50) DEFAULT 'planning',
-  CONSTRAINT uq_projects_project_number UNIQUE (project_number),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created_by INTEGER,
+  updated_by INTEGER,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   CONSTRAINT fk_projects_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
   CONSTRAINT fk_projects_manager FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE RESTRICT
 );
@@ -156,28 +155,27 @@ CREATE INDEX IF NOT EXISTS idx_projects_customer_status ON projects (customer_id
 
 -- 任务表
 CREATE TABLE IF NOT EXISTS tasks (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  task_number VARCHAR(100) NOT NULL,
+  id SERIAL PRIMARY KEY,
+  task_number VARCHAR(100) NOT NULL UNIQUE,
   task_name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  project_id BIGINT NOT NULL,
-  parent_task_id BIGINT NULL,
-  assignee_id BIGINT NULL,
-  start_date TIMESTAMP NOT NULL,
-  end_date TIMESTAMP NOT NULL,
-  actual_start_date TIMESTAMP NULL,
-  actual_end_date TIMESTAMP NULL,
-  estimated_hours NUMERIC(8,2) DEFAULT 0,
-  actual_hours NUMERIC(8,2) DEFAULT 0,
-  progress NUMERIC(5,2) DEFAULT 0,
+  description TEXT,
+  project_id INTEGER NOT NULL,
+  parent_task_id INTEGER,
+  assignee_id INTEGER,
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  actual_start_date TIMESTAMP WITH TIME ZONE,
+  actual_end_date TIMESTAMP WITH TIME ZONE,
+  estimated_hours DECIMAL(8,2) DEFAULT 0,
+  actual_hours DECIMAL(8,2) DEFAULT 0,
+  progress DECIMAL(5,2) DEFAULT 0,
   priority VARCHAR(20) DEFAULT 'normal',
   status VARCHAR(50) DEFAULT 'todo',
-  CONSTRAINT uq_tasks_task_number UNIQUE (task_number),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created_by INTEGER,
+  updated_by INTEGER,
+  deleted_at TIMESTAMP WITH TIME ZONE,
   CONSTRAINT fk_tasks_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
   CONSTRAINT fk_tasks_parent_task FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE SET NULL,
   CONSTRAINT fk_tasks_assignee FOREIGN KEY (assignee_id) REFERENCES employees(id) ON DELETE SET NULL
@@ -194,204 +192,236 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project_status ON tasks (project_id, status
 CREATE INDEX IF NOT EXISTS idx_tasks_assignee_status ON tasks (assignee_id, status);
 CREATE INDEX IF NOT EXISTS idx_tasks_project_assignee ON tasks (project_id, assignee_id);
 
--- 里程碑表
-CREATE TABLE IF NOT EXISTS milestones (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  project_id BIGINT NOT NULL,
-  milestone_name VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  due_date TIMESTAMP NOT NULL,
-  completed_date TIMESTAMP NULL,
-  status VARCHAR(50) DEFAULT 'pending',
-  CONSTRAINT fk_milestones_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_milestones_deleted_at ON milestones (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones (project_id);
-CREATE INDEX IF NOT EXISTS idx_milestones_due_date ON milestones (due_date);
-CREATE INDEX IF NOT EXISTS idx_milestones_status ON milestones (status);
-
 -- 工时记录表
-CREATE TABLE IF NOT EXISTS time_entries (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  employee_id BIGINT NOT NULL,
-  project_id BIGINT NOT NULL,
-  task_id BIGINT NULL,
-  date TIMESTAMP NOT NULL,
-  start_time TIMESTAMP NOT NULL,
-  end_time TIMESTAMP NOT NULL,
-  hours NUMERIC(8,2) NOT NULL,
-  description TEXT NULL,
-  is_billable BOOLEAN DEFAULT TRUE,
-  hourly_rate NUMERIC(10,2) DEFAULT 0,
-  amount NUMERIC(15,2) DEFAULT 0,
-  status VARCHAR(50) DEFAULT 'draft',
-  CONSTRAINT fk_time_entries_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
-  CONSTRAINT fk_time_entries_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  CONSTRAINT fk_time_entries_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL
+CREATE TABLE time_entries (
+    id SERIAL PRIMARY KEY,
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    task_id INTEGER REFERENCES tasks(id),
+    date TIMESTAMP WITH TIME ZONE NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    hours DECIMAL(8,2) NOT NULL,
+    description TEXT,
+    is_billable BOOLEAN DEFAULT true,
+    hourly_rate DECIMAL(10,2) DEFAULT 0,
+    amount DECIMAL(10,2) DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
 );
-CREATE INDEX IF NOT EXISTS idx_time_entries_deleted_at ON time_entries (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_time_entries_employee_id ON time_entries (employee_id);
-CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries (project_id);
-CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON time_entries (task_id);
-CREATE INDEX IF NOT EXISTS idx_time_entries_date ON time_entries (date);
-CREATE INDEX IF NOT EXISTS idx_time_entries_is_billable ON time_entries (is_billable);
-CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries (status);
-CREATE INDEX IF NOT EXISTS idx_time_entries_employee_date ON time_entries (employee_id, date);
-CREATE INDEX IF NOT EXISTS idx_time_entries_project_date ON time_entries (project_id, date);
-CREATE INDEX IF NOT EXISTS idx_time_entries_task_date ON time_entries (task_id, date);
+
+-- 工时记录表索引
+CREATE INDEX idx_time_entries_employee_id ON time_entries(employee_id);
+CREATE INDEX idx_time_entries_project_id ON time_entries(project_id);
+CREATE INDEX idx_time_entries_task_id ON time_entries(task_id);
+CREATE INDEX idx_time_entries_date ON time_entries(date);
+CREATE INDEX idx_time_entries_is_billable ON time_entries(is_billable);
+CREATE INDEX idx_time_entries_status ON time_entries(status);
+CREATE INDEX idx_time_entries_deleted_at ON time_entries(deleted_at);
 
 -- ============================================================================
 -- 项目相关辅助表
 -- ============================================================================
 
 -- 项目成员表
-CREATE TABLE IF NOT EXISTS project_members (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  project_id BIGINT NOT NULL,
-  employee_id BIGINT NOT NULL,
-  role VARCHAR(100) NOT NULL,
-  join_date TIMESTAMP NOT NULL,
-  leave_date TIMESTAMP NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  CONSTRAINT fk_project_members_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  CONSTRAINT fk_project_members_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+CREATE TABLE project_members (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    role VARCHAR(100) NOT NULL,
+    join_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    leave_date TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(project_id, employee_id)
 );
-CREATE INDEX IF NOT EXISTS idx_project_members_deleted_at ON project_members (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON project_members (project_id);
-CREATE INDEX IF NOT EXISTS idx_project_members_employee_id ON project_members (employee_id);
-CREATE INDEX IF NOT EXISTS idx_project_members_join_date ON project_members (join_date);
-CREATE INDEX IF NOT EXISTS idx_project_members_leave_date ON project_members (leave_date);
-CREATE INDEX IF NOT EXISTS idx_project_members_is_active ON project_members (is_active);
-CREATE INDEX IF NOT EXISTS idx_project_members_project_active ON project_members (project_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_project_members_employee_active ON project_members (employee_id, is_active);
+
+-- 项目成员表索引
+CREATE INDEX idx_project_members_project_id ON project_members(project_id);
+CREATE INDEX idx_project_members_employee_id ON project_members(employee_id);
+CREATE INDEX idx_project_members_join_date ON project_members(join_date);
+CREATE INDEX idx_project_members_leave_date ON project_members(leave_date);
+CREATE INDEX idx_project_members_is_active ON project_members(is_active);
+CREATE INDEX idx_project_members_deleted_at ON project_members(deleted_at);
 
 -- 项目费用表
-CREATE TABLE IF NOT EXISTS project_expenses (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  project_id BIGINT NOT NULL,
-  expense_date TIMESTAMP NOT NULL,
-  expense_type VARCHAR(100) NOT NULL,
-  amount NUMERIC(15,2) NOT NULL,
-  currency VARCHAR(10) DEFAULT 'CNY',
-  description TEXT NOT NULL,
-  receipt VARCHAR(500) NULL,
-  is_reimbursable BOOLEAN DEFAULT TRUE,
-  status VARCHAR(50) DEFAULT 'pending',
-  approved_by BIGINT NULL,
-  approved_at TIMESTAMP NULL,
-  CONSTRAINT fk_project_expenses_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  CONSTRAINT fk_project_expenses_approved_by FOREIGN KEY (approved_by) REFERENCES employees(id) ON DELETE SET NULL
+CREATE TABLE project_expenses (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    expense_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    expense_type VARCHAR(100) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'CNY',
+    description TEXT NOT NULL,
+    receipt VARCHAR(500),
+    is_reimbursable BOOLEAN DEFAULT true,
+    status VARCHAR(50) DEFAULT 'pending',
+    approved_by INTEGER REFERENCES employees(id),
+    approved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by INTEGER,
+    updated_by INTEGER
 );
-CREATE INDEX IF NOT EXISTS idx_project_expenses_deleted_at ON project_expenses (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_project_expenses_project_id ON project_expenses (project_id);
-CREATE INDEX IF NOT EXISTS idx_project_expenses_expense_date ON project_expenses (expense_date);
-CREATE INDEX IF NOT EXISTS idx_project_expenses_expense_type ON project_expenses (expense_type);
-CREATE INDEX IF NOT EXISTS idx_project_expenses_is_reimbursable ON project_expenses (is_reimbursable);
-CREATE INDEX IF NOT EXISTS idx_project_expenses_status ON project_expenses (status);
-CREATE INDEX IF NOT EXISTS idx_project_expenses_approved_by ON project_expenses (approved_by);
+
+-- 项目费用表索引
+CREATE INDEX idx_project_expenses_project_id ON project_expenses(project_id);
+CREATE INDEX idx_project_expenses_expense_date ON project_expenses(expense_date);
+CREATE INDEX idx_project_expenses_expense_type ON project_expenses(expense_type);
+CREATE INDEX idx_project_expenses_is_reimbursable ON project_expenses(is_reimbursable);
+CREATE INDEX idx_project_expenses_status ON project_expenses(status);
+CREATE INDEX idx_project_expenses_approved_by ON project_expenses(approved_by);
+CREATE INDEX idx_project_expenses_deleted_at ON project_expenses(deleted_at);
+CREATE INDEX idx_project_expenses_created_by ON project_expenses(created_by);
+CREATE INDEX idx_project_expenses_updated_by ON project_expenses(updated_by);
 
 -- 任务评论表
-CREATE TABLE IF NOT EXISTS task_comments (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  task_id BIGINT NOT NULL,
-  employee_id BIGINT NOT NULL,
-  comment TEXT NOT NULL,
-  CONSTRAINT fk_task_comments_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-  CONSTRAINT fk_task_comments_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+CREATE TABLE task_comments (
+    id SERIAL PRIMARY KEY,
+    task_id INTEGER NOT NULL REFERENCES tasks(id),
+    employee_id INTEGER NOT NULL REFERENCES employees(id),
+    comment TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
 );
-CREATE INDEX IF NOT EXISTS idx_task_comments_deleted_at ON task_comments (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments (task_id);
-CREATE INDEX IF NOT EXISTS idx_task_comments_employee_id ON task_comments (employee_id);
+
+-- 任务评论表索引
+CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);
+CREATE INDEX idx_task_comments_employee_id ON task_comments(employee_id);
+CREATE INDEX idx_task_comments_deleted_at ON task_comments(deleted_at);
 
 -- 项目文档表
-CREATE TABLE IF NOT EXISTS project_documents (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  project_id BIGINT NOT NULL,
-  document_name VARCHAR(255) NOT NULL,
-  document_type VARCHAR(100) NOT NULL,
-  file_path VARCHAR(500) NOT NULL,
-  file_size BIGINT DEFAULT 0,
-  version VARCHAR(50) DEFAULT '1.0',
-  uploaded_by BIGINT NOT NULL,
-  description TEXT NULL,
-  CONSTRAINT fk_project_documents_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  CONSTRAINT fk_project_documents_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES employees(id) ON DELETE RESTRICT
+CREATE TABLE project_documents (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    document_name VARCHAR(255) NOT NULL,
+    document_type VARCHAR(100) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT DEFAULT 0,
+    version VARCHAR(50) DEFAULT '1.0',
+    uploaded_by INTEGER NOT NULL REFERENCES employees(id),
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
 );
-CREATE INDEX IF NOT EXISTS idx_project_documents_deleted_at ON project_documents (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_project_documents_project_id ON project_documents (project_id);
-CREATE INDEX IF NOT EXISTS idx_project_documents_document_type ON project_documents (document_type);
-CREATE INDEX IF NOT EXISTS idx_project_documents_uploaded_by ON project_documents (uploaded_by);
+
+-- 项目文档表索引
+CREATE INDEX idx_project_documents_project_id ON project_documents(project_id);
+CREATE INDEX idx_project_documents_document_type ON project_documents(document_type);
+CREATE INDEX idx_project_documents_uploaded_by ON project_documents(uploaded_by);
+CREATE INDEX idx_project_documents_deleted_at ON project_documents(deleted_at);
 
 -- 项目资源表
-CREATE TABLE IF NOT EXISTS project_resources (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  project_id BIGINT NOT NULL,
-  resource_type VARCHAR(100) NOT NULL,
-  resource_id BIGINT NOT NULL,
-  quantity NUMERIC(10,2) DEFAULT 1,
-  unit VARCHAR(50) NULL,
-  cost_per_unit NUMERIC(15,2) DEFAULT 0,
-  total_cost NUMERIC(15,2) DEFAULT 0,
-  allocated_at TIMESTAMP NOT NULL,
-  released_at TIMESTAMP NULL,
-  status VARCHAR(50) DEFAULT 'allocated',
-  CONSTRAINT fk_project_resources_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+CREATE TABLE project_resources (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    resource_type VARCHAR(100) NOT NULL,
+    resource_id INTEGER NOT NULL,
+    quantity DECIMAL(15,4) DEFAULT 1,
+    unit VARCHAR(50),
+    cost_per_unit DECIMAL(15,2) DEFAULT 0,
+    total_cost DECIMAL(15,2) DEFAULT 0,
+    allocated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    released_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(50) DEFAULT 'allocated',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
 );
-CREATE INDEX IF NOT EXISTS idx_project_resources_deleted_at ON project_resources (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_project_resources_project_id ON project_resources (project_id);
-CREATE INDEX IF NOT EXISTS idx_project_resources_resource_type ON project_resources (resource_type);
-CREATE INDEX IF NOT EXISTS idx_project_resources_resource_id ON project_resources (resource_id);
-CREATE INDEX IF NOT EXISTS idx_project_resources_allocated_at ON project_resources (allocated_at);
-CREATE INDEX IF NOT EXISTS idx_project_resources_released_at ON project_resources (released_at);
-CREATE INDEX IF NOT EXISTS idx_project_resources_status ON project_resources (status);
+
+-- 项目资源表索引
+CREATE INDEX idx_project_resources_project_id ON project_resources(project_id);
+CREATE INDEX idx_project_resources_resource_type ON project_resources(resource_type);
+CREATE INDEX idx_project_resources_resource_id ON project_resources(resource_id);
+CREATE INDEX idx_project_resources_allocated_at ON project_resources(allocated_at);
+CREATE INDEX idx_project_resources_released_at ON project_resources(released_at);
+CREATE INDEX idx_project_resources_status ON project_resources(status);
+CREATE INDEX idx_project_resources_deleted_at ON project_resources(deleted_at);
 
 -- 项目报告表
-CREATE TABLE IF NOT EXISTS project_reports (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMP NULL,
-  updated_at TIMESTAMP NULL,
-  deleted_at TIMESTAMP NULL,
-  created_by BIGINT NULL,
-  updated_by BIGINT NULL,
-  project_id BIGINT NOT NULL,
-  report_type VARCHAR(100) NOT NULL,
-  report_date TIMESTAMP NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  content TEXT NOT NULL,
-  generated_by BIGINT NOT NULL,
-  status VARCHAR(50) DEFAULT 'draft',
-  CONSTRAINT fk_project_reports_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  CONSTRAINT fk_project_reports_generated_by FOREIGN KEY (generated_by) REFERENCES employees(id) ON DELETE RESTRICT
+CREATE TABLE project_reports (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    report_type VARCHAR(100) NOT NULL,
+    report_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    generated_by INTEGER NOT NULL REFERENCES employees(id),
+    status VARCHAR(50) DEFAULT 'draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_by INTEGER,
+    updated_by INTEGER
 );
-CREATE INDEX IF NOT EXISTS idx_project_reports_deleted_at ON project_reports (deleted_at);
-CREATE INDEX IF NOT EXISTS idx_project_reports_project_id ON project_reports (project_id);
-CREATE INDEX IF NOT EXISTS idx_project_reports_report_type ON project_reports (report_type);
-CREATE INDEX IF NOT EXISTS idx_project_reports_report_date ON project_reports (report_date);
-CREATE INDEX IF NOT EXISTS idx_project_reports_generated_by ON project_reports (generated_by);
-CREATE INDEX IF NOT EXISTS idx_project_reports_status ON project_reports (status);
+
+-- 项目报告表索引
+CREATE INDEX idx_project_reports_project_id ON project_reports(project_id);
+CREATE INDEX idx_project_reports_report_type ON project_reports(report_type);
+CREATE INDEX idx_project_reports_report_date ON project_reports(report_date);
+CREATE INDEX idx_project_reports_generated_by ON project_reports(generated_by);
+CREATE INDEX idx_project_reports_status ON project_reports(status);
+CREATE INDEX idx_project_reports_deleted_at ON project_reports(deleted_at);
+CREATE INDEX idx_project_reports_created_by ON project_reports(created_by);
+CREATE INDEX idx_project_reports_updated_by ON project_reports(updated_by);
+
+-- 里程碑表
+CREATE TABLE milestones (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id),
+    milestone_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    completed_date TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 里程碑表索引
+CREATE INDEX idx_milestones_project_id ON milestones(project_id);
+CREATE INDEX idx_milestones_due_date ON milestones(due_date);
+CREATE INDEX idx_milestones_status ON milestones(status);
+CREATE INDEX idx_milestones_deleted_at ON milestones(deleted_at);
+
+-- ============================================================================
+-- 示例数据
+-- ============================================================================
+
+-- 插入示例项目数据
+INSERT INTO projects (project_number, project_name, description, customer_id, manager_id, start_date, end_date, actual_start_date, budget, priority, status, created_by, updated_by) VALUES
+('PRJ001', 'ERP系统开发', 'Galaxy ERP系统开发项目', 1, 1, '2024-01-01 00:00:00+00', '2024-12-31 23:59:59+00', '2024-01-01 09:00:00+00', 500000.00, 'high', 'active', 1, 1),
+('PRJ002', '移动应用开发', '企业移动应用开发项目', 2, 2, '2024-02-01 00:00:00+00', '2024-08-31 23:59:59+00', NULL, 200000.00, 'normal', 'planning', 2, 2),
+('PRJ003', '数据迁移项目', '旧系统数据迁移到新系统', 1, 1, '2024-03-01 00:00:00+00', '2024-06-30 23:59:59+00', NULL, 100000.00, 'high', 'planning', 1, 1);
+
+-- 插入示例任务数据
+INSERT INTO tasks (task_number, task_name, description, project_id, assignee_id, start_date, end_date, actual_start_date, actual_end_date, estimated_hours, actual_hours, progress, priority, status, created_by, updated_by) VALUES
+('TSK001', '需求分析', '系统需求分析和设计', 1, 1, '2024-01-01 09:00:00+00', '2024-01-31 18:00:00+00', '2024-01-01 09:00:00+00', '2024-01-30 17:00:00+00', 160.00, 155.50, 100.00, 'high', 'done', 1, 1),
+('TSK002', '数据库设计', '设计系统数据库结构', 1, 2, '2024-02-01 09:00:00+00', '2024-02-28 18:00:00+00', '2024-02-01 09:00:00+00', NULL, 120.00, 80.00, 75.00, 'high', 'in_progress', 1, 1),
+('TSK003', '前端开发', '用户界面开发', 1, 3, '2024-03-01 09:00:00+00', '2024-06-30 18:00:00+00', NULL, NULL, 480.00, 0.00, 0.00, 'normal', 'todo', 1, 1),
+('TSK004', '后端开发', '服务端API开发', 1, 1, '2024-03-01 09:00:00+00', '2024-08-31 18:00:00+00', NULL, NULL, 640.00, 0.00, 0.00, 'high', 'todo', 1, 1);
+
+-- 插入示例项目成员数据
+INSERT INTO project_members (project_id, employee_id, role, join_date, is_active) VALUES
+(1, 1, '项目经理', '2024-01-01 09:00:00+00', true),
+(1, 2, '数据库工程师', '2024-01-01 09:00:00+00', true),
+(1, 3, '前端工程师', '2024-03-01 09:00:00+00', true),
+(2, 2, '项目经理', '2024-02-01 09:00:00+00', true);
+
+-- 插入示例工时记录数据
+INSERT INTO time_entries (employee_id, project_id, task_id, date, start_time, end_time, hours, description, is_billable, hourly_rate, amount, status) VALUES
+(1, 1, 1, '2024-01-15 00:00:00+00', '2024-01-15 09:00:00+00', '2024-01-15 17:00:00+00', 8.00, '需求分析会议', true, 200.00, 1600.00, 'approved'),
+(1, 1, 1, '2024-01-16 00:00:00+00', '2024-01-16 09:00:00+00', '2024-01-16 15:00:00+00', 6.00, '编写需求文档', true, 200.00, 1200.00, 'approved'),
+(2, 1, 2, '2024-02-05 00:00:00+00', '2024-02-05 09:00:00+00', '2024-02-05 17:00:00+00', 8.00, '数据库表设计', true, 150.00, 1200.00, 'submitted'),
+(2, 1, 2, '2024-02-06 00:00:00+00', '2024-02-06 09:00:00+00', '2024-02-06 13:00:00+00', 4.00, '数据库关系设计', true, 150.00, 600.00, 'submitted');
 
 -- ============================================================================
 -- 结束

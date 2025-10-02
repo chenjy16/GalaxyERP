@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ProductService } from '@/services/product';
+import { ItemService } from '@/services/item';
 import { InventoryService } from '@/services/inventory';
 import { WarehouseService } from '@/services/warehouse';
 import { withAuth } from '@/contexts/AuthContext';
 import { 
-  Product, 
+  Item, 
   Stock, 
   StockMovement, 
   Warehouse, 
-  CreateProductRequest,
+  CreateItemRequest,
   CreateStockRequest,
   CreateStockMovementRequest,
   CreateWarehouseRequest,
@@ -65,26 +65,25 @@ import {
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 const { Option } = Select;
 
 function InventoryPage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'product' | 'inbound' | 'outbound' | 'warehouse' | 'movement'>('product');
+  const [modalType, setModalType] = useState<'item' | 'inbound' | 'outbound' | 'warehouse' | 'movement'>('item');
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
   // API数据状态
-  const [products, setProducts] = useState<Product[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  
+
   // 分页状态
-  const [productsPagination, setProductsPagination] = useState({
+  const [itemsPagination, setItemsPagination] = useState({
     current: 1,
     pageSize: 10,
-    total: 0
+    total: 0,
   });
   const [stocksPagination, setStocksPagination] = useState({
     current: 1,
@@ -103,23 +102,23 @@ function InventoryPage() {
   });
 
   // 搜索状态
-  const [productsSearch, setProductsSearch] = useState('');
+  const [itemsSearch, setItemsSearch] = useState('');
   const [stocksSearch, setStocksSearch] = useState('');
   const [movementsSearch, setMovementsSearch] = useState('');
   const [warehousesSearch, setWarehousesSearch] = useState('');
 
   // 数据加载函数
-  const loadProducts = async (page = 1, search = '', pageSize?: number) => {
+  const loadItems = async (page = 1, search = '', pageSize?: number) => {
     try {
       setLoading(true);
-      const limit = pageSize || productsPagination.pageSize;
-      const response = await ProductService.getProducts({
+      const pageSizeValue = pageSize || itemsPagination.pageSize;
+      const response = await ItemService.getItems({
         page,
-        limit,
+        pageSize: pageSizeValue,
         search: search || undefined
       });
-      setProducts(response.data || []);
-      setProductsPagination({
+      setItems(response.data || []);
+      setItemsPagination({
         current: response.page,
         pageSize: response.limit,
         total: response.total
@@ -127,7 +126,7 @@ function InventoryPage() {
     } catch (error) {
       console.error('加载产品数据失败:', error);
       message.error('加载产品数据失败');
-      setProducts([]);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -207,7 +206,7 @@ function InventoryPage() {
 
   // 初始化数据加载
   useEffect(() => {
-    loadProducts();
+    loadItems();
     loadStocks();
     loadStockMovements();
     loadWarehouses();
@@ -250,11 +249,11 @@ function InventoryPage() {
     return type === 'inbound' ? '入库' : '出库';
   };
 
-  const productColumns = [
+  const itemColumns = [
     {
-      title: '商品信息',
-      key: 'product',
-      render: (record: Product) => (
+      title: '物料信息',
+      key: 'item',
+      render: (record: Item) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar 
             size={40}
@@ -264,7 +263,9 @@ function InventoryPage() {
           <div>
             <Text strong style={{ display: 'block' }}>{record.name}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.code} | {record.category}
+              {record.code} | {typeof record.category === 'object' && record.category !== null ? 
+                ((record.category as any).name || (record.category as any).code || (record.category as any).id || 'Unknown') : 
+                (record.category || '-')}
             </Text>
           </div>
         </div>
@@ -274,26 +275,40 @@ function InventoryPage() {
       title: '分类',
       dataIndex: 'category',
       key: 'category',
-      render: (category: string) => <Tag color="blue">{category}</Tag>,
+      render: (category: any) => {
+        // Fix: Properly handle category object rendering
+        if (typeof category === 'object' && category !== null) {
+          return <Tag color="blue">{category.name || category.code || category.id || 'Unknown'}</Tag>;
+        }
+        return <Tag color="blue">{category || '-'}</Tag>;
+      },
     },
     {
       title: '单位',
       dataIndex: 'unit',
       key: 'unit',
-      render: (unit: string) => <Text>{unit}</Text>,
+      render: (unit: any) => {
+        // Fix: Properly handle unit object rendering
+        if (typeof unit === 'object' && unit !== null) {
+          return <Text>{unit.name || unit.symbol || unit.id || '-'}</Text>;
+        }
+        return <Text>{unit || '-'}</Text>;
+      },
     },
     {
       title: '价格信息',
       key: 'price',
-      render: (record: Product) => (
+      render: (record: Item) => (
         <div>
           <div style={{ marginBottom: 4 }}>
             <Text type="secondary">售价: </Text>
-            <Text strong style={{ color: '#52c41a' }}>¥{record.price.toLocaleString()}</Text>
+            <Text strong style={{ color: '#52c41a' }}>
+              ¥{record.price ? record.price.toLocaleString() : '0.00'}
+            </Text>
           </div>
           <div>
             <Text type="secondary">成本: </Text>
-            <Text>¥{record.cost.toLocaleString()}</Text>
+            <Text>¥{record.cost ? record.cost.toLocaleString() : '0.00'}</Text>
           </div>
         </div>
       ),
@@ -311,7 +326,7 @@ function InventoryPage() {
     {
       title: '操作',
       key: 'action',
-      render: (record: Product) => (
+      render: (record: Item) => (
         <Dropdown
           menu={{
             items: [
@@ -360,8 +375,18 @@ function InventoryPage() {
     },
     {
       title: '商品名称',
-      dataIndex: 'product',
       key: 'product',
+      render: (record: any) => {
+        // 支持后端返回 item 或 product 对象，统一展示名称
+        // Fix: Properly handle item/product object rendering
+        if (record?.item && typeof record.item === 'object' && record.item !== null) {
+          return record.item.name || record.item.code || record.item.id || '-';
+        }
+        if (record?.product && typeof record.product === 'object' && record.product !== null) {
+          return record.product.name || record.product.code || record.product.id || '-';
+        }
+        return record?.item?.name || record?.product?.name || '-';
+      },
     },
     {
       title: '类型',
@@ -385,23 +410,69 @@ function InventoryPage() {
     },
     {
       title: '仓库',
-      dataIndex: 'warehouse',
       key: 'warehouse',
+      render: (record: any) => {
+        // 后端返回 warehouse 为对象时，避免直接渲染对象
+        // Fix: Properly handle warehouse object rendering
+        if (record?.warehouse && typeof record.warehouse === 'object' && record.warehouse !== null) {
+          return record.warehouse.name || record.warehouse.code || record.warehouse.id || '-';
+        }
+        return record?.warehouse?.name || '-';
+      },
     },
     {
       title: '操作人',
       dataIndex: 'operator',
       key: 'operator',
+      render: (operator: any) => {
+        // Fix: Properly handle operator object rendering
+        if (typeof operator === 'object' && operator !== null) {
+          if (operator.name) return operator.name;
+          if (operator.firstName || operator.lastName) return `${operator.firstName || ''} ${operator.lastName || ''}`.trim();
+          return operator.id || '-';
+        }
+        return operator || '-';
+      },
     },
     {
       title: '操作时间',
       dataIndex: 'time',
       key: 'time',
+      render: (time: any) => {
+        // Fix: Properly handle time object rendering
+        if (typeof time === 'object' && time !== null) {
+          // 如果是对象，尝试获取时间字符串
+          const timeStr = time?.created_at || time?.updated_at;
+          if (timeStr) {
+            try {
+              return new Date(timeStr).toLocaleString();
+            } catch {
+              return timeStr;
+            }
+          }
+          return '-';
+        }
+        if (time) {
+          try {
+            return new Date(time).toLocaleString();
+          } catch {
+            return time;
+          }
+        }
+        return '-';
+      },
     },
     {
       title: '原因',
       dataIndex: 'reason',
       key: 'reason',
+      render: (reason: any) => {
+        // Fix: Properly handle reason object rendering
+        if (typeof reason === 'object' && reason !== null) {
+          return reason.name || reason.id || '-';
+        }
+        return reason || '-';
+      },
     },
     {
       title: '状态',
@@ -455,11 +526,35 @@ function InventoryPage() {
       title: '地址',
       dataIndex: 'address',
       key: 'address',
+      render: (address: any) => {
+        // Fix: Properly handle address object rendering
+        if (typeof address === 'object' && address !== null) {
+          // Check if it's a nested object with name property
+          if (address.name) return <Text>{address.name}</Text>;
+          // Check if it's a nested object with other properties
+          if (address.id) return <Text>{address.id}</Text>;
+          // Fallback to dash if no valid property found
+          return <Text>-</Text>;
+        }
+        return <Text>{address || '-'}</Text>;
+      },
     },
     {
       title: '负责人',
       dataIndex: 'manager',
       key: 'manager',
+      render: (manager: any) => {
+        // Fix: Properly handle manager object rendering
+        if (typeof manager === 'object' && manager !== null) {
+          // Check if it's a nested object with name property
+          if (manager.name) return <Text>{manager.name}</Text>;
+          // Check if it's a nested object with other properties
+          if (manager.id) return <Text>{manager.id}</Text>;
+          // Fallback to dash if no valid property found
+          return <Text>-</Text>;
+        }
+        return <Text>{manager || '-'}</Text>;
+      },
     },
     {
       title: '状态',
@@ -475,7 +570,14 @@ function InventoryPage() {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      render: (date: string) => {
+        if (!date) return '-';
+        try {
+          return new Date(date).toLocaleDateString();
+        } catch (error) {
+          return date;
+        }
+      },
     },
     {
       title: '操作',
@@ -497,34 +599,40 @@ function InventoryPage() {
     {
       title: '变动信息',
       key: 'movement',
-      render: (record: StockMovement) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar 
-            size={40}
-            style={{ backgroundColor: record.movementType === 'IN' ? '#52c41a' : record.movementType === 'OUT' ? '#ff4d4f' : '#1890ff' }}
-            icon={<SwapOutlined />}
-          />
-          <div>
-            <Text strong style={{ display: 'block' }}>{record.itemCode}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.itemName}
-            </Text>
+      render: (record: any) => {
+        // 正确处理后端返回的嵌套对象结构
+        const itemCode = record.item?.code || '-';
+        const itemName = record.item?.name || '-';
+        
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar 
+              size={40}
+              style={{ backgroundColor: record.type === 'in' ? '#52c41a' : record.type === 'out' ? '#ff4d4f' : '#1890ff' }}
+              icon={<SwapOutlined />}
+            />
+            <div>
+              <Text strong style={{ display: 'block' }}>{itemCode}</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {itemName}
+              </Text>
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: '变动类型',
-      dataIndex: 'movementType',
-      key: 'movementType',
+      dataIndex: 'type',
+      key: 'type',
       render: (type: string) => {
         const typeMap: { [key: string]: { text: string; color: string } } = {
-          'IN': { text: '入库', color: 'green' },
-          'OUT': { text: '出库', color: 'red' },
-          'TRANSFER': { text: '调拨', color: 'blue' },
-          'ADJUSTMENT': { text: '调整', color: 'orange' }
+          'in': { text: '入库', color: 'green' },
+          'out': { text: '出库', color: 'red' },
+          'transfer': { text: '调拨', color: 'blue' },
+          'adjustment': { text: '调整', color: 'orange' }
         };
-        const config = typeMap[type] || { text: type, color: 'default' };
+        const config = typeMap[type] || { text: type || '-', color: 'default' };
         return (
           <Tag color={config.color}>
             {config.text}
@@ -536,48 +644,68 @@ function InventoryPage() {
       title: '数量变动',
       dataIndex: 'quantity',
       key: 'quantity',
-      render: (quantity: number, record: StockMovement) => (
-        <div>
-          <Text strong style={{ color: record.movementType === 'IN' ? '#52c41a' : '#ff4d4f' }}>
-            {record.movementType === 'IN' ? '+' : '-'}{Math.abs(quantity)}
-          </Text>
-        </div>
-      ),
+      render: (quantity: number, record: any) => {
+        const numQuantity = Number(quantity) || 0;
+        const movementType = record.type;
+        
+        return (
+          <div>
+            <Text strong style={{ color: movementType === 'in' ? '#52c41a' : '#ff4d4f' }}>
+              {movementType === 'in' ? '+' : '-'}{Math.abs(numQuantity)}
+            </Text>
+          </div>
+        );
+      },
     },
     {
       title: '仓库',
-      dataIndex: 'warehouseName',
-      key: 'warehouseName',
+      key: 'warehouse',
+      render: (record: any) => {
+        // Fix: Properly handle warehouse object rendering
+        if (record.warehouse && typeof record.warehouse === 'object' && record.warehouse !== null) {
+          return record.warehouse.name || record.warehouse.code || record.warehouse.id || '-';
+        }
+        return record.warehouse || '-';
+      },
     },
     {
-      title: '单价',
-      dataIndex: 'unitCost',
-      key: 'unitCost',
-      render: (cost: number) => `¥${cost.toFixed(2)}`,
-    },
-    {
-      title: '总价值',
-      dataIndex: 'totalValue',
-      key: 'totalValue',
-      render: (value: number) => `¥${value.toFixed(2)}`,
+      title: '库位',
+      key: 'location',
+      render: (record: any) => {
+        // Fix: Properly handle location object rendering
+        if (record.location && typeof record.location === 'object' && record.location !== null) {
+          return record.location.name || record.location.code || record.location.id || '-';
+        }
+        return record.location || '-';
+      },
     },
     {
       title: '变动时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => new Date(date).toLocaleString(),
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (date: string) => {
+        if (!date) return '-';
+        try {
+          const dateObj = new Date(date);
+          return isNaN(dateObj.getTime()) ? '-' : dateObj.toLocaleString();
+        } catch (error) {
+          return '-';
+        }
+      },
     },
     {
       title: '备注',
       dataIndex: 'notes',
       key: 'notes',
-      render: (notes: string) => (
-        <Tooltip title={notes}>
-          <Text ellipsis style={{ maxWidth: 100 }}>
-            {notes || '-'}
-          </Text>
-        </Tooltip>
-      ),
+      render: (notes: string) => {
+        return (
+          <Tooltip title={notes || '无备注'}>
+            <Text ellipsis style={{ maxWidth: 100 }}>
+              {notes || '-'}
+            </Text>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '操作',
@@ -595,39 +723,109 @@ function InventoryPage() {
   const handleModalOk = () => {
     form.validateFields().then(values => {
       console.log('Form values:', values);
-      message.success(`${modalType === 'product' ? '商品' : modalType === 'inbound' ? '入库单' : modalType === 'outbound' ? '出库单' : '仓库'}创建成功！`);
+      message.success(`${modalType === 'item' ? '物料' : modalType === 'inbound' ? '入库单' : modalType === 'outbound' ? '出库单' : '仓库'}创建成功！`);
       setIsModalVisible(false);
       form.resetFields();
     });
   };
 
-  const showModal = (type: 'product' | 'inbound' | 'outbound' | 'warehouse' | 'movement') => {
+  const showModal = (type: 'item' | 'inbound' | 'outbound' | 'warehouse' | 'movement') => {
     setModalType(type);
     setIsModalVisible(true);
   };
 
   // 计算统计数据
-  const totalProducts = products?.length || 0;
-  const lowStockProducts = stocks?.filter(s => s.quantity < s.reorderLevel)?.length || 0;
+  const totalItems = items?.length || 0;
+  const lowStockItems = stocks?.filter(s => s.quantity < s.reorderLevel)?.length || 0;
   const totalWarehouse = warehouses?.length || 0;
   const totalMovements = stockMovements?.length || 0;
 
   // 定义Tabs的items
   const tabItems = [
     {
-      key: 'products',
-      label: '商品管理',
+      key: 'stocks',
+      label: '库存记录',
       children: (
         <>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space>
               <Input
-                placeholder="搜索商品..."
+                placeholder="搜索库存记录..."
                 prefix={<SearchOutlined />}
                 style={{ width: 300 }}
-                value={productsSearch}
-                onChange={(e) => setProductsSearch(e.target.value)}
-                onPressEnter={() => loadProducts()}
+                value={stocksSearch}
+                onChange={(e) => setStocksSearch(e.target.value)}
+                onPressEnter={() => loadStocks()}
+              />
+              <Select placeholder="类型筛选" style={{ width: 120 }}>
+                <Option value="all">全部</Option>
+                <Option value="inbound">入库</Option>
+                <Option value="outbound">出库</Option>
+              </Select>
+              <Select placeholder="状态筛选" style={{ width: 120 }}>
+                <Option value="all">全部</Option>
+                <Option value="completed">已完成</Option>
+                <Option value="pending">待处理</Option>
+              </Select>
+            </Space>
+            <Space>
+              <Button icon={<ExportOutlined />}>导出</Button>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={() => showModal('inbound')}
+              >
+                新建入库
+              </Button>
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={() => showModal('outbound')}
+              >
+                新建出库
+              </Button>
+            </Space>
+          </div>
+          <Table 
+            columns={stockColumns} 
+            dataSource={stocks || []}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: stocksPagination.current,
+              pageSize: stocksPagination.pageSize,
+              total: stocksPagination.total,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+              onChange: (page, pageSize) => {
+                setStocksPagination(prev => ({
+                  ...prev,
+                  current: page,
+                  pageSize: pageSize || 10
+                }));
+                loadStocks(page, stocksSearch, pageSize);
+              }
+            }}
+            scroll={{ x: 1400 }}
+          />
+        </>
+      )
+    },
+    {
+      key: 'items',
+      label: '物料管理',
+      children: (
+        <>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Space>
+              <Input
+                placeholder="搜索物料..."
+                prefix={<SearchOutlined />}
+                style={{ width: 300 }}
+                value={itemsSearch}
+                onChange={(e) => setItemsSearch(e.target.value)}
+                onPressEnter={() => loadItems()}
               />
               <Select placeholder="分类筛选" style={{ width: 120 }}>
                 <Option value="all">全部</Option>
@@ -655,30 +853,31 @@ function InventoryPage() {
               <Button 
                 type="primary" 
                 icon={<PlusOutlined />}
-                onClick={() => showModal('product')}
+                onClick={() => showModal('item')}
               >
-                新建商品
-              </Button>
+                  新建物料
+                </Button>
             </Space>
           </div>
           <Table 
-            columns={productColumns} 
-            dataSource={products || []}
+             columns={itemColumns} 
+            dataSource={items || []}
+            rowKey="id"
             loading={loading}
             pagination={{
-              current: productsPagination.current,
-              pageSize: productsPagination.pageSize,
-              total: productsPagination.total,
+              current: itemsPagination.current,
+              pageSize: itemsPagination.pageSize,
+              total: itemsPagination.total,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
               onChange: (page, pageSize) => {
-                setProductsPagination(prev => ({
+                setItemsPagination(prev => ({
                   ...prev,
                   current: page,
                   pageSize: pageSize || 10
                 }));
-                loadProducts(page, productsSearch, pageSize);
+                loadItems(page, itemsSearch, pageSize);
               }
             }}
             scroll={{ x: 1400 }}
@@ -728,6 +927,7 @@ function InventoryPage() {
           <Table 
             columns={warehouseColumns} 
             dataSource={warehouses || []}
+            rowKey="id"
             loading={loading}
             pagination={{
               current: warehousesPagination.current,
@@ -794,6 +994,7 @@ function InventoryPage() {
           <Table 
             columns={movementColumns} 
             dataSource={stockMovements || []}
+            rowKey="id"
             loading={loading}
             pagination={{
               current: movementsPagination.current,
@@ -832,8 +1033,8 @@ function InventoryPage() {
         <Col xs={24} sm={6}>
           <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <Statistic
-              title="商品总数"
-              value={totalProducts}
+               title="物料总数"
+              value={totalItems}
               prefix={<InboxOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -843,7 +1044,7 @@ function InventoryPage() {
           <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
             <Statistic
               title="库存预警"
-              value={lowStockProducts}
+              value={lowStockItems}
               prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
               valueStyle={{ color: '#ff4d4f' }}
             />
@@ -872,7 +1073,7 @@ function InventoryPage() {
       </Row>
 
       <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <Tabs defaultActiveKey="products" items={tabItems} />
+        <Tabs defaultActiveKey="items" items={tabItems} />
       </Card>
     </div>
   );

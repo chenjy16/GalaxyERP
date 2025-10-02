@@ -9,18 +9,41 @@ type User struct {
 	BaseModel
 	Username     string     `json:"username" gorm:"uniqueIndex;not null"`
 	Email        string     `json:"email" gorm:"uniqueIndex;not null"`
-	Password     string     `json:"-" gorm:"not null"`
+	Password     string     `json:"-" gorm:"column:password_hash;not null"`
 	FirstName    string     `json:"first_name,omitempty"`
 	LastName     string     `json:"last_name,omitempty"`
 	IsActive     bool       `json:"is_active" gorm:"default:true"`
-	Role         string     `json:"role,omitempty"`
 	CompanyID    *uint      `json:"company_id,omitempty"`
 	DepartmentID *uint      `json:"department_id,omitempty"`
-	PositionID   *uint      `json:"position_id,omitempty"`
 	Phone        string     `json:"phone,omitempty"`
-	LastLogin    *time.Time `json:"last_login,omitempty"`
-	Avatar       string     `json:"avatar,omitempty"`
 	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
+	
+	// 数据库中存在的其他字段
+	Salt                string     `json:"-" gorm:"column:salt"`
+	DisplayName         string     `json:"display_name,omitempty"`
+	AvatarURL           string     `json:"avatar_url,omitempty" gorm:"column:avatar_url"`
+	IsAdmin             bool       `json:"is_admin" gorm:"column:is_admin;default:false"`
+	Position            string     `json:"position,omitempty"`
+	EmployeeNumber      string     `json:"employee_number,omitempty"`
+	HireDate            *time.Time `json:"hire_date,omitempty"`
+	BirthDate           *time.Time `json:"birth_date,omitempty"`
+	Gender              string     `json:"gender,omitempty"`
+	Address             string     `json:"address,omitempty"`
+	EmergencyContact    string     `json:"emergency_contact,omitempty"`
+	EmergencyPhone      string     `json:"emergency_phone,omitempty"`
+	LastLoginIP         string     `json:"last_login_ip,omitempty" gorm:"column:last_login_ip"`
+	LoginCount          int        `json:"login_count" gorm:"default:0"`
+	FailedLoginCount    int        `json:"failed_login_count" gorm:"default:0"`
+	LockedUntil         *time.Time `json:"locked_until,omitempty"`
+	PasswordChangedAt   *time.Time `json:"password_changed_at,omitempty"`
+	MustChangePassword  bool       `json:"must_change_password" gorm:"default:false"`
+	TwoFactorEnabled    bool       `json:"two_factor_enabled" gorm:"default:false"`
+	TwoFactorSecret     string     `json:"-" gorm:"column:two_factor_secret"`
+	Preferences         string     `json:"preferences,omitempty"`
+	Timezone            string     `json:"timezone" gorm:"default:'Asia/Shanghai'"`
+	Language            string     `json:"language" gorm:"default:'zh-CN'"`
+	Theme               string     `json:"theme" gorm:"default:'light'"`
+	Status              string     `json:"status" gorm:"default:'ACTIVE'"`
 	
 	// 关联
 	Roles        []Role       `json:"roles,omitempty" gorm:"many2many:user_roles;"`

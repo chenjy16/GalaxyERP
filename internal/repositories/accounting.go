@@ -183,8 +183,8 @@ func (r *JournalEntryRepositoryImpl) List(ctx context.Context, offset, limit int
 		return nil, 0, err
 	}
 	
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Items").Offset(offset).Limit(limit).Find(&entries).Error
+	// 获取分页数据，预加载Account关联
+	err := r.db.WithContext(ctx).Preload("Account").Offset(offset).Limit(limit).Find(&entries).Error
 	if err != nil {
 		return nil, 0, err
 	}
