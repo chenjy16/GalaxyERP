@@ -44,17 +44,17 @@ type Quotation struct {
 	Terms           string    `json:"terms,omitempty"`
 	Notes           string    `json:"notes,omitempty"`
 	CreatedBy       uint      `json:"created_by,omitempty"`
-	
+
 	// 版本管理字段
-	CurrentVersion  int       `json:"current_version" gorm:"default:1"`
-	TotalVersions   int       `json:"total_versions" gorm:"default:1"`
-	HasVersions     bool      `json:"has_versions" gorm:"default:false"`
+	CurrentVersion int  `json:"current_version" gorm:"default:1"`
+	TotalVersions  int  `json:"total_versions" gorm:"default:1"`
+	HasVersions    bool `json:"has_versions" gorm:"default:false"`
 
 	// 关联
-	Customer Customer             `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
-	Template *QuotationTemplate   `json:"template,omitempty" gorm:"foreignKey:TemplateID"`
-	Items    []QuotationItem      `json:"items,omitempty" gorm:"foreignKey:QuotationID"`
-	Versions []QuotationVersion   `json:"versions,omitempty" gorm:"foreignKey:QuotationID"`
+	Customer Customer           `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
+	Template *QuotationTemplate `json:"template,omitempty" gorm:"foreignKey:TemplateID"`
+	Items    []QuotationItem    `json:"items,omitempty" gorm:"foreignKey:QuotationID"`
+	Versions []QuotationVersion `json:"versions,omitempty" gorm:"foreignKey:QuotationID"`
 }
 
 // QuotationItem 报价单明细模型
@@ -95,10 +95,10 @@ type SalesOrder struct {
 	CreatedBy      uint      `json:"created_by,omitempty"`
 
 	// 关联
-	Customer     Customer         `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
-	CreatedByUser *User           `json:"created_by_user,omitempty" gorm:"foreignKey:CreatedBy"`
-	Quotation    *Quotation       `json:"quotation,omitempty" gorm:"foreignKey:QuotationID"`
-	Items        []SalesOrderItem `json:"items,omitempty" gorm:"foreignKey:SalesOrderID"`
+	Customer      Customer         `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
+	CreatedByUser *User            `json:"created_by_user,omitempty" gorm:"foreignKey:CreatedBy"`
+	Quotation     *Quotation       `json:"quotation,omitempty" gorm:"foreignKey:QuotationID"`
+	Items         []SalesOrderItem `json:"items,omitempty" gorm:"foreignKey:SalesOrderID"`
 }
 
 // SalesOrderItem 销售订单明细模型
@@ -169,16 +169,16 @@ type DeliveryNoteItem struct {
 // QuotationTemplate 报价单模板模型
 type QuotationTemplate struct {
 	BaseModel
-	Name           string  `json:"name" gorm:"not null"`
-	Description    string  `json:"description,omitempty"`
-	IsDefault      bool    `json:"is_default" gorm:"default:false"`
-	IsActive       bool    `json:"is_active" gorm:"default:true"`
-	ValidityDays   int     `json:"validity_days" gorm:"default:30"`
-	Terms          string  `json:"terms,omitempty"`
-	Notes          string  `json:"notes,omitempty"`
-	DiscountRate   float64 `json:"discount_rate" gorm:"default:0"`
-	TaxRate        float64 `json:"tax_rate" gorm:"default:0"`
-	CreatedBy      uint    `json:"created_by,omitempty"`
+	Name         string  `json:"name" gorm:"not null"`
+	Description  string  `json:"description,omitempty"`
+	IsDefault    bool    `json:"is_default" gorm:"default:false"`
+	IsActive     bool    `json:"is_active" gorm:"default:true"`
+	ValidityDays int     `json:"validity_days" gorm:"default:30"`
+	Terms        string  `json:"terms,omitempty"`
+	Notes        string  `json:"notes,omitempty"`
+	DiscountRate float64 `json:"discount_rate" gorm:"default:0"`
+	TaxRate      float64 `json:"tax_rate" gorm:"default:0"`
+	CreatedBy    uint    `json:"created_by,omitempty"`
 
 	// 关联
 	Items []QuotationTemplateItem `json:"items,omitempty" gorm:"foreignKey:TemplateID"`
@@ -187,31 +187,30 @@ type QuotationTemplate struct {
 // QuotationTemplateItem 报价单模板项目模型
 type QuotationTemplateItem struct {
 	BaseModel
-	TemplateID     uint    `json:"template_id" gorm:"not null"`
-	ItemID         uint    `json:"item_id" gorm:"not null"`
-	Description    string  `json:"description,omitempty"`
-	Quantity       float64 `json:"quantity" gorm:"default:1"`
-	Rate           float64 `json:"rate" gorm:"default:0"`
-	DiscountRate   float64 `json:"discount_rate" gorm:"default:0"`
-	TaxRate        float64 `json:"tax_rate" gorm:"default:0"`
-	SortOrder      int     `json:"sort_order" gorm:"default:0"`
+	TemplateID   uint    `json:"template_id" gorm:"not null"`
+	ItemID       uint    `json:"item_id" gorm:"not null"`
+	Description  string  `json:"description,omitempty"`
+	Quantity     float64 `json:"quantity" gorm:"default:1"`
+	Rate         float64 `json:"rate" gorm:"default:0"`
+	DiscountRate float64 `json:"discount_rate" gorm:"default:0"`
+	TaxRate      float64 `json:"tax_rate" gorm:"default:0"`
+	SortOrder    int     `json:"sort_order" gorm:"default:0"`
 
 	// 关联
 	Template QuotationTemplate `json:"template,omitempty" gorm:"foreignKey:TemplateID"`
 	Item     Item              `json:"item,omitempty" gorm:"foreignKey:ItemID"`
 }
 
-
 // QuotationVersion 报价单版本模型
 type QuotationVersion struct {
 	BaseModel
-	QuotationID     uint      `json:"quotation_id" gorm:"not null"`
-	VersionNumber   int       `json:"version_number" gorm:"not null"`
-	VersionName     string    `json:"version_name,omitempty"`
-	VersionData     string    `json:"version_data" gorm:"type:text"` // JSON格式存储版本数据
-	ChangeReason    string    `json:"change_reason,omitempty"`
-	IsActive        bool      `json:"is_active" gorm:"default:false"`
-	CreatedBy       uint      `json:"created_by,omitempty"`
+	QuotationID   uint   `json:"quotation_id" gorm:"not null"`
+	VersionNumber int    `json:"version_number" gorm:"not null"`
+	VersionName   string `json:"version_name,omitempty"`
+	VersionData   string `json:"version_data" gorm:"type:text"` // JSON格式存储版本数据
+	ChangeReason  string `json:"change_reason,omitempty"`
+	IsActive      bool   `json:"is_active" gorm:"default:false"`
+	CreatedBy     uint   `json:"created_by,omitempty"`
 
 	// 关联
 	Quotation Quotation `json:"quotation,omitempty" gorm:"foreignKey:QuotationID"`
@@ -219,18 +218,18 @@ type QuotationVersion struct {
 
 // QuotationVersionComparison 报价单版本比较结果
 type QuotationVersionComparison struct {
-	FieldName    string      `json:"field_name"`
-	OldValue     interface{} `json:"old_value"`
-	NewValue     interface{} `json:"new_value"`
-	ChangeType   string      `json:"change_type"` // added, modified, deleted
-	Description  string      `json:"description,omitempty"`
+	FieldName   string      `json:"field_name"`
+	OldValue    interface{} `json:"old_value"`
+	NewValue    interface{} `json:"new_value"`
+	ChangeType  string      `json:"change_type"` // added, modified, deleted
+	Description string      `json:"description,omitempty"`
 }
 
 // QuotationVersionHistory 报价单版本历史记录
 type QuotationVersionHistory struct {
-	QuotationID    uint                          `json:"quotation_id"`
-	Versions       []QuotationVersion            `json:"versions"`
-	Comparisons    []QuotationVersionComparison  `json:"comparisons,omitempty"`
-	TotalVersions  int                           `json:"total_versions"`
-	CurrentVersion int                           `json:"current_version"`
+	QuotationID    uint                         `json:"quotation_id"`
+	Versions       []QuotationVersion           `json:"versions"`
+	Comparisons    []QuotationVersionComparison `json:"comparisons,omitempty"`
+	TotalVersions  int                          `json:"total_versions"`
+	CurrentVersion int                          `json:"current_version"`
 }

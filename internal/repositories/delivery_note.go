@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"time"
 
@@ -12,37 +12,38 @@ import (
 	"github.com/galaxyerp/galaxyErp/internal/models"
 )
 
-type DeliveryNoteRepository struct {
+// DeliveryNoteRepository 交付单仓储接口
+type DeliveryNoteRepository interface {
+	BaseRepository[models.DeliveryNote]
+	GetByDeliveryNumber(ctx context.Context, deliveryNumber string) (*models.DeliveryNote, error)
+	GetBySalesOrderID(ctx context.Context, salesOrderID uint) ([]*models.DeliveryNote, error)
+	GetByCustomerID(ctx context.Context, customerID uint) ([]*models.DeliveryNote, error)
+	UpdateStatus(ctx context.Context, id uint, status string) error
+	GetStatistics(ctx *gin.Context) (*dto.DeliveryNoteStatisticsResponse, error)
+	GetDeliveryTrend(days int) ([]dto.DeliveryTrendData, error)
+	CheckDeliveryNumberExists(deliveryNumber string, excludeID ...uint) (bool, error)
+	GenerateDeliveryNumber() (string, error)
+	ListWithFilters(req *dto.DeliveryNoteListRequest) ([]*models.DeliveryNote, int64, error)
+}
+
+// DeliveryNoteRepositoryImpl 交付单仓储实现
+type DeliveryNoteRepositoryImpl struct {
+	BaseRepository[models.DeliveryNote]
 	db *gorm.DB
 }
 
-func NewDeliveryNoteRepository(db *gorm.DB) *DeliveryNoteRepository {
-	return &DeliveryNoteRepository{db: db}
-}
-
-// Create 创建发货单
-func (r *DeliveryNoteRepository) Create(deliveryNote *models.DeliveryNote) error {
-	return r.db.Create(deliveryNote).Error
-}
-
-// GetByID 根据ID获取发货单
-func (r *DeliveryNoteRepository) GetByID(id uint) (*models.DeliveryNote, error) {
-	var deliveryNote models.DeliveryNote
-	err := r.db.Preload("Customer").
-		Preload("SalesOrder").
-		Preload("Items").
-		Preload("Items.Product").
-		First(&deliveryNote, id).Error
-	if err != nil {
-		return nil, err
+// NewDeliveryNoteRepository 创建交付单仓储实例
+func NewDeliveryNoteRepository(db *gorm.DB) DeliveryNoteRepository {
+	return &DeliveryNoteRepositoryImpl{
+		BaseRepository: NewBaseRepository[models.DeliveryNote](db),
+		db:             db,
 	}
-	return &deliveryNote, nil
 }
 
 // GetByDeliveryNumber 根据发货单号获取发货单
-func (r *DeliveryNoteRepository) GetByDeliveryNumber(deliveryNumber string) (*models.DeliveryNote, error) {
+func (r *DeliveryNoteRepositoryImpl) GetByDeliveryNumber(ctx context.Context, deliveryNumber string) (*models.DeliveryNote, error) {
 	var deliveryNote models.DeliveryNote
-	err := r.db.Preload("Customer").
+	err := r.db.WithContext(ctx).Preload("Customer").
 		Preload("SalesOrder").
 		Preload("Items").
 		Preload("Items.Product").
@@ -54,25 +55,8 @@ func (r *DeliveryNoteRepository) GetByDeliveryNumber(deliveryNumber string) (*mo
 	return &deliveryNote, nil
 }
 
-// Update 更新发货单
-func (r *DeliveryNoteRepository) Update(deliveryNote *models.DeliveryNote) error {
-	return r.db.Save(deliveryNote).Error
-}
-
-// Delete 删除发货单
-func (r *DeliveryNoteRepository) Delete(id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// 删除发货单明细
-		if err := tx.Where("delivery_note_id = ?", id).Delete(&models.DeliveryNoteItem{}).Error; err != nil {
-			return err
-		}
-		// 删除发货单
-		return tx.Delete(&models.DeliveryNote{}, id).Error
-	})
-}
-
-// List 获取发货单列表
-func (r *DeliveryNoteRepository) List(req *dto.DeliveryNoteListRequest) ([]*models.DeliveryNote, int64, error) {
+// ListWithFilters 获取发货单列表（带过滤条件）
+func (r *DeliveryNoteRepositoryImpl) ListWithFilters(req *dto.DeliveryNoteListRequest) ([]*models.DeliveryNote, int64, error) {
 	var deliveryNotes []*models.DeliveryNote
 	var total int64
 
@@ -107,64 +91,57 @@ func (r *DeliveryNoteRepository) List(req *dto.DeliveryNoteListRequest) ([]*mode
 		return nil, 0, err
 	}
 
-	// 应用排序
-	if req.SortBy != "" {
-		order := req.SortBy
-		if req.SortDesc {
-			order += " DESC"
-		}
-		query = query.Order(order)
-	} else {
-		query = query.Order("created_at DESC")
-	}
-
-	// 应用分页
-	if req.Page > 0 && req.PageSize > 0 {
-		offset := (req.Page - 1) * req.PageSize
-		query = query.Offset(offset).Limit(req.PageSize)
-	}
-
-	// 预加载关联数据
+	// 获取分页数据
 	err := query.Preload("Customer").
 		Preload("SalesOrder").
 		Preload("Items").
+		Preload("Items.Product").
+		Offset(req.GetOffset()).
+		Limit(req.GetLimit()).
+		Order("created_at DESC").
 		Find(&deliveryNotes).Error
 
-	return deliveryNotes, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return deliveryNotes, total, nil
 }
 
-// GetBySalesOrderID 根据销售订单ID获取发货单列表
-func (r *DeliveryNoteRepository) GetBySalesOrderID(salesOrderID uint) ([]*models.DeliveryNote, error) {
+// GetBySalesOrderID 根据销售订单ID获取发货单
+func (r *DeliveryNoteRepositoryImpl) GetBySalesOrderID(ctx context.Context, salesOrderID uint) ([]*models.DeliveryNote, error) {
 	var deliveryNotes []*models.DeliveryNote
-	err := r.db.Preload("Customer").
+	err := r.db.WithContext(ctx).Preload("Customer").
 		Preload("Items").
+		Preload("Items.Product").
 		Where("sales_order_id = ?", salesOrderID).
 		Find(&deliveryNotes).Error
 	return deliveryNotes, err
 }
 
-// GetByCustomerID 根据客户ID获取发货单列表
-func (r *DeliveryNoteRepository) GetByCustomerID(customerID uint) ([]*models.DeliveryNote, error) {
+// GetByCustomerID 根据客户ID获取发货单
+func (r *DeliveryNoteRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint) ([]*models.DeliveryNote, error) {
 	var deliveryNotes []*models.DeliveryNote
-	err := r.db.Preload("SalesOrder").
+	err := r.db.WithContext(ctx).Preload("SalesOrder").
 		Preload("Items").
+		Preload("Items.Product").
 		Where("customer_id = ?", customerID).
 		Find(&deliveryNotes).Error
 	return deliveryNotes, err
 }
 
 // UpdateStatus 更新发货单状态
-func (r *DeliveryNoteRepository) UpdateStatus(id uint, status string) error {
-	return r.db.Model(&models.DeliveryNote{}).
+func (r *DeliveryNoteRepositoryImpl) UpdateStatus(ctx context.Context, id uint, status string) error {
+	return r.db.WithContext(ctx).Model(&models.DeliveryNote{}).
 		Where("id = ?", id).
 		Update("status", status).Error
 }
 
 // GetStatistics 获取发货单统计信息
-func (r *DeliveryNoteRepository) GetStatistics(ctx *gin.Context) (*dto.DeliveryNoteStatisticsResponse, error) {
+func (r *DeliveryNoteRepositoryImpl) GetStatistics(ctx *gin.Context) (*dto.DeliveryNoteStatisticsResponse, error) {
 	var stats dto.DeliveryNoteStatisticsResponse
 
-	// 总发货单数
+	// 总发货单数量
 	if err := r.db.Model(&models.DeliveryNote{}).Count(&stats.TotalDeliveries).Error; err != nil {
 		return nil, err
 	}
@@ -176,50 +153,49 @@ func (r *DeliveryNoteRepository) GetStatistics(ctx *gin.Context) (*dto.DeliveryN
 		return nil, err
 	}
 
-	// 已完成发货数量
+	// 已发货数量
 	if err := r.db.Model(&models.DeliveryNote{}).
 		Where("status = ?", "delivered").
 		Count(&stats.CompletedDeliveries).Error; err != nil {
 		return nil, err
 	}
 
-	// 总发货数量
-	var totalQuantity sql.NullFloat64
-	if err := r.db.Model(&models.DeliveryNote{}).
-		Select("SUM(total_quantity)").
-		Scan(&totalQuantity).Error; err != nil {
-		return nil, err
-	}
-	if totalQuantity.Valid {
-		stats.TotalQuantity = totalQuantity.Float64
-	}
-
 	return &stats, nil
 }
 
 // GetDeliveryTrend 获取发货趋势数据
-func (r *DeliveryNoteRepository) GetDeliveryTrend(days int) ([]dto.DeliveryTrendData, error) {
+func (r *DeliveryNoteRepositoryImpl) GetDeliveryTrend(days int) ([]dto.DeliveryTrendData, error) {
 	var trendData []dto.DeliveryTrendData
 
 	query := `
 		SELECT 
-			DATE(date) as date,
-			COUNT(*) as count,
-			SUM(total_quantity) as total_quantity
+			DATE(created_at) as date,
+			COUNT(*) as count
 		FROM delivery_notes 
-		WHERE date >= ? 
-		GROUP BY DATE(date) 
-		ORDER BY date
+		WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+		GROUP BY DATE(created_at)
+		ORDER BY date ASC
 	`
 
-	startDate := time.Now().AddDate(0, 0, -days)
-	err := r.db.Raw(query, startDate).Scan(&trendData).Error
+	rows, err := r.db.Raw(query, days).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-	return trendData, err
+	for rows.Next() {
+		var data dto.DeliveryTrendData
+		if err := rows.Scan(&data.Date, &data.Count); err != nil {
+			return nil, err
+		}
+		trendData = append(trendData, data)
+	}
+
+	return trendData, nil
 }
 
 // CheckDeliveryNumberExists 检查发货单号是否存在
-func (r *DeliveryNoteRepository) CheckDeliveryNumberExists(deliveryNumber string, excludeID ...uint) (bool, error) {
+func (r *DeliveryNoteRepositoryImpl) CheckDeliveryNumberExists(deliveryNumber string, excludeID ...uint) (bool, error) {
 	var count int64
 	query := r.db.Model(&models.DeliveryNote{}).Where("delivery_number = ?", deliveryNumber)
 	
@@ -232,17 +208,17 @@ func (r *DeliveryNoteRepository) CheckDeliveryNumberExists(deliveryNumber string
 }
 
 // GenerateDeliveryNumber 生成发货单号
-func (r *DeliveryNoteRepository) GenerateDeliveryNumber() (string, error) {
-	var count int64
-	today := time.Now().Format("20060102")
+func (r *DeliveryNoteRepositoryImpl) GenerateDeliveryNumber() (string, error) {
+	now := time.Now()
+	prefix := fmt.Sprintf("DN%s", now.Format("20060102"))
 	
-	// 获取今天的发货单数量
+	var count int64
 	err := r.db.Model(&models.DeliveryNote{}).
-		Where("delivery_number LIKE ?", "DN"+today+"%").
+		Where("delivery_number LIKE ?", prefix+"%").
 		Count(&count).Error
 	if err != nil {
 		return "", err
 	}
 	
-	return fmt.Sprintf("DN%s%04d", today, count+1), nil
+	return fmt.Sprintf("%s%04d", prefix, count+1), nil
 }

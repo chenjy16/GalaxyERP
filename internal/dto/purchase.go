@@ -6,28 +6,28 @@ import (
 
 // SupplierCreateRequest 供应商创建请求
 type SupplierCreateRequest struct {
-	Name         string  `json:"name" binding:"required,max=100"`
-	Code         string  `json:"code" binding:"required,max=50"`
-	ContactName  string  `json:"contact_name,omitempty" binding:"max=50"`
-	Email        string  `json:"email,omitempty" binding:"omitempty,email"`
-	Phone        string  `json:"phone,omitempty" binding:"max=20"`
+	Name         string  `json:"name" validate:"required,max=100"`
+	Code         string  `json:"code" validate:"required,max=50"`
+	ContactName  string  `json:"contact_name,omitempty" validate:"max=50"`
+	Email        string  `json:"email,omitempty" validate:"omitempty,email"`
+	Phone        string  `json:"phone,omitempty" validate:"max=20"`
 	Address      string  `json:"address,omitempty"`
-	TaxNumber    string  `json:"tax_number,omitempty" binding:"max=50"`
+	TaxNumber    string  `json:"tax_number,omitempty" validate:"max=50"`
 	PaymentTerms string  `json:"payment_terms,omitempty"`
-	CreditLimit  float64 `json:"credit_limit,omitempty" binding:"min=0"`
+	CreditLimit  float64 `json:"credit_limit,omitempty" validate:"min=0"`
 }
 
 // SupplierUpdateRequest 供应商更新请求
 type SupplierUpdateRequest struct {
-	Code         *string  `json:"code,omitempty" binding:"omitempty,max=50"`
-	Name         *string  `json:"name,omitempty" binding:"omitempty,max=100"`
-	ContactName  *string  `json:"contact_name,omitempty" binding:"omitempty,max=50"`
-	Email        *string  `json:"email,omitempty" binding:"omitempty,email"`
-	Phone        *string  `json:"phone,omitempty" binding:"omitempty,max=20"`
+	Code         *string  `json:"code,omitempty" validate:"omitempty,max=50"`
+	Name         *string  `json:"name,omitempty" validate:"omitempty,max=100"`
+	ContactName  *string  `json:"contact_name,omitempty" validate:"omitempty,max=50"`
+	Email        *string  `json:"email,omitempty" validate:"omitempty,email"`
+	Phone        *string  `json:"phone,omitempty" validate:"omitempty,max=20"`
 	Address      *string  `json:"address,omitempty"`
-	TaxNumber    *string  `json:"tax_number,omitempty" binding:"omitempty,max=50"`
+	TaxNumber    *string  `json:"tax_number,omitempty" validate:"omitempty,max=50"`
 	PaymentTerms *string  `json:"payment_terms,omitempty"`
-	CreditLimit  *float64 `json:"credit_limit,omitempty" binding:"omitempty,min=0"`
+	CreditLimit  *float64 `json:"credit_limit,omitempty" validate:"omitempty,min=0"`
 	IsActive     *bool    `json:"is_active,omitempty"`
 }
 
@@ -48,26 +48,26 @@ type SupplierResponse struct {
 
 // PurchaseRequestCreateRequest 采购申请创建请求
 type PurchaseRequestCreateRequest struct {
-	Title        string                       `json:"title" binding:"required,max=200"`
+	Title        string                       `json:"title" validate:"required,max=200"`
 	Description  string                       `json:"description,omitempty"`
-	Priority     string                       `json:"priority" binding:"required,oneof=low medium high urgent"`
-	RequiredDate time.Time                    `json:"required_date" binding:"required"`
-	Items        []PurchaseRequestItemRequest `json:"items" binding:"required,min=1"`
+	Priority     string                       `json:"priority" validate:"required,oneof=low medium high urgent"`
+	RequiredDate time.Time                    `json:"required_date" validate:"required"`
+	Items        []PurchaseRequestItemRequest `json:"items" validate:"required,min=1"`
 }
 
 // PurchaseRequestItemRequest 采购申请项目请求
 type PurchaseRequestItemRequest struct {
-	ItemID    uint    `json:"item_id" binding:"required"`
-	Quantity  float64 `json:"quantity" binding:"required,gt=0"`
-	UnitPrice float64 `json:"unit_price,omitempty" binding:"min=0"`
+	ItemID    uint    `json:"item_id" validate:"required"`
+	Quantity  float64 `json:"quantity" validate:"required,gt=0"`
+	UnitPrice float64 `json:"unit_price,omitempty" validate:"min=0"`
 	Notes     string  `json:"notes,omitempty"`
 }
 
 // PurchaseRequestUpdateRequest 采购申请更新请求
 type PurchaseRequestUpdateRequest struct {
-	Title        string                       `json:"title,omitempty" binding:"omitempty,max=200"`
+	Title        string                       `json:"title,omitempty" validate:"omitempty,max=200"`
 	Description  string                       `json:"description,omitempty"`
-	Priority     string                       `json:"priority,omitempty" binding:"omitempty,oneof=low medium high urgent"`
+	Priority     string                       `json:"priority,omitempty" validate:"omitempty,oneof=low medium high urgent"`
 	RequiredDate *time.Time                   `json:"required_date,omitempty"`
 	Items        []PurchaseRequestItemRequest `json:"items,omitempty"`
 }
@@ -102,24 +102,24 @@ type PurchaseRequestItemResponse struct {
 
 // PurchaseOrderCreateRequest 采购订单创建请求
 type PurchaseOrderCreateRequest struct {
-	SupplierID   uint                       `json:"supplier_id" binding:"required"`
+	SupplierID   uint                       `json:"supplier_id" validate:"required"`
 	RequestID    *uint                      `json:"request_id,omitempty"`
-	OrderDate    time.Time                  `json:"order_date" binding:"required"`
-	ExpectedDate time.Time                  `json:"expected_date" binding:"required"`
+	OrderDate    time.Time                  `json:"order_date" validate:"required"`
+	ExpectedDate time.Time                  `json:"expected_date" validate:"required"`
 	DeliveryDate *time.Time                 `json:"delivery_date,omitempty"`
-	Status       string                     `json:"status,omitempty" binding:"omitempty,oneof=draft sent confirmed partial completed cancelled"`
+	Status       string                     `json:"status,omitempty" validate:"omitempty,oneof=draft sent confirmed partial completed cancelled"`
 	PaymentTerms string                     `json:"payment_terms,omitempty"`
 	Terms        string                     `json:"terms,omitempty"`
 	Notes        string                     `json:"notes,omitempty"`
-	Items        []PurchaseOrderItemRequest `json:"items" binding:"required,min=1"`
+	Items        []PurchaseOrderItemRequest `json:"items" validate:"required,min=1"`
 }
 
 // PurchaseOrderItemRequest 采购订单项目请求
 type PurchaseOrderItemRequest struct {
-	ItemID    uint    `json:"item_id" binding:"required"`
-	Quantity  float64 `json:"quantity" binding:"required,gt=0"`
-	UnitPrice float64 `json:"unit_price" binding:"required,gt=0"`
-	TaxRate   float64 `json:"tax_rate,omitempty" binding:"min=0,max=100"`
+	ItemID    uint    `json:"item_id" validate:"required"`
+	Quantity  float64 `json:"quantity" validate:"required,gt=0"`
+	UnitPrice float64 `json:"unit_price" validate:"required,gt=0"`
+	TaxRate   float64 `json:"tax_rate,omitempty" validate:"min=0,max=100"`
 	Notes     string  `json:"notes,omitempty"`
 }
 
@@ -179,19 +179,19 @@ type PurchaseOrderItemResponse struct {
 
 // PurchaseReceiptCreateRequest 采购收货创建请求
 type PurchaseReceiptCreateRequest struct {
-	OrderID      uint                         `json:"order_id" binding:"required"`
-	WarehouseID  uint                         `json:"warehouse_id" binding:"required"`
-	ReceivedDate time.Time                    `json:"received_date" binding:"required"`
+	OrderID      uint                         `json:"order_id" validate:"required"`
+	WarehouseID  uint                         `json:"warehouse_id" validate:"required"`
+	ReceivedDate time.Time                    `json:"received_date" validate:"required"`
 	Notes        string                       `json:"notes,omitempty"`
-	Items        []PurchaseReceiptItemRequest `json:"items" binding:"required,min=1"`
+	Items        []PurchaseReceiptItemRequest `json:"items" validate:"required,min=1"`
 }
 
 // PurchaseReceiptItemRequest 采购收货项目请求
 type PurchaseReceiptItemRequest struct {
-	OrderItemID   uint    `json:"order_item_id" binding:"required"`
-	LocationID    uint    `json:"location_id" binding:"required"`
-	ReceivedQty   float64 `json:"received_qty" binding:"required,gt=0"`
-	QualityStatus string  `json:"quality_status" binding:"required,oneof=passed failed pending"`
+	OrderItemID   uint    `json:"order_item_id" validate:"required"`
+	LocationID    uint    `json:"location_id" validate:"required"`
+	ReceivedQty   float64 `json:"received_qty" validate:"required,gt=0"`
+	QualityStatus string  `json:"quality_status" validate:"required,oneof=passed failed pending"`
 	Notes         string  `json:"notes,omitempty"`
 }
 
@@ -250,7 +250,7 @@ type PurchaseSearchRequest struct {
 
 // PurchaseApprovalRequest 采购审批请求
 type PurchaseApprovalRequest struct {
-	Action   string `json:"action" binding:"required,oneof=approve reject"`
+	Action   string `json:"action" validate:"required,oneof=approve reject"`
 	Comments string `json:"comments,omitempty"`
 }
 
@@ -285,5 +285,5 @@ type PurchaseReportRequest struct {
 	DateRangeRequest
 	SupplierID *uint  `json:"supplier_id,omitempty" form:"supplier_id"`
 	Status     string `json:"status,omitempty" form:"status"`
-	Format     string `json:"format" form:"format" binding:"required,oneof=excel pdf csv"`
+	Format     string `json:"format" form:"format" validate:"required,oneof=excel pdf csv"`
 }

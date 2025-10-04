@@ -48,7 +48,7 @@ func NewHRController(
 // @Router /api/v1/hr/employees [post]
 func (c *HRController) CreateEmployee(ctx *gin.Context) {
 	var req dto.EmployeeCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -76,7 +76,7 @@ func (c *HRController) CreateEmployee(ctx *gin.Context) {
 // @Router /api/v1/hr/leaves [post]
 func (c *HRController) CreateLeave(ctx *gin.Context) {
 	var req dto.LeaveCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -138,7 +138,7 @@ func (c *HRController) UpdateLeave(ctx *gin.Context) {
 	}
 
 	var req dto.LeaveUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -176,17 +176,17 @@ func (c *HRController) DeleteLeave(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, gin.H{"message": "请假申请删除成功"})
+	c.utils.RespondSuccess(ctx, "请假申请删除成功")
 }
 
 // GetLeaveList 获取请假申请列表
 // @Summary 获取请假申请列表
-// @Description 获取请假申请列表，支持分页和筛选
+// @Description 获取请假申请列表，支持筛选
 // @Tags 请假管理
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
-// @Param limit query int false "每页数量" default(10)
+// @Param page_size query int false "每页数量" default(10)
 // @Param employee_id query int false "员工ID"
 // @Param leave_type query string false "请假类型"
 // @Param status query string false "状态"
@@ -211,14 +211,6 @@ func (c *HRController) GetLeaveList(ctx *gin.Context) {
 		}
 	}
 
-	if leaveType := ctx.Query("leave_type"); leaveType != "" {
-		filter.LeaveType = leaveType
-	}
-
-	if status := ctx.Query("status"); status != "" {
-		filter.Status = status
-	}
-
 	// 注意：这里简化处理，实际应该解析时间格式
 	// 在实际应用中应该使用 time.Parse 来解析日期字符串
 
@@ -228,7 +220,9 @@ func (c *HRController) GetLeaveList(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取请假申请列表成功")
 }
 
 // GetEmployeeLeaves 获取员工的请假申请列表
@@ -259,7 +253,9 @@ func (c *HRController) GetEmployeeLeaves(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取员工请假申请列表成功")
 }
 
 // ApproveLeave 审批请假申请
@@ -283,7 +279,7 @@ func (c *HRController) ApproveLeave(ctx *gin.Context) {
 	}
 
 	var req dto.LeaveApprovalRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -334,7 +330,7 @@ func (c *HRController) CancelLeave(ctx *gin.Context) {
 
 // GetPendingLeaves 获取待审批的请假申请列表
 // @Summary 获取待审批的请假申请列表
-// @Description 获取所有待审批的请假申请列表
+// @Description 获取待审批的请假申请列表
 // @Tags 请假管理
 // @Accept json
 // @Produce json
@@ -353,7 +349,9 @@ func (c *HRController) GetPendingLeaves(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取待审批请假申请列表成功")
 }
 
 // GetEmployee 获取员工详情
@@ -405,7 +403,7 @@ func (c *HRController) UpdateEmployee(ctx *gin.Context) {
 	}
 
 	var req dto.EmployeeUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -443,7 +441,7 @@ func (c *HRController) DeleteEmployee(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, gin.H{"message": "员工删除成功"})
+	c.utils.RespondSuccess(ctx, "员工删除成功")
 }
 
 // GetEmployees 获取员工列表
@@ -454,7 +452,7 @@ func (c *HRController) DeleteEmployee(ctx *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Success 200 {object} dto.EmployeeListResponse
+// @Success 200 {object} dto.PaginatedResponse{data=[]dto.EmployeeListResponse}
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/hr/employees [get]
@@ -467,7 +465,9 @@ func (c *HRController) GetEmployees(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取员工列表成功")
 }
 
 // SearchEmployees 搜索员工
@@ -477,13 +477,13 @@ func (c *HRController) GetEmployees(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param search body dto.EmployeeSearchRequest true "搜索条件"
-// @Success 200 {object} dto.EmployeeListResponse
+// @Success 200 {object} dto.PaginatedResponse{data=[]dto.EmployeeListResponse}
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/hr/employees/search [post]
 func (c *HRController) SearchEmployees(ctx *gin.Context) {
 	var req dto.EmployeeSearchRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -493,7 +493,9 @@ func (c *HRController) SearchEmployees(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "搜索员工成功")
 }
 
 // ===== 考勤管理 =====
@@ -511,7 +513,7 @@ func (c *HRController) SearchEmployees(ctx *gin.Context) {
 // @Router /api/v1/hr/attendance [post]
 func (c *HRController) CreateAttendance(ctx *gin.Context) {
 	var req dto.AttendanceCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -573,7 +575,7 @@ func (c *HRController) UpdateAttendance(ctx *gin.Context) {
 	}
 
 	var req dto.AttendanceUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -611,7 +613,7 @@ func (c *HRController) DeleteAttendance(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, gin.H{"message": "考勤记录删除成功"})
+	c.utils.RespondSuccess(ctx, "考勤记录删除成功")
 }
 
 // GetAttendanceList 获取考勤记录列表
@@ -635,7 +637,9 @@ func (c *HRController) GetAttendanceList(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取考勤记录列表成功")
 }
 
 // ===== 薪资管理 =====
@@ -653,7 +657,7 @@ func (c *HRController) GetAttendanceList(ctx *gin.Context) {
 // @Router /api/v1/hr/payroll [post]
 func (c *HRController) CreatePayroll(ctx *gin.Context) {
 	var req dto.PayrollCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -715,7 +719,7 @@ func (c *HRController) UpdatePayroll(ctx *gin.Context) {
 	}
 
 	var req dto.PayrollUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -753,7 +757,7 @@ func (c *HRController) DeletePayroll(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, gin.H{"message": "薪资记录删除成功"})
+	c.utils.RespondSuccess(ctx, "薪资记录删除成功")
 }
 
 // GetPayrollList 获取薪资记录列表
@@ -777,5 +781,7 @@ func (c *HRController) GetPayrollList(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取薪资记录列表成功")
 }

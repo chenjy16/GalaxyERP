@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
@@ -115,9 +116,14 @@ func (s *SupplierServiceImpl) ListSuppliers(ctx context.Context, filter *dto.Sup
 		}
 	}
 
-	offset := (page - 1) * limit
+	paginationReq := &dto.PaginationRequest{
+		Page:     page,
+		PageSize: limit,
+	}
 
-	suppliers, total, err := s.supplierRepo.List(ctx, offset, limit)
+	suppliers, total, err := s.supplierRepo.List(ctx, &common.QueryOptions{
+		Pagination: paginationReq,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取供应商列表失败: %w", err)
 	}
@@ -291,9 +297,14 @@ func (s *PurchaseRequestServiceImpl) ListPurchaseRequests(ctx context.Context, f
 		}
 	}
 
-	offset := (page - 1) * limit
+	paginationReq := &dto.PaginationRequest{
+		Page:     page,
+		PageSize: limit,
+	}
 
-	purchaseRequests, total, err := s.purchaseRequestRepo.List(ctx, offset, limit)
+	purchaseRequests, total, err := s.purchaseRequestRepo.List(ctx, &common.QueryOptions{
+		Pagination: paginationReq,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取采购申请列表失败: %w", err)
 	}
@@ -388,7 +399,7 @@ func (s *PurchaseRequestServiceImpl) convertToPurchaseRequestResponse(purchaseRe
 	for _, item := range purchaseRequest.Items {
 		amount := item.Quantity * item.EstimatedCost
 		totalAmount += amount
-		
+
 		itemResponse := dto.PurchaseRequestItemResponse{
 			ID:        item.ID,
 			Quantity:  item.Quantity,
@@ -463,12 +474,12 @@ func (s *PurchaseOrderServiceImpl) CreatePurchaseOrder(ctx context.Context, req 
 	// 计算总金额
 	var totalAmount float64
 	var items []models.PurchaseOrderItem
-	
+
 	for _, itemReq := range req.Items {
 		amount := itemReq.Quantity * itemReq.UnitPrice
 		taxAmount := amount * itemReq.TaxRate / 100
 		totalAmount += amount + taxAmount
-		
+
 		item := models.PurchaseOrderItem{
 			ItemID:      itemReq.ItemID,
 			Description: itemReq.Notes,
@@ -507,7 +518,7 @@ func (s *PurchaseOrderServiceImpl) GetPurchaseOrder(ctx context.Context, id uint
 	if err != nil {
 		return nil, fmt.Errorf("获取采购订单失败: %w", err)
 	}
-	
+
 	if purchaseOrder == nil {
 		return nil, fmt.Errorf("采购订单不存在")
 	}
@@ -577,9 +588,14 @@ func (s *PurchaseOrderServiceImpl) ListPurchaseOrders(ctx context.Context, filte
 		}
 	}
 
-	offset := (page - 1) * limit
+	paginationReq := &dto.PaginationRequest{
+		Page:     page,
+		PageSize: limit,
+	}
 
-	purchaseOrders, total, err := s.purchaseOrderRepo.List(ctx, offset, limit)
+	purchaseOrders, total, err := s.purchaseOrderRepo.List(ctx, &common.QueryOptions{
+		Pagination: paginationReq,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取采购订单列表失败: %w", err)
 	}
@@ -708,7 +724,7 @@ func (s *PurchaseOrderServiceImpl) convertToItemResponse(item *models.Item) dto.
 	if item == nil {
 		return dto.ItemResponse{}
 	}
-	
+
 	// 需要根据实际的Item模型字段进行映射
 	return dto.ItemResponse{
 		ID:          item.ID,
@@ -722,9 +738,9 @@ func (s *PurchaseOrderServiceImpl) convertToItemResponse(item *models.Item) dto.
 		SalePrice:   item.Price,
 		IsActive:    true,
 		// Category和Unit需要根据关联关系填充
-		Category:    dto.CategoryResponse{},
-		Unit:        dto.UnitResponse{},
-		CreatedAt:   item.CreatedAt,
-		UpdatedAt:   item.UpdatedAt,
+		Category:  dto.CategoryResponse{},
+		Unit:      dto.UnitResponse{},
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
 	}
 }

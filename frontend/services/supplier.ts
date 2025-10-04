@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api';
-import { Supplier, CreateSupplierRequest, PaginatedResponse } from '@/types/api';
+import { Supplier, CreateSupplierRequest, PaginatedResponse, BackendPaginatedResponse } from '@/types/api';
 
 export class SupplierService {
   // 获取供应商列表
@@ -19,7 +19,16 @@ export class SupplierService {
     const query = searchParams.toString();
     const endpoint = query ? `/suppliers/?${query}` : '/suppliers/';
     
-    return apiClient.get<PaginatedResponse<Supplier>>(endpoint);
+    const response = await apiClient.getPaginated<BackendPaginatedResponse<Supplier>>(endpoint);
+    
+    // 转换后端响应格式为前端期望的格式
+    return {
+      data: response.data,
+      total: response.pagination.total,
+      page: response.pagination.page,
+      limit: response.pagination.page_size,
+      totalPages: response.pagination.total_pages,
+    };
   }
 
   // 获取单个供应商

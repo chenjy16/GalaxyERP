@@ -524,7 +524,7 @@ export default function HRPage() {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
-      console.log('Form values:', values);
+      // 表单提交处理
       message.success(`${modalType === 'employee' ? '员工' : modalType === 'attendance' ? '考勤记录' : '薪资记录'}创建成功！`);
       setIsModalVisible(false);
       form.resetFields();

@@ -6,30 +6,30 @@ import (
 
 // ItemCreateRequest 物料创建请求
 type ItemCreateRequest struct {
-	Code        string  `json:"code" binding:"required,max=50"`
-	Name        string  `json:"name" binding:"required,max=100"`
+	Code        string  `json:"code" validate:"required,max=50"`
+	Name        string  `json:"name" validate:"required,max=100"`
 	Description string  `json:"description,omitempty"`
-	CategoryID  uint    `json:"category_id" binding:"required"`
-	UnitID      uint    `json:"unit_id" binding:"required"`
-	Type        string  `json:"type" binding:"required,oneof=raw_material finished_goods semi_finished consumable"`
-	MinStock    float64 `json:"min_stock,omitempty" binding:"min=0"`
-	MaxStock    float64 `json:"max_stock,omitempty" binding:"min=0"`
-	UnitCost    float64 `json:"unit_cost,omitempty" binding:"min=0"`
-	SalePrice   float64 `json:"sale_price,omitempty" binding:"min=0"`
+	CategoryID  uint    `json:"category_id" validate:"required"`
+	UnitID      uint    `json:"unit_id" validate:"required"`
+	Type        string  `json:"type" validate:"required,oneof=raw_material finished_goods semi_finished consumable"`
+	MinStock    float64 `json:"min_stock,omitempty" validate:"min=0"`
+	MaxStock    float64 `json:"max_stock,omitempty" validate:"min=0"`
+	UnitCost    float64 `json:"unit_cost,omitempty" validate:"min=0"`
+	SalePrice   float64 `json:"sale_price,omitempty" validate:"min=0"`
 	Barcode     string  `json:"barcode,omitempty"`
 	ImageURL    string  `json:"image_url,omitempty"`
 }
 
 // ItemUpdateRequest 物料更新请求
 type ItemUpdateRequest struct {
-	Name        string   `json:"name,omitempty" binding:"omitempty,max=100"`
+	Name        string   `json:"name,omitempty" validate:"omitempty,max=100"`
 	Description string   `json:"description,omitempty"`
 	CategoryID  *uint    `json:"category_id,omitempty"`
 	UnitID      *uint    `json:"unit_id,omitempty"`
-	MinStock    *float64 `json:"min_stock,omitempty" binding:"omitempty,min=0"`
-	MaxStock    *float64 `json:"max_stock,omitempty" binding:"omitempty,min=0"`
-	UnitCost    *float64 `json:"unit_cost,omitempty" binding:"omitempty,min=0"`
-	SalePrice   *float64 `json:"sale_price,omitempty" binding:"omitempty,min=0"`
+	MinStock    *float64 `json:"min_stock,omitempty" validate:"omitempty,min=0"`
+	MaxStock    *float64 `json:"max_stock,omitempty" validate:"omitempty,min=0"`
+	UnitCost    *float64 `json:"unit_cost,omitempty" validate:"omitempty,min=0"`
+	SalePrice   *float64 `json:"sale_price,omitempty" validate:"omitempty,min=0"`
 	Barcode     string   `json:"barcode,omitempty"`
 	ImageURL    string   `json:"image_url,omitempty"`
 	IsActive    *bool    `json:"is_active,omitempty"`
@@ -70,17 +70,20 @@ type ItemListResponse struct {
 	IsActive   bool    `json:"is_active"`
 }
 
+
+
 // CategoryCreateRequest 分类创建请求
 type CategoryCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=100"`
-	Code        string `json:"code" binding:"required,max=50"`
+	Name        string `json:"name" validate:"required,max=100"`
+	Code        string `json:"code" validate:"required,max=50"`
 	Description string `json:"description,omitempty"`
 	ParentID    *uint  `json:"parent_id,omitempty"`
+	IsActive    bool   `json:"is_active"`
 }
 
 // CategoryUpdateRequest 分类更新请求
 type CategoryUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=100"`
+	Name        string `json:"name,omitempty" validate:"omitempty,max=100"`
 	Description string `json:"description,omitempty"`
 	ParentID    *uint  `json:"parent_id,omitempty"`
 	IsActive    *bool  `json:"is_active,omitempty"`
@@ -101,17 +104,22 @@ type CategoryResponse struct {
 
 // UnitCreateRequest 单位创建请求
 type UnitCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=50"`
-	Symbol      string `json:"symbol" binding:"required,max=10"`
-	Description string `json:"description,omitempty"`
+	Name         string `json:"name" validate:"required,max=50"`
+	Symbol       string `json:"symbol" validate:"required,max=10"`
+	Description  string `json:"description,omitempty"`
+	BaseUnitID   *uint  `json:"base_unit_id,omitempty"`
+	ConversionRate float64 `json:"conversion_rate,omitempty" validate:"omitempty,min=0"`
+	IsActive     bool   `json:"is_active"`
 }
 
 // UnitUpdateRequest 单位更新请求
 type UnitUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=50"`
-	Symbol      string `json:"symbol,omitempty" binding:"omitempty,max=10"`
-	Description string `json:"description,omitempty"`
-	IsActive    *bool  `json:"is_active,omitempty"`
+	Name         string   `json:"name,omitempty" validate:"omitempty,max=50"`
+	Symbol       string   `json:"symbol,omitempty" validate:"omitempty,max=10"`
+	Description  string   `json:"description,omitempty"`
+	BaseUnitID   *uint    `json:"base_unit_id,omitempty"`
+	ConversionRate *float64 `json:"conversion_rate,omitempty" validate:"omitempty,min=0"`
+	IsActive     *bool    `json:"is_active,omitempty"`
 }
 
 // UnitResponse 单位响应
@@ -127,18 +135,19 @@ type UnitResponse struct {
 
 // WarehouseCreateRequest 仓库创建请求
 type WarehouseCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=100"`
-	Code        string `json:"code" binding:"required,max=50"`
-	Address     string `json:"address,omitempty"`
+	Name        string `json:"name" validate:"required,max=100"`
+	Code        string `json:"code" validate:"required,max=50"`
 	Description string `json:"description,omitempty"`
+	Address     string `json:"address,omitempty"`
 	ManagerID   *uint  `json:"manager_id,omitempty"`
+	IsActive    bool   `json:"is_active"`
 }
 
 // WarehouseUpdateRequest 仓库更新请求
 type WarehouseUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=100"`
-	Address     string `json:"address,omitempty"`
+	Name        string `json:"name,omitempty" validate:"omitempty,max=100"`
 	Description string `json:"description,omitempty"`
+	Address     string `json:"address,omitempty"`
 	ManagerID   *uint  `json:"manager_id,omitempty"`
 	IsActive    *bool  `json:"is_active,omitempty"`
 }
@@ -159,17 +168,17 @@ type WarehouseResponse struct {
 
 // LocationCreateRequest 库位创建请求
 type LocationCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=100"`
-	Code        string `json:"code" binding:"required,max=50"`
-	WarehouseID uint   `json:"warehouse_id" binding:"required"`
-	Type        string `json:"type" binding:"required,oneof=storage picking shipping receiving"`
+	Name        string `json:"name" validate:"required,max=100"`
+	Code        string `json:"code" validate:"required,max=50"`
+	WarehouseID uint   `json:"warehouse_id" validate:"required"`
+	Type        string `json:"type" validate:"required,oneof=storage picking shipping receiving"`
 	Description string `json:"description,omitempty"`
 }
 
 // LocationUpdateRequest 库位更新请求
 type LocationUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=100"`
-	Type        string `json:"type,omitempty" binding:"omitempty,oneof=storage picking shipping receiving"`
+	Name        string `json:"name,omitempty" validate:"omitempty,max=100"`
+	Type        string `json:"type,omitempty" validate:"omitempty,oneof=storage picking shipping receiving"`
 	Description string `json:"description,omitempty"`
 	IsActive    *bool  `json:"is_active,omitempty"`
 }
@@ -187,6 +196,18 @@ type LocationResponse struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
+// StockCreateRequest 库存创建请求
+type StockCreateRequest struct {
+	ItemID      uint    `json:"item_id" validate:"required"`
+	WarehouseID uint    `json:"warehouse_id" validate:"required"`
+	Quantity    float64 `json:"quantity" validate:"required,min=0"`
+}
+
+// StockUpdateRequest 库存更新请求
+type StockUpdateRequest struct {
+	Quantity *float64 `json:"quantity,omitempty" validate:"omitempty,min=0"`
+}
+
 // StockResponse 库存响应
 type StockResponse struct {
 	ID           uint              `json:"id"`
@@ -201,11 +222,11 @@ type StockResponse struct {
 
 // MovementCreateRequest 库存移动创建请求
 type MovementCreateRequest struct {
-	ItemID      uint    `json:"item_id" binding:"required"`
-	WarehouseID uint    `json:"warehouse_id" binding:"required"`
-	LocationID  uint    `json:"location_id" binding:"required"`
-	Type        string  `json:"type" binding:"required,oneof=in out transfer adjustment"`
-	Quantity    float64 `json:"quantity" binding:"required,gt=0"`
+	ItemID      uint    `json:"item_id" validate:"required"`
+	WarehouseID uint    `json:"warehouse_id" validate:"required"`
+	LocationID  uint    `json:"location_id" validate:"required"`
+	Type        string  `json:"type" validate:"required,oneof=in out transfer adjustment"`
+	Quantity    float64 `json:"quantity" validate:"required,gt=0"`
 	Reference   string  `json:"reference,omitempty"`
 	Notes       string  `json:"notes,omitempty"`
 }
@@ -226,18 +247,18 @@ type MovementResponse struct {
 
 // StockAdjustmentCreateRequest 库存调整创建请求
 type StockAdjustmentCreateRequest struct {
-	WarehouseID uint                         `json:"warehouse_id" binding:"required"`
-	Reason      string                       `json:"reason" binding:"required"`
+	WarehouseID uint                         `json:"warehouse_id" validate:"required"`
+	Reason      string                       `json:"reason" validate:"required"`
 	Notes       string                       `json:"notes,omitempty"`
-	Items       []StockAdjustmentItemRequest `json:"items" binding:"required,min=1"`
+	Items       []StockAdjustmentItemRequest `json:"items" validate:"required,min=1"`
 }
 
 // StockAdjustmentItemRequest 库存调整项目请求
 type StockAdjustmentItemRequest struct {
-	ItemID     uint    `json:"item_id" binding:"required"`
-	LocationID uint    `json:"location_id" binding:"required"`
-	SystemQty  float64 `json:"system_qty" binding:"required,min=0"`
-	ActualQty  float64 `json:"actual_qty" binding:"required,min=0"`
+	ItemID     uint    `json:"item_id" validate:"required"`
+	LocationID uint    `json:"location_id" validate:"required"`
+	SystemQty  float64 `json:"system_qty" validate:"required,min=0"`
+	ActualQty  float64 `json:"actual_qty" validate:"required,min=0"`
 	Reason     string  `json:"reason,omitempty"`
 }
 
@@ -290,5 +311,5 @@ type StockReportRequest struct {
 	WarehouseID *uint     `json:"warehouse_id,omitempty" form:"warehouse_id"`
 	CategoryID  *uint     `json:"category_id,omitempty" form:"category_id"`
 	AsOfDate    time.Time `json:"as_of_date,omitempty" form:"as_of_date"`
-	Format      string    `json:"format" form:"format" binding:"required,oneof=excel pdf csv"`
+	Format      string    `json:"format" form:"format" validate:"required,oneof=excel pdf csv"`
 }

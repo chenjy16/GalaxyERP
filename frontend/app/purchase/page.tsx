@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Tabs, 
@@ -94,7 +94,7 @@ function PurchasePage() {
   const [supplierStatusFilter, setSupplierStatusFilter] = useState('all');
 
   // 加载供应商数据
-  const loadSuppliers = async (page = 1, search = '') => {
+  const loadSuppliers = useCallback(async (page = 1, search = '') => {
     setSuppliersLoading(true);
     try {
       const response = await SupplierService.getSuppliers({
@@ -104,10 +104,10 @@ function PurchasePage() {
       });
       
       // 客户端筛选
-      let filteredData = response.data;
+      let filteredData = response?.data || [];
       
       // 状态筛选
-      if (supplierStatusFilter !== 'all') {
+      if (supplierStatusFilter !== 'all' && filteredData.length > 0) {
         filteredData = filteredData.filter((supplier: Supplier) => {
           if (supplierStatusFilter === 'active') {
             return supplier.isActive;
@@ -122,18 +122,25 @@ function PurchasePage() {
       setSuppliersPagination(prev => ({
         ...prev,
         current: page,
-        total: filteredData.length
+        total: filteredData?.length || 0
       }));
     } catch (error) {
       message.error('加载供应商数据失败');
       console.error('Error loading suppliers:', error);
+      // 在错误情况下设置空数组
+      setSuppliers([]);
+      setSuppliersPagination(prev => ({
+        ...prev,
+        current: page,
+        total: 0
+      }));
     } finally {
       setSuppliersLoading(false);
     }
-  };
+  }, [suppliersPagination.pageSize, supplierStatusFilter]);
 
   // 加载采购订单数据
-  const loadPurchaseOrders = async (page = 1, search = '') => {
+  const loadPurchaseOrders = useCallback(async (page = 1, search = '') => {
     setOrdersLoading(true);
     try {
       const response = await PurchaseOrderService.getPurchaseOrders({
@@ -141,22 +148,29 @@ function PurchasePage() {
         limit: ordersPagination.pageSize,
         search: search || undefined
       });
-      setPurchaseOrders(response.data);
+      setPurchaseOrders(response?.data || []);
       setOrdersPagination(prev => ({
         ...prev,
         current: page,
-        total: response.total
+        total: response?.total || 0
       }));
     } catch (error) {
       message.error('加载采购订单数据失败');
       console.error('Error loading purchase orders:', error);
+      // 在错误情况下设置空数组
+      setPurchaseOrders([]);
+      setOrdersPagination(prev => ({
+        ...prev,
+        current: page,
+        total: 0
+      }));
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [ordersPagination.pageSize]);
 
   // 加载采购请求数据
-  const loadPurchaseRequests = async (page = 1, search = '') => {
+  const loadPurchaseRequests = useCallback(async (page = 1, search = '') => {
     setRequestsLoading(true);
     try {
       const response = await PurchaseRequestService.getPurchaseRequests({
@@ -164,36 +178,45 @@ function PurchasePage() {
         limit: requestsPagination.pageSize,
         search: search || undefined
       });
-      setPurchaseRequests(response.data);
+      setPurchaseRequests(response?.data || []);
       setRequestsPagination(prev => ({
         ...prev,
         current: page,
-        total: response.total
+        total: response?.total || 0
       }));
     } catch (error) {
       message.error('加载采购请求数据失败');
       console.error('Error loading purchase requests:', error);
+      // 在错误情况下设置空数组
+      setPurchaseRequests([]);
+      setRequestsPagination(prev => ({
+        ...prev,
+        current: page,
+        total: 0
+      }));
     } finally {
       setRequestsLoading(false);
     }
-  };
+  }, [requestsPagination.pageSize]);
 
   // 加载物料数据
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setItemsLoading(true);
     try {
       const response = await ItemService.getItems({
         page: 1,
         pageSize: 1000, // 获取所有物料用于选择
       });
-      setItems(response.data);
+      setItems(response?.data || []);
     } catch (error) {
       message.error('加载物料数据失败');
       console.error('Error loading items:', error);
+      // 在错误情况下设置空数组
+      setItems([]);
     } finally {
       setItemsLoading(false);
     }
-  };
+  }, []);
 
   // 初始化数据加载
   useEffect(() => {
@@ -201,7 +224,7 @@ function PurchasePage() {
     loadPurchaseOrders();
     loadPurchaseRequests();
     loadItems();
-  }, []);
+  }, [loadSuppliers, loadPurchaseOrders, loadPurchaseRequests, loadItems]);
 
 
 

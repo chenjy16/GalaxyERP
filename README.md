@@ -6,6 +6,16 @@
 
 GalaxyERP 是一个全功能的企业资源规划系统，采用前后端分离架构，为企业提供完整的业务管理平台。系统涵盖财务、销售、采购、库存、生产、项目、人力资源等核心业务模块，支持多环境部署和灵活配置。
 
+### 🏗️ 架构特点
+
+- **微服务架构**: 采用分层架构设计，清晰的职责分离
+- **RESTful API**: 标准化的API设计，支持前后端分离
+- **依赖注入**: 使用容器模式管理依赖关系，提高代码可测试性
+- **中间件模式**: 统一的认证、日志、错误处理和跨域支持
+- **仓储模式**: 数据访问层抽象，支持多种数据库
+- **DTO模式**: 数据传输对象，确保API数据结构的一致性
+- **响应式设计**: 基于Ant Design的现代化UI界面
+
 
 ## 🛠️ 技术栈
 
@@ -44,6 +54,142 @@ GalaxyERP 是一个全功能的企业资源规划系统，采用前后端分离�
 - **环境管理**: 多环境配置 (dev/test/prod)
 - **依赖管理**: Go Modules, npm
 
+## 🎯 设计模式与架构模式
+
+### 后端设计模式
+
+#### 1. 依赖注入模式 (Dependency Injection)
+```go
+// Container 统一管理所有依赖
+type Container struct {
+    DB *gorm.DB
+    UserRepository    repositories.UserRepository
+    UserService       services.UserService
+    UserController    *controllers.UserController
+}
+```
+
+#### 2. 仓储模式 (Repository Pattern)
+```go
+// 接口定义
+type UserRepository interface {
+    Create(user *models.User) error
+    GetByID(id uint) (*models.User, error)
+    Search(req *dto.PaginationRequest) (*dto.PaginatedResponse[models.User], error)
+}
+
+// 实现
+type UserRepositoryImpl struct {
+    db *gorm.DB
+}
+```
+
+#### 3. 服务层模式 (Service Layer Pattern)
+```go
+// 业务逻辑封装
+type UserService interface {
+    CreateUser(req *dto.CreateUserRequest) (*dto.UserResponse, error)
+    GetUser(id uint) (*dto.UserResponse, error)
+}
+```
+
+#### 4. DTO模式 (Data Transfer Object)
+```go
+// 统一的数据传输结构
+type PaginationRequest struct {
+    Page     int    `json:"page" validate:"min=1"`
+    PageSize int    `json:"page_size" validate:"min=1,max=100"`
+    Search   string `json:"search"`
+}
+```
+
+#### 5. 中间件模式 (Middleware Pattern)
+```go
+// 认证中间件
+func AuthMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // JWT验证逻辑
+        c.Next()
+    }
+}
+```
+
+#### 6. 工厂模式 (Factory Pattern)
+```go
+// 统一的响应构建
+func (h *APIResponseHelper) Success(data interface{}) *StandardAPIResponse {
+    return &StandardAPIResponse{
+        Success:   true,
+        Data:      data,
+        Timestamp: time.Now(),
+    }
+}
+```
+
+### 前端设计模式
+
+#### 1. 组件化模式 (Component Pattern)
+```typescript
+// 可复用的UI组件
+interface TableProps<T> {
+    data: T[];
+    columns: ColumnType<T>[];
+    loading?: boolean;
+}
+```
+
+#### 2. 服务层模式 (Service Layer Pattern)
+```typescript
+// API服务封装
+class SupplierService {
+    async getSuppliers(params: PaginationParams): Promise<PaginatedResponse<Supplier>> {
+        return this.apiClient.getPaginated<Supplier>('/suppliers', params);
+    }
+}
+```
+
+#### 3. 状态管理模式 (State Management Pattern)
+```typescript
+// Context + Reducer模式
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) throw new Error('useAuth must be used within AuthProvider');
+    return context;
+};
+```
+
+#### 4. 适配器模式 (Adapter Pattern)
+```typescript
+// API响应格式转换
+const convertBackendPagination = (response: BackendPaginatedResponse<T>): PaginatedResponse<T> => {
+    return {
+        data: response.data,
+        total: response.pagination.total,
+        page: response.pagination.page,
+        limit: response.pagination.limit,
+        totalPages: response.pagination.total_pages
+    };
+};
+```
+
+### 架构原则
+
+#### SOLID原则
+- **单一职责原则**: 每个类/模块只负责一个功能
+- **开闭原则**: 对扩展开放，对修改关闭
+- **里氏替换原则**: 接口实现可以互相替换
+- **接口隔离原则**: 细粒度的接口设计
+- **依赖倒置原则**: 依赖抽象而非具体实现
+
+#### DDD (领域驱动设计)
+- **实体模型**: 业务实体的清晰建模
+- **值对象**: 不可变的业务值对象
+- **聚合根**: 业务聚合的根实体
+- **领域服务**: 业务逻辑的封装
+- **仓储接口**: 数据访问的抽象
+
 ## 📁 项目结构
 
 ```
@@ -56,26 +202,88 @@ galaxyErp/
 │   ├── test.yaml         # 测试环境配置
 │   └── prod.yaml         # 生产环境配置
 ├── frontend/              # 前端应用
-│   ├── app/              # Next.js 应用页面
+│   ├── app/              # Next.js 应用页面 (App Router)
 │   ├── components/       # React 组件
-│   ├── contexts/         # React Context
-│   ├── services/         # API 服务
+│   ├── contexts/         # React Context (状态管理)
+│   ├── services/         # API 服务层
 │   ├── types/            # TypeScript 类型定义
-│   └── lib/              # 工具库
+│   └── lib/              # 工具库和API客户端
 ├── internal/              # 后端核心代码
 │   ├── auth/             # 认证模块
-│   ├── controllers/      # 控制器层
+│   ├── common/           # 公共组件和工具
+│   ├── config/           # 配置管理
+│   ├── container/        # 依赖注入容器
+│   ├── controllers/      # 控制器层 (HTTP处理)
 │   ├── dto/              # 数据传输对象
-│   ├── middleware/       # 中间件
-│   ├── models/           # 数据模型
-│   ├── repositories/     # 数据访问层
+│   ├── handlers/         # 特殊处理器
+│   ├── middleware/       # 中间件 (认证、日志、CORS等)
+│   ├── models/           # 数据模型 (GORM实体)
+│   ├── repositories/     # 数据访问层 (仓储模式)
 │   ├── routes/           # 路由定义
 │   ├── services/         # 业务逻辑层
 │   └── utils/            # 工具函数
-├── sql/                   # SQL 脚本
+├── sql/                   # SQL 脚本和数据库迁移
 ├── go.mod                # Go 模块依赖
 ├── Makefile              # 构建脚本
 └── README.md             # 项目文档
+```
+
+### 🏛️ 分层架构设计
+
+#### 后端分层架构 (Clean Architecture)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Presentation Layer                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │ Controllers │  │ Middleware  │  │      Routes         │  │
+│  │   (HTTP)    │  │ (Auth/CORS) │  │   (API Routing)     │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    Business Logic Layer                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  Services   │  │     DTO     │  │    Validation       │  │
+│  │ (Business)  │  │ (Transfer)  │  │     (Rules)         │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    Data Access Layer                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │Repositories │  │   Models    │  │     Database        │  │
+│  │ (Interface) │  │  (GORM)     │  │ (PostgreSQL/SQLite) │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 前端分层架构 (Component-Based)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Presentation Layer                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │    Pages    │  │ Components  │  │       Layout        │  │
+│  │ (App Router)│  │ (Ant Design)│  │    (Navigation)     │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    State Management Layer                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   Context   │  │    Hooks    │  │      Types          │  │
+│  │ (Auth/App)  │  │ (useState)  │  │   (TypeScript)      │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    Data Access Layer                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  Services   │  │ API Client  │  │    HTTP Client      │  │
+│  │ (Business)  │  │ (Wrapper)   │  │   (Fetch API)       │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## 📋 核心功能模块
@@ -92,27 +300,30 @@ galaxyErp/
 - **会计期间**: 财务年度和会计期间管理
 
 ### 🛒 销售管理模块 (Sales) - ✅ 已实现
-- **客户管理**: ✅ 客户信息维护和分类管理 (CRUD + 搜索)
-- **报价管理**: ✅ 销售报价单创建和跟踪 (CRUD + 搜索)
-- **销售订单**: ✅ 订单处理和状态跟踪 (CRUD + 状态更新)
+- **客户管理**: ✅ 客户信息维护和分类管理 (完整CRUD + 高级搜索 + 分页)
+- **报价管理**: ✅ 销售报价单创建和跟踪 (CRUD + 状态管理 + 价格计算)
+- **销售订单**: ✅ 订单处理和状态跟踪 (完整生命周期 + 工作流 + 审批)
 - **发货单**: 🚧 发货记录和物流跟踪 (待实现)
 - **销售分析**: 🚧 销售数据统计和趋势分析 (待实现)
+- **技术特点**: RESTful API设计，数据验证，事务管理，状态机模式
 
 ### 🛍️ 采购管理模块 (Purchase) - ✅ 已实现
-- **供应商管理**: ✅ 供应商信息和评估体系 (CRUD)
-- **采购申请**: ✅ 采购需求申请和审批 (CRUD + 工作流)
-- **采购订单**: ✅ 采购订单管理和执行 (CRUD + 确认/取消)
+- **供应商管理**: ✅ 供应商信息和评估体系 (CRUD + 资质管理 + 评级系统)
+- **采购申请**: ✅ 采购需求申请和审批 (完整工作流 + 多级审批 + 状态跟踪)
+- **采购订单**: ✅ 采购订单管理和执行 (CRUD + 确认/取消 + 执行监控)
 - **采购收货**: 🚧 收货确认和质量检验 (待实现)
-- **采购分析**: ✅ 采购成本分析和供应商绩效 (统计接口)
+- **采购分析**: ✅ 采购成本分析和供应商绩效 (统计API + 数据可视化)
 - **采购合同**: 🚧 合同管理和条款跟踪 (待实现)
+- **技术特点**: 工作流引擎，状态机模式，事务管理，并发控制
 
 ### 📦 库存管理模块 (Inventory) - ✅ 已实现
-- **仓库管理**: ✅ 多仓库管理和库位设置 (CRUD)
-- **物料管理**: ✅ 物料信息和分类管理 (CRUD + 搜索)
-- **库存跟踪**: ✅ 实时库存监控和预警 (库存查询)
-- **库存移动**: ✅ 入库、出库、调拨等库存操作 (完整移动API)
+- **仓库管理**: ✅ 多仓库管理和库位设置 (CRUD + 层级结构 + 容量管理)
+- **物料管理**: ✅ 物料信息和分类管理 (CRUD + 分类体系 + 规格参数)
+- **库存跟踪**: ✅ 实时库存监控和预警 (实时查询 + 安全库存 + 自动预警)
+- **库存移动**: ✅ 入库、出库、调拨等库存操作 (完整移动API + 批次管理 + 序列号)
 - **库存盘点**: 🚧 定期盘点和差异处理 (待实现)
 - **库存分析**: 🚧 库存周转率和成本分析 (部分实现)
+- **技术特点**: 并发控制，库存锁定，事件驱动，ACID事务
 
 ### 🏭 生产管理模块 (Production) - 🔄 部分实现
 - **生产计划**: 🚧 生产计划制定和排程 (待实现)
@@ -120,17 +331,19 @@ galaxyErp/
 - **工艺路线**: 🚧 生产工艺和操作流程 (模型已定义)
 - **工作中心**: 🚧 生产设备和产能管理 (模型已定义)
 - **生产订单**: 🚧 生产任务下达和执行 (模型已定义)
-- **产品管理**: ✅ 产品信息管理 (CRUD + 搜索)
+- **产品管理**: ✅ 产品信息管理 (CRUD + 搜索 + BOM管理)
 - **质量检验**: 🚧 质量控制和不合格品处理 (模型已定义)
 - **设备管理**: 🚧 设备维护和故障管理 (模型已定义)
+- **技术特点**: 复杂业务逻辑，数据模型完整，扩展性强
 
 ### 📊 项目管理模块 (Project) - ✅ 已实现
-- **项目管理**: ✅ 项目创建和生命周期管理 (CRUD)
-- **里程碑**: ✅ 项目关键节点和进度跟踪 (CRUD)
-- **任务管理**: ✅ 项目任务分解和分配 (CRUD)
-- **时间记录**: ✅ 工时记录和成本核算 (CRUD)
+- **项目管理**: ✅ 项目创建和生命周期管理 (CRUD + 状态管理 + 进度跟踪)
+- **里程碑**: ✅ 项目关键节点和进度跟踪 (CRUD + 时间线 + 依赖关系)
+- **任务管理**: ✅ 项目任务分解和分配 (CRUD + 层级结构 + 责任分配)
+- **时间记录**: ✅ 工时记录和成本核算 (CRUD + 时间统计 + 成本计算)
 - **资源管理**: 🚧 项目资源分配和利用率 (待实现)
 - **项目报告**: 🚧 项目进度和绩效报告 (待实现)
+- **技术特点**: 权限矩阵，时间管理，成本核算，团队协作
 
 ### 👥 人力资源模块 (HR) - 🚧 待实现
 - **员工管理**: 🚧 员工档案和基本信息维护 (路由已定义)
@@ -144,23 +357,25 @@ galaxyErp/
 - **技能管理**: 🚧 员工技能档案和评估 (待实现)
 
 ### ⚙️ 系统管理模块 (System) - 🔄 部分实现
-- **用户管理**: ✅ 用户账户和权限管理 (注册/登录/个人资料)
+- **用户管理**: ✅ 用户账户和权限管理 (注册/登录/个人资料 + JWT认证)
 - **角色管理**: 🚧 角色定义和权限分配 (待实现)
 - **系统配置**: 🚧 系统参数和业务规则配置 (待实现)
 - **数据备份**: 🚧 系统数据备份和恢复 (待实现)
 - **审计日志**: 🚧 系统操作记录和安全审计 (待实现)
 - **系统监控**: 🚧 系统性能和运行状态监控 (待实现)
+- **技术特点**: JWT认证，密码加密，会话管理，安全防护
 
 ### 📱 前端页面实现状态
-- ✅ **主页**: 仪表板和最近活动展示
-- ✅ **销售管理**: 报价单管理页面 (模拟数据)
-- ✅ **采购管理**: 采购订单、供应商、采购请求页面 (模拟数据)
-- ✅ **库存管理**: 库存查询和移动操作页面
-- ✅ **生产管理**: 工单、物料清单、生产计划页面 (模拟数据)
-- ✅ **项目管理**: 项目、任务、里程碑管理页面 (模拟数据)
-- ✅ **人力资源**: 基础页面框架
+- ✅ **主页**: 仪表板和最近活动展示 (响应式设计 + 数据可视化)
+- ✅ **销售管理**: 报价单管理页面 (完整CRUD + 表格组件 + 搜索过滤)
+- ✅ **采购管理**: 采购订单、供应商、采购请求页面 (工作流界面 + 状态展示)
+- ✅ **库存管理**: 库存查询和移动操作页面 (实时数据 + 操作界面)
+- ✅ **生产管理**: 工单、物料清单、生产计划页面 (模拟数据 + 界面框架)
+- ✅ **项目管理**: 项目、任务、里程碑管理页面 (甘特图 + 时间线)
+- ✅ **人力资源**: 基础页面框架 (组件结构 + 路由配置)
 - 🚧 **财务管理**: 待实现
 - 🚧 **系统管理**: 待实现
+- **技术特点**: Ant Design组件，TypeScript类型安全，状态管理，API集成
 
 
 ## 📋 环境要求

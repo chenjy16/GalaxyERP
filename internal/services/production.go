@@ -16,8 +16,8 @@ type ProductService interface {
 	GetProduct(ctx context.Context, id uint) (*dto.ProductResponse, error)
 	UpdateProduct(ctx context.Context, id uint, req *dto.ProductUpdateRequest) (*dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, id uint) error
-	GetProducts(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error)
-	SearchProducts(ctx context.Context, req *dto.ProductSearchRequest) (*dto.BaseResponse, error)
+	GetProducts(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ProductResponse], error)
+	SearchProducts(ctx context.Context, req *dto.ProductSearchRequest) (*dto.PaginatedResponse[dto.ProductResponse], error)
 }
 
 // ProductServiceImpl 产品服务实现
@@ -126,40 +126,44 @@ func (s *ProductServiceImpl) DeleteProduct(ctx context.Context, id uint) error {
 }
 
 // GetProducts 获取产品列表
-func (s *ProductServiceImpl) GetProducts(ctx context.Context, req *dto.PaginationRequest) (*dto.BaseResponse, error) {
-	products, _, err := s.productRepo.List(ctx, req.Page, req.PageSize)
+func (s *ProductServiceImpl) GetProducts(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ProductResponse], error) {
+	products, total, err := s.productRepo.ListProducts(ctx, req.Page, req.PageSize)
 	if err != nil {
 		return nil, fmt.Errorf("获取产品列表失败: %w", err)
 	}
 
-	var productResponses []*dto.ProductResponse
+	var productResponses []dto.ProductResponse
 	for _, product := range products {
-		productResponses = append(productResponses, s.toProductResponse(product))
+		productResponses = append(productResponses, *s.toProductResponse(product))
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "获取产品列表成功",
-		Data:    productResponses,
+	return &dto.PaginatedResponse[dto.ProductResponse]{
+		Data:       productResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
 	}, nil
 }
 
 // SearchProducts 搜索产品
-func (s *ProductServiceImpl) SearchProducts(ctx context.Context, req *dto.ProductSearchRequest) (*dto.BaseResponse, error) {
-	products, _, err := s.productRepo.Search(ctx, req.Keyword, req.Page, req.PageSize)
+func (s *ProductServiceImpl) SearchProducts(ctx context.Context, req *dto.ProductSearchRequest) (*dto.PaginatedResponse[dto.ProductResponse], error) {
+	products, total, err := s.productRepo.Search(ctx, req.Keyword, req.Page, req.PageSize)
 	if err != nil {
 		return nil, fmt.Errorf("搜索产品失败: %w", err)
 	}
 
-	var productResponses []*dto.ProductResponse
+	var productResponses []dto.ProductResponse
 	for _, product := range products {
-		productResponses = append(productResponses, s.toProductResponse(product))
+		productResponses = append(productResponses, *s.toProductResponse(product))
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "搜索产品成功",
-		Data:    productResponses,
+	return &dto.PaginatedResponse[dto.ProductResponse]{
+		Data:       productResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
 	}, nil
 }
 

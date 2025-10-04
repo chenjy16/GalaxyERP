@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
@@ -13,6 +14,7 @@ import (
 
 // AccountService 会计科目服务接口
 type AccountService interface {
+	CRUDService[models.Account, dto.AccountCreateRequest, dto.AccountUpdateRequest, dto.AccountResponse]
 	CreateAccount(ctx context.Context, account *models.Account) error
 	GetAccount(ctx context.Context, id uint) (*models.Account, error)
 	GetAccountByCode(ctx context.Context, code string) (*models.Account, error)
@@ -27,13 +29,214 @@ type AccountService interface {
 
 // AccountServiceImpl 会计科目服务实现
 type AccountServiceImpl struct {
+	*BaseService
 	accountRepo repositories.AccountRepository
 }
 
 // NewAccountService 创建会计科目服务实例
 func NewAccountService(accountRepo repositories.AccountRepository) AccountService {
+	baseConfig := &BaseServiceConfig{
+		EnableAudit:      true,
+		EnableValidation: true,
+		EnableCache:      true,
+		CacheExpiry:      5 * time.Minute,
+		EnableMetrics:    true,
+	}
+	
 	return &AccountServiceImpl{
+		BaseService: NewBaseService(baseConfig),
 		accountRepo: accountRepo,
+	}
+}
+
+// Create 实现 CRUDService 接口的 Create 方法
+func (s *AccountServiceImpl) Create(ctx context.Context, req *dto.AccountCreateRequest) (*dto.CreateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "Account", req); err != nil {
+		return nil, err
+	}
+
+	// 转换为模型
+	account := &models.Account{
+		Code:        req.Code,
+		Name:        req.Name,
+		AccountType: req.Type,
+		ParentID:    req.ParentID,
+		IsActive:    req.Status == "active",
+	}
+
+	// 创建会计科目
+	if err := s.CreateAccount(ctx, account); err != nil {
+		return nil, err
+	}
+
+	// 清除相关缓存
+	s.DeleteFromCache(ctx, "accounts:list")
+
+	return s.CreateCreateResponse(account.ID, account, "会计科目创建成功"), nil
+}
+
+// GetByID 实现 CRUDService 接口的 GetByID 方法
+func (s *AccountServiceImpl) GetByID(ctx context.Context, id uint) (*dto.AccountResponse, error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("account:%d", id)
+	if cached, found := s.GetFromCache(ctx, cacheKey); found {
+		if account, ok := cached.(*dto.AccountResponse); ok {
+			return account, nil
+		}
+	}
+
+	// 从数据库获取
+	account, err := s.GetAccount(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应
+	response := s.convertToAccountResponse(account)
+
+	// 缓存结果
+	s.SetToCache(ctx, cacheKey, response)
+
+	return response, nil
+}
+
+// Update 实现 CRUDService 接口的 Update 方法
+func (s *AccountServiceImpl) Update(ctx context.Context, id uint, req *dto.AccountUpdateRequest) (*dto.UpdateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "Account", req); err != nil {
+		return nil, err
+	}
+
+	// 获取现有账户
+	account, err := s.GetAccount(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新字段
+	if req.Name != "" {
+		account.Name = req.Name
+	}
+	if req.Type != "" {
+		account.AccountType = req.Type
+	}
+	if req.ParentID != nil {
+		account.ParentID = req.ParentID
+	}
+	if req.Status != "" {
+		account.IsActive = req.Status == "active"
+	}
+
+	// 更新账户
+	if err := s.UpdateAccount(ctx, account); err != nil {
+		return nil, err
+	}
+
+	// 清除相关缓存
+	s.DeleteFromCache(ctx, fmt.Sprintf("account:%d", id))
+	s.DeleteFromCache(ctx, "accounts:list")
+
+	return s.CreateUpdateResponse(account, "会计科目更新成功"), nil
+}
+
+// Delete 实现 CRUDService 接口的 Delete 方法
+func (s *AccountServiceImpl) Delete(ctx context.Context, id uint) (*dto.DeleteResponse, error) {
+	// 检查账户是否存在
+	_, err := s.GetAccount(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 删除账户
+	if err := s.DeleteAccount(ctx, id); err != nil {
+		return nil, err
+	}
+
+	// 清除相关缓存
+	s.DeleteFromCache(ctx, fmt.Sprintf("account:%d", id))
+	s.DeleteFromCache(ctx, "accounts:list")
+
+	return s.CreateDeleteResponse("会计科目删除成功"), nil
+}
+
+// List 实现 CRUDService 接口的 List 方法
+func (s *AccountServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.AccountResponse], error) {
+	options := &common.QueryOptions{
+		Pagination: req,
+	}
+
+	accounts, total, err := s.accountRepo.List(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.AccountResponse, len(accounts))
+	for i, account := range accounts {
+		responses[i] = *s.convertToAccountResponse(account)
+	}
+
+	// 计算总页数
+	limit := req.GetLimit()
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
+	return &dto.PaginatedResponse[dto.AccountResponse]{
+		Data:       responses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
+}
+
+// Search 实现 CRUDService 接口的 Search 方法
+func (s *AccountServiceImpl) Search(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.AccountResponse], error) {
+	limit := req.GetLimit()
+
+	accounts, total, err := s.SearchAccounts(ctx, req.Keyword, req.Page, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.AccountResponse, len(accounts))
+	for i, account := range accounts {
+		responses[i] = *s.convertToAccountResponse(account)
+	}
+
+	// 计算总页数
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
+	return &dto.PaginatedResponse[dto.AccountResponse]{
+		Data:       responses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	}, nil
+}
+
+// convertToAccountResponse 转换模型为响应DTO
+func (s *AccountServiceImpl) convertToAccountResponse(account *models.Account) *dto.AccountResponse {
+	status := "inactive"
+	if account.IsActive {
+		status = "active"
+	}
+
+	return &dto.AccountResponse{
+		ID:        account.ID,
+		Code:      account.Code,
+		Name:      account.Name,
+		Type:      account.AccountType,
+		ParentID:  account.ParentID,
+		Status:    status,
+		CreatedAt: account.CreatedAt,
+		UpdatedAt: account.UpdatedAt,
 	}
 }
 
@@ -145,15 +348,41 @@ func (s *AccountServiceImpl) DeleteAccount(ctx context.Context, id uint) error {
 
 // ListAccounts 获取会计科目列表
 func (s *AccountServiceImpl) ListAccounts(ctx context.Context, page, pageSize int) ([]*models.Account, int64, error) {
+	// 转换为通用分页请求
+	req := &dto.PaginationRequest{
+		Page:     page,
+		PageSize: pageSize,
+	}
 	if page < 1 {
-		page = 1
+		req.Page = 1
 	}
 	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+		req.PageSize = 20
 	}
 
-	offset := (page - 1) * pageSize
-	return s.accountRepo.List(ctx, offset, pageSize)
+	result, err := s.List(ctx, req)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 转换回原始格式
+	accounts := make([]*models.Account, len(result.Data))
+	for i, response := range result.Data {
+		accounts[i] = &models.Account{
+			BaseModel: models.BaseModel{
+				ID:        response.ID,
+				CreatedAt: response.CreatedAt,
+				UpdatedAt: response.UpdatedAt,
+			},
+			Code:        response.Code,
+			Name:        response.Name,
+			AccountType: response.Type,
+			ParentID:    response.ParentID,
+			IsActive:    response.Status == "active",
+		}
+	}
+
+	return accounts, result.Total, nil
 }
 
 // GetAccountsByType 根据科目类型获取会计科目
@@ -188,34 +417,44 @@ func (s *AccountServiceImpl) GetAccountChildren(ctx context.Context, parentID ui
 
 // SearchAccounts 搜索会计科目
 func (s *AccountServiceImpl) SearchAccounts(ctx context.Context, keyword string, page, pageSize int) ([]*models.Account, int64, error) {
+	// 转换为通用搜索请求
+	req := &dto.SearchRequest{
+		Keyword: keyword,
+		PaginationRequest: dto.PaginationRequest{
+			Page:     page,
+			PageSize: pageSize,
+		},
+	}
 	if page < 1 {
-		page = 1
+		req.Page = 1
 	}
 	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+		req.PageSize = 20
 	}
 
-	offset := (page - 1) * pageSize
-
-	// 如果仓储层没有搜索方法，使用列表方法
-	// 这里假设仓储层有搜索方法，如果没有需要在仓储层添加
-	accounts, total, err := s.accountRepo.List(ctx, offset, pageSize)
+	result, err := s.Search(ctx, req)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 简单的内存过滤（生产环境应该在数据库层面进行搜索）
-	var filteredAccounts []*models.Account
-	for _, account := range accounts {
-		if keyword == "" ||
-			containsIgnoreCase(account.Code, keyword) ||
-			containsIgnoreCase(account.Name, keyword) ||
-			containsIgnoreCase(account.Description, keyword) {
-			filteredAccounts = append(filteredAccounts, account)
+	// 转换回原始格式
+	accounts := make([]*models.Account, len(result.Data))
+	for i, response := range result.Data {
+		accounts[i] = &models.Account{
+			BaseModel: models.BaseModel{
+				ID:        response.ID,
+				CreatedAt: response.CreatedAt,
+				UpdatedAt: response.UpdatedAt,
+			},
+			Code:        response.Code,
+			Name:        response.Name,
+			AccountType: response.Type,
+			ParentID:    response.ParentID,
+			IsActive:    response.Status == "active",
 		}
 	}
 
-	return filteredAccounts, total, nil
+	return accounts, result.Total, nil
 }
 
 // ValidateAccountHierarchy 验证科目层级关系
@@ -481,8 +720,13 @@ func (s *JournalEntryServiceImpl) ListJournalEntries(ctx context.Context, page, 
 		pageSize = 20
 	}
 
-	offset := (page - 1) * pageSize
-	return s.journalRepo.List(ctx, offset, pageSize)
+	options := &common.QueryOptions{
+		Pagination: &dto.PaginationRequest{
+			Page:     page,
+			PageSize: pageSize,
+		},
+	}
+	return s.journalRepo.List(ctx, options)
 }
 
 // GetJournalEntriesByDateRange 根据日期范围获取会计分录
@@ -605,8 +849,13 @@ func (s *PaymentEntryServiceImpl) ListPaymentEntries(ctx context.Context, page, 
 		pageSize = 20
 	}
 
-	offset := (page - 1) * pageSize
-	return s.paymentRepo.List(ctx, offset, pageSize)
+	options := &common.QueryOptions{
+		Pagination: &dto.PaginationRequest{
+			Page:     page,
+			PageSize: pageSize,
+		},
+	}
+	return s.paymentRepo.List(ctx, options)
 }
 
 // GetPaymentEntriesByParty 根据关联方获取付款记录

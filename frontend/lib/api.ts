@@ -90,6 +90,48 @@ class ApiClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
+  // GET 请求 - 用于分页响应，返回完整的响应结构
+  async getPaginated<T>(endpoint: string): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // 添加认证头
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
+    }
+
+    const config: RequestInit = {
+      method: 'GET',
+      headers,
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      // 处理认证失败
+      if (response.status === 401) {
+        this.clearToken();
+        throw new Error('认证失败，请重新登录');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const jsonResponse = await response.json();
+      
+      // 对于分页响应，直接返回完整的响应结构
+      return jsonResponse;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+
   // POST 请求
   async post<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {

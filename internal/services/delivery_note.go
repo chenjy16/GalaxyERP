@@ -1,11 +1,13 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
@@ -25,23 +27,20 @@ type DeliveryNoteServiceInterface interface {
 }
 
 type DeliveryNoteService struct {
-	deliveryNoteRepo *repositories.DeliveryNoteRepository
+	deliveryNoteRepo repositories.DeliveryNoteRepository
 	salesOrderRepo   repositories.SalesOrderRepository
 	customerRepo     repositories.CustomerRepository
-	db               *gorm.DB
 }
 
 func NewDeliveryNoteService(
-	deliveryNoteRepo *repositories.DeliveryNoteRepository,
+	deliveryNoteRepo repositories.DeliveryNoteRepository,
 	salesOrderRepo repositories.SalesOrderRepository,
 	customerRepo repositories.CustomerRepository,
-	db *gorm.DB,
 ) *DeliveryNoteService {
 	return &DeliveryNoteService{
 		deliveryNoteRepo: deliveryNoteRepo,
 		salesOrderRepo:   salesOrderRepo,
 		customerRepo:     customerRepo,
-		db:               db,
 	}
 }
 
@@ -108,23 +107,23 @@ func (s *DeliveryNoteService) Create(ctx *gin.Context, req *dto.DeliveryNoteCrea
 	}
 
 	// 保存到数据库
-	if err := s.deliveryNoteRepo.Create(deliveryNote); err != nil {
+	if err := s.deliveryNoteRepo.Create(ctx, deliveryNote); err != nil {
 		return nil, fmt.Errorf("创建发货单失败: %w", err)
 	}
 
 	// 重新加载完整数据
-	return s.deliveryNoteRepo.GetByID(deliveryNote.ID)
+	return s.deliveryNoteRepo.GetByID(ctx, deliveryNote.ID)
 }
 
 // GetByID 根据ID获取发货单
 func (s *DeliveryNoteService) GetByID(id uint) (*models.DeliveryNote, error) {
-	return s.deliveryNoteRepo.GetByID(id)
+	return s.deliveryNoteRepo.GetByID(context.Background(), id)
 }
 
 // Update 更新发货单
 func (s *DeliveryNoteService) Update(id uint, req *dto.DeliveryNoteUpdateRequest) (*models.DeliveryNote, error) {
 	// 获取现有发货单
-	deliveryNote, err := s.deliveryNoteRepo.GetByID(id)
+	deliveryNote, err := s.deliveryNoteRepo.GetByID(context.Background(), id)
 	if err != nil {
 		return nil, fmt.Errorf("发货单不存在: %w", err)
 	}
@@ -156,17 +155,13 @@ func (s *DeliveryNoteService) Update(id uint, req *dto.DeliveryNoteUpdateRequest
 
 	// 如果有明细更新，重新计算总数量
 	if len(req.Items) > 0 {
-		// 删除现有明细
-		if err := s.db.Where("delivery_note_id = ?", id).Delete(&models.DeliveryNoteItem{}).Error; err != nil {
-			return nil, fmt.Errorf("删除现有明细失败: %w", err)
-		}
-
+		// 清空现有明细
+		deliveryNote.Items = nil
+		
 		// 创建新明细
 		var totalQuantity float64
-		var newItems []models.DeliveryNoteItem
 		for _, itemReq := range req.Items {
 			item := models.DeliveryNoteItem{
-				DeliveryNoteID:   id,
 				SalesOrderItemID: itemReq.SalesOrderItemID,
 				ItemID:           itemReq.ItemID,
 				Description:      itemReq.Description,
@@ -175,27 +170,26 @@ func (s *DeliveryNoteService) Update(id uint, req *dto.DeliveryNoteUpdateRequest
 				SerialNo:         itemReq.SerialNo,
 				WarehouseID:      itemReq.WarehouseID,
 			}
-			newItems = append(newItems, item)
+			deliveryNote.Items = append(deliveryNote.Items, item)
 			totalQuantity += itemReq.Quantity
 		}
 
-		deliveryNote.Items = newItems
 		deliveryNote.TotalQuantity = totalQuantity
 	}
 
 	// 保存更新
-	if err := s.deliveryNoteRepo.Update(deliveryNote); err != nil {
+	if err := s.deliveryNoteRepo.Update(context.Background(), deliveryNote); err != nil {
 		return nil, fmt.Errorf("更新发货单失败: %w", err)
 	}
 
 	// 重新加载完整数据
-	return s.deliveryNoteRepo.GetByID(id)
+	return s.deliveryNoteRepo.GetByID(context.Background(), id)
 }
 
 // Delete 删除发货单
 func (s *DeliveryNoteService) Delete(id uint) error {
 	// 获取发货单
-	deliveryNote, err := s.deliveryNoteRepo.GetByID(id)
+	deliveryNote, err := s.deliveryNoteRepo.GetByID(context.Background(), id)
 	if err != nil {
 		return fmt.Errorf("发货单不存在: %w", err)
 	}
@@ -205,18 +199,24 @@ func (s *DeliveryNoteService) Delete(id uint) error {
 		return errors.New("已发货的发货单不能删除")
 	}
 
-	return s.deliveryNoteRepo.Delete(id)
+	return s.deliveryNoteRepo.Delete(context.Background(), id)
 }
 
 // List 获取发货单列表
 func (s *DeliveryNoteService) List(req *dto.DeliveryNoteListRequest) ([]*models.DeliveryNote, int64, error) {
-	return s.deliveryNoteRepo.List(req)
+	options := &common.QueryOptions{
+		Pagination: &dto.PaginationRequest{
+			Page:     req.Page,
+			PageSize: req.PageSize,
+		},
+	}
+	return s.deliveryNoteRepo.List(context.Background(), options)
 }
 
 // UpdateStatus 更新发货单状态
 func (s *DeliveryNoteService) UpdateStatus(id uint, req *dto.DeliveryNoteStatusUpdateRequest) (*models.DeliveryNote, error) {
 	// 获取发货单
-	deliveryNote, err := s.deliveryNoteRepo.GetByID(id)
+	deliveryNote, err := s.deliveryNoteRepo.GetByID(context.Background(), id)
 	if err != nil {
 		return nil, fmt.Errorf("发货单不存在: %w", err)
 	}
@@ -227,12 +227,12 @@ func (s *DeliveryNoteService) UpdateStatus(id uint, req *dto.DeliveryNoteStatusU
 	}
 
 	// 更新状态
-	if err := s.deliveryNoteRepo.UpdateStatus(id, req.Status); err != nil {
+	if err := s.deliveryNoteRepo.UpdateStatus(context.Background(), id, req.Status); err != nil {
 		return nil, fmt.Errorf("更新状态失败: %w", err)
 	}
 
 	// 重新加载数据
-	return s.deliveryNoteRepo.GetByID(id)
+	return s.deliveryNoteRepo.GetByID(context.Background(), id)
 }
 
 // CreateFromSalesOrder 从销售订单创建发货单
@@ -278,10 +278,16 @@ func (s *DeliveryNoteService) CreateFromSalesOrder(ctx *gin.Context, req *dto.De
 
 	// 创建发货单明细
 	for _, itemReq := range req.Items {
-		// 验证销售订单明细是否存在
-		var salesOrderItem models.SalesOrderItem
-		if err := s.db.Where("id = ? AND sales_order_id = ?", itemReq.SalesOrderItemID, req.SalesOrderID).
-			First(&salesOrderItem).Error; err != nil {
+		// 从销售订单明细中查找对应的明细
+		var salesOrderItem *models.SalesOrderItem
+		for _, item := range salesOrder.Items {
+			if item.ID == itemReq.SalesOrderItemID {
+				salesOrderItem = &item
+				break
+			}
+		}
+		
+		if salesOrderItem == nil {
 			return nil, fmt.Errorf("销售订单明细不存在: %w", err)
 		}
 
@@ -303,12 +309,12 @@ func (s *DeliveryNoteService) CreateFromSalesOrder(ctx *gin.Context, req *dto.De
 	}
 
 	// 保存到数据库
-	if err := s.deliveryNoteRepo.Create(deliveryNote); err != nil {
+	if err := s.deliveryNoteRepo.Create(ctx, deliveryNote); err != nil {
 		return nil, fmt.Errorf("创建发货单失败: %w", err)
 	}
 
 	// 重新加载完整数据
-	return s.deliveryNoteRepo.GetByID(deliveryNote.ID)
+	return s.deliveryNoteRepo.GetByID(ctx, deliveryNote.ID)
 }
 
 // GetStatistics 获取发货单统计信息

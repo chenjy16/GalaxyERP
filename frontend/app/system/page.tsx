@@ -589,7 +589,7 @@ export default function SystemPage() {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
-      console.log('Form values:', values);
+      // 表单提交处理
       message.success(`${modalType === 'user' ? '用户' : modalType === 'role' ? '角色' : modalType === 'permission' ? '权限' : '配置'}操作成功！`);
       setIsModalVisible(false);
       form.resetFields();

@@ -18,7 +18,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UserOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  AuditOutlined
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -74,6 +75,11 @@ export default function Sidebar() {
       key: '/system',
       icon: <SettingOutlined />,
       label: <Link href="/system">系统管理</Link>,
+    },
+    {
+      key: '/audit-logs',
+      icon: <AuditOutlined />,
+      label: <Link href="/audit-logs">审计日志</Link>,
     },
   ];
 

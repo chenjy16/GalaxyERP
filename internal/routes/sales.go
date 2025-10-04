@@ -38,7 +38,7 @@ func RegisterSalesRoutes(router *gin.RouterGroup, container *container.Container
 		quotations.DELETE("/:id", container.SalesController.DeleteQuotation)
 		quotations.GET("/", container.SalesController.ListQuotations)
 		quotations.GET("/search", container.SalesController.SearchQuotations)
-		
+
 		// 报价单版本管理
 		quotations.POST("/:id/versions", container.SalesController.CreateQuotationVersion)
 		quotations.GET("/:id/versions/:versionNumber", container.SalesController.GetQuotationVersion)

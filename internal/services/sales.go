@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
+	"github.com/galaxyerp/galaxyErp/internal/utils"
 	"time"
 )
 
 // CustomerService 客户服务接口
 type CustomerService interface {
+	CRUDService[models.Customer, dto.CustomerCreateRequest, dto.CustomerUpdateRequest, dto.CustomerResponse]
 	CreateCustomer(ctx context.Context, req *dto.CustomerCreateRequest) (*dto.CustomerResponse, error)
 	GetCustomer(ctx context.Context, id uint) (*dto.CustomerResponse, error)
 	UpdateCustomer(ctx context.Context, id uint, req *dto.CustomerUpdateRequest) error
@@ -22,18 +25,33 @@ type CustomerService interface {
 
 // CustomerServiceImpl 客户服务实现
 type CustomerServiceImpl struct {
+	*BaseService
 	customerRepo repositories.CustomerRepository
 }
 
 // NewCustomerService 创建客户服务实例
 func NewCustomerService(customerRepo repositories.CustomerRepository) CustomerService {
+	config := &BaseServiceConfig{
+		EnableAudit:      true,
+		EnableValidation: true,
+		EnableCache:      true,
+		CacheExpiry:      time.Minute * 30,
+		EnableMetrics:    true,
+	}
+	
 	return &CustomerServiceImpl{
+		BaseService:  NewBaseService(config),
 		customerRepo: customerRepo,
 	}
 }
 
-// CreateCustomer 创建客户
-func (s *CustomerServiceImpl) CreateCustomer(ctx context.Context, req *dto.CustomerCreateRequest) (*dto.CustomerResponse, error) {
+// Create 实现 CRUDService 接口的 Create 方法
+func (s *CustomerServiceImpl) Create(ctx context.Context, req *dto.CustomerCreateRequest) (*dto.CreateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "customer", req); err != nil {
+		return nil, err
+	}
+
 	// 创建客户
 	customer := &models.Customer{
 		Email:         req.Email,
@@ -41,8 +59,6 @@ func (s *CustomerServiceImpl) CreateCustomer(ctx context.Context, req *dto.Custo
 		Address:       req.Address,
 		ContactPerson: req.ContactName,
 		CreditLimit:   req.CreditLimit,
-		// PaymentTerms:  req.PaymentTerms, // 字段不存在
-		// Status:        "active", // 字段不存在，使用IsActive
 	}
 
 	// 设置CodeModel字段
@@ -51,39 +67,95 @@ func (s *CustomerServiceImpl) CreateCustomer(ctx context.Context, req *dto.Custo
 	customer.IsActive = true
 
 	if err := s.customerRepo.Create(ctx, customer); err != nil {
-		return nil, fmt.Errorf("创建客户失败: %w", err)
+		appErr := utils.NewAppErrorWithCause(utils.ErrorTypeDatabase, "CUSTOMER_CREATE_FAILED", "创建客户失败", err)
+		utils.LogAppError(appErr, "create_customer",
+			utils.String("customer_name", req.Name),
+			utils.String("customer_code", req.Code))
+		return nil, appErr
 	}
 
-	return s.toCustomerResponse(customer), nil
+	// 记录客户创建成功的业务日志
+	utils.Info("客户创建成功",
+		utils.Uint("customer_id", customer.ID),
+		utils.String("customer_name", customer.Name),
+		utils.String("customer_code", customer.Code),
+		utils.String("operation", "create_customer"),
+	)
+
+	response := s.toCustomerResponse(customer)
+	return s.CreateCreateResponse(customer.ID, response, "客户创建成功"), nil
+}
+
+// CreateCustomer 创建客户
+func (s *CustomerServiceImpl) CreateCustomer(ctx context.Context, req *dto.CustomerCreateRequest) (*dto.CustomerResponse, error) {
+	createResp, err := s.Create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	
+	if response, ok := createResp.Data.(*dto.CustomerResponse); ok {
+		return response, nil
+	}
+	
+	return nil, errors.New("创建客户响应类型错误")
+}
+
+// GetByID 实现 CRUDService 接口的 GetByID 方法
+func (s *CustomerServiceImpl) GetByID(ctx context.Context, id uint) (*dto.CustomerResponse, error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("customer:%d", id)
+	if cached, found := s.GetFromCache(ctx, cacheKey); found {
+		if response, ok := cached.(*dto.CustomerResponse); ok {
+			return response, nil
+		}
+	}
+
+	customer, err := s.customerRepo.GetByID(ctx, id)
+	if err != nil {
+		appErr := utils.NewAppErrorWithCause(utils.ErrorTypeDatabase, "CUSTOMER_GET_FAILED", "获取客户失败", err)
+		utils.LogAppError(appErr, "get_customer", utils.Uint("customer_id", id))
+		return nil, appErr
+	}
+	if customer == nil {
+		appErr := utils.NewAppError(utils.ErrorTypeBusiness, "CUSTOMER_NOT_FOUND", "客户不存在")
+		utils.LogAppError(appErr, "get_customer", utils.Uint("customer_id", id))
+		return nil, appErr
+	}
+
+	response := s.toCustomerResponse(customer)
+	
+	// 缓存结果
+	s.SetToCache(ctx, cacheKey, response)
+	
+	return response, nil
 }
 
 // GetCustomer 获取客户
 func (s *CustomerServiceImpl) GetCustomer(ctx context.Context, id uint) (*dto.CustomerResponse, error) {
+	return s.GetByID(ctx, id)
+}
+
+// Update 实现 CRUDService 接口的 Update 方法
+func (s *CustomerServiceImpl) Update(ctx context.Context, id uint, req *dto.CustomerUpdateRequest) (*dto.UpdateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "customer", req); err != nil {
+		return nil, err
+	}
+
+	// 获取现有客户
 	customer, err := s.customerRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("获取客户失败: %w", err)
 	}
+
 	if customer == nil {
 		return nil, errors.New("客户不存在")
-	}
-
-	return s.toCustomerResponse(customer), nil
-}
-
-// UpdateCustomer 更新客户
-func (s *CustomerServiceImpl) UpdateCustomer(ctx context.Context, id uint, req *dto.CustomerUpdateRequest) error {
-	customer, err := s.customerRepo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("获取客户失败: %w", err)
 	}
 
 	// 更新字段
 	if req.Name != "" {
 		customer.Name = req.Name
 	}
-	// if req.Code != "" {
-	// 	customer.Code = req.Code // 字段不存在于UpdateRequest
-	// }
 	if req.Email != "" {
 		customer.Email = req.Email
 	}
@@ -100,32 +172,60 @@ func (s *CustomerServiceImpl) UpdateCustomer(ctx context.Context, id uint, req *
 		customer.CreditLimit = *req.CreditLimit
 	}
 
+	// 更新客户
 	if err := s.customerRepo.Update(ctx, customer); err != nil {
-		return fmt.Errorf("更新客户失败: %w", err)
+		return nil, err
 	}
 
-	return nil
+	// 清除缓存
+	cacheKey := fmt.Sprintf("customer:%d", id)
+	s.DeleteFromCache(ctx, cacheKey)
+
+	response := s.toCustomerResponse(customer)
+	return s.CreateUpdateResponse(response, "客户更新成功"), nil
+}
+
+// UpdateCustomer 更新客户
+func (s *CustomerServiceImpl) UpdateCustomer(ctx context.Context, id uint, req *dto.CustomerUpdateRequest) error {
+	_, err := s.Update(ctx, id, req)
+	return err
+}
+
+// Delete 实现 CRUDService 接口的 Delete 方法
+func (s *CustomerServiceImpl) Delete(ctx context.Context, id uint) (*dto.DeleteResponse, error) {
+	// 检查客户是否存在
+	customer, err := s.customerRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("获取客户失败: %w", err)
+	}
+
+	if customer == nil {
+		return nil, errors.New("客户不存在")
+	}
+
+	// 删除客户
+	if err := s.customerRepo.Delete(ctx, id); err != nil {
+		return nil, err
+	}
+
+	// 清除缓存
+	cacheKey := fmt.Sprintf("customer:%d", id)
+	s.DeleteFromCache(ctx, cacheKey)
+
+	return s.CreateDeleteResponse("客户删除成功"), nil
 }
 
 // DeleteCustomer 删除客户
 func (s *CustomerServiceImpl) DeleteCustomer(ctx context.Context, id uint) error {
-	customer, err := s.customerRepo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("获取客户失败: %w", err)
-	}
-	if customer == nil {
-		return errors.New("客户不存在")
-	}
-
-	return s.customerRepo.Delete(ctx, id)
+	_, err := s.Delete(ctx, id)
+	return err
 }
 
-// ListCustomers 获取客户列表
-func (s *CustomerServiceImpl) ListCustomers(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.CustomerResponse], error) {
-	offset := req.GetOffset()
-	limit := req.GetLimit()
-
-	customers, total, err := s.customerRepo.List(ctx, offset, limit)
+// List 实现 CRUDService 接口的 List 方法
+func (s *CustomerServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.CustomerResponse], error) {
+	customers, total, err := s.customerRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取客户列表失败: %w", err)
 	}
@@ -136,6 +236,8 @@ func (s *CustomerServiceImpl) ListCustomers(ctx context.Context, req *dto.Pagina
 		customerResponses[i] = *s.toCustomerResponse(customer)
 	}
 
+	// 计算总页数
+	limit := req.GetLimit()
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
 		totalPages++
@@ -150,34 +252,46 @@ func (s *CustomerServiceImpl) ListCustomers(ctx context.Context, req *dto.Pagina
 	}, nil
 }
 
-// SearchCustomers 搜索客户
-func (s *CustomerServiceImpl) SearchCustomers(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.CustomerResponse], error) {
-	offset := req.GetOffset()
-	limit := req.GetLimit()
-
-	customers, total, err := s.customerRepo.Search(ctx, req.Keyword, offset, limit)
+// Search 实现 CRUDService 接口的 Search 方法
+func (s *CustomerServiceImpl) Search(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.CustomerResponse], error) {
+	customers, err := s.customerRepo.Search(ctx, req.Keyword, &common.QueryOptions{
+		Pagination: &req.PaginationRequest,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("搜索客户失败: %w", err)
 	}
 
 	// 转换为响应格式
-	customerResponses := make([]dto.CustomerResponse, len(customers))
+	responses := make([]dto.CustomerResponse, len(customers))
 	for i, customer := range customers {
-		customerResponses[i] = *s.toCustomerResponse(customer)
+		responses[i] = *s.toCustomerResponse(customer)
 	}
 
+	// 计算总页数
+	limit := req.GetLimit()
+	total := int64(len(customers))
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
 		totalPages++
 	}
 
 	return &dto.PaginatedResponse[dto.CustomerResponse]{
-		Data:       customerResponses,
+		Data:       responses,
 		Total:      total,
 		Page:       req.Page,
 		Limit:      limit,
 		TotalPages: totalPages,
 	}, nil
+}
+
+// ListCustomers 获取客户列表
+func (s *CustomerServiceImpl) ListCustomers(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.CustomerResponse], error) {
+	return s.List(ctx, req)
+}
+
+// SearchCustomers 搜索客户
+func (s *CustomerServiceImpl) SearchCustomers(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.CustomerResponse], error) {
+	return s.Search(ctx, req)
 }
 
 // toCustomerResponse 转换为客户响应格式
@@ -280,19 +394,12 @@ func (s *SalesOrderServiceImpl) CreateSalesOrder(ctx context.Context, req *dto.S
 		Terms:          req.PaymentTerms,
 		Notes:          req.Notes,
 		CreatedBy:      userID,
+		Items:          orderItems, // 包含订单项，GORM会自动创建关联
 	}
 
-	// 创建销售订单
+	// 创建销售订单（包括订单项）
 	if err := s.salesOrderRepo.Create(ctx, salesOrder); err != nil {
 		return nil, fmt.Errorf("创建销售订单失败: %w", err)
-	}
-
-	// 创建订单项目
-	for i := range orderItems {
-		orderItems[i].SalesOrderID = salesOrder.ID
-		if err := s.salesOrderRepo.CreateItem(ctx, &orderItems[i]); err != nil {
-			return nil, fmt.Errorf("创建销售订单项目失败: %w", err)
-		}
 	}
 
 	// 重新从数据库加载订单以获取完整的预加载信息
@@ -300,6 +407,16 @@ func (s *SalesOrderServiceImpl) CreateSalesOrder(ctx context.Context, req *dto.S
 	if err != nil {
 		return nil, fmt.Errorf("重新加载销售订单失败: %w", err)
 	}
+
+	// 记录销售订单创建成功的业务日志
+	utils.Info("销售订单创建成功",
+		utils.Uint("order_id", salesOrder.ID),
+		utils.String("order_number", salesOrder.OrderNumber),
+		utils.Uint("customer_id", salesOrder.CustomerID),
+		utils.Float64("grand_total", salesOrder.GrandTotal),
+		utils.Uint("created_by", userID),
+		utils.String("operation", "create_sales_order"),
+	)
 
 	return s.toSalesOrderResponse(fullSalesOrder), nil
 }
@@ -373,10 +490,11 @@ func (s *SalesOrderServiceImpl) DeleteSalesOrder(ctx context.Context, id uint) e
 
 // ListSalesOrders 获取销售订单列表
 func (s *SalesOrderServiceImpl) ListSalesOrders(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.SalesOrderResponse], error) {
-	offset := req.GetOffset()
 	limit := req.GetLimit()
 
-	salesOrders, total, err := s.salesOrderRepo.List(ctx, offset, limit)
+	salesOrders, total, err := s.salesOrderRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取销售订单列表失败: %w", err)
 	}
@@ -387,6 +505,7 @@ func (s *SalesOrderServiceImpl) ListSalesOrders(ctx context.Context, req *dto.Pa
 		salesOrderResponses[i] = *s.toSalesOrderResponse(salesOrder)
 	}
 
+	// 计算总页数
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
 		totalPages++
@@ -401,32 +520,41 @@ func (s *SalesOrderServiceImpl) ListSalesOrders(ctx context.Context, req *dto.Pa
 	}, nil
 }
 
-// GetSalesOrdersByCustomer 根据客户获取销售订单
+// GetSalesOrdersByCustomer 根据客户ID获取销售订单列表
 func (s *SalesOrderServiceImpl) GetSalesOrdersByCustomer(ctx context.Context, customerID uint, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.SalesOrderResponse], error) {
-	offset := req.GetOffset()
-	limit := req.GetLimit()
-
-	salesOrders, total, err := s.salesOrderRepo.GetByCustomerID(ctx, customerID, offset, limit)
+	// 获取销售订单列表
+	salesOrders, err := s.salesOrderRepo.GetByCustomerID(ctx, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("获取客户销售订单失败: %w", err)
 	}
 
-	// 转换为响应格式
-	salesOrderResponses := make([]dto.SalesOrderResponse, len(salesOrders))
-	for i, salesOrder := range salesOrders {
-		salesOrderResponses[i] = *s.toSalesOrderResponse(salesOrder)
+	// 计算分页
+	total := int64(len(salesOrders))
+	totalPages := int((total + int64(req.GetLimit()) - 1) / int64(req.GetLimit()))
+
+	// 手动分页
+	start := req.GetOffset()
+	end := start + req.GetLimit()
+	if end > len(salesOrders) {
+		end = len(salesOrders)
+	}
+	if start > len(salesOrders) {
+		start = len(salesOrders)
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
+	paginatedOrders := salesOrders[start:end]
+
+	// 转换为响应格式
+	responses := make([]dto.SalesOrderResponse, len(paginatedOrders))
+	for i, order := range paginatedOrders {
+		responses[i] = *s.toSalesOrderResponse(order)
 	}
 
 	return &dto.PaginatedResponse[dto.SalesOrderResponse]{
-		Data:       salesOrderResponses,
+		Data:       responses,
 		Total:      total,
 		Page:       req.Page,
-		Limit:      limit,
+		Limit:      req.GetLimit(),
 		TotalPages: totalPages,
 	}, nil
 }
@@ -450,7 +578,7 @@ func (s *SalesOrderServiceImpl) toSalesOrderResponse(salesOrder *models.SalesOrd
 	response := &dto.SalesOrderResponse{
 		ID:              salesOrder.ID,
 		Number:          salesOrder.OrderNumber,
-		OrderNumber:     salesOrder.OrderNumber,  // 前端期望的字段名
+		OrderNumber:     salesOrder.OrderNumber, // 前端期望的字段名
 		Status:          salesOrder.Status,
 		OrderDate:       salesOrder.Date,         // 前端期望的订单日期字段
 		DeliveryDate:    salesOrder.DeliveryDate, // 前端期望的交付日期字段
@@ -512,12 +640,12 @@ func (s *SalesOrderServiceImpl) toSalesOrderResponse(salesOrder *models.SalesOrd
 				SalesOrderID:   item.SalesOrderID,
 				ItemID:         item.ItemID,
 				Quantity:       item.Quantity,
-				UnitPrice:      item.Rate,           // 使用Rate字段作为UnitPrice
-				Discount:       item.DiscountRate,   // 使用DiscountRate字段作为Discount
+				UnitPrice:      item.Rate,         // 使用Rate字段作为UnitPrice
+				Discount:       item.DiscountRate, // 使用DiscountRate字段作为Discount
 				DiscountAmount: item.DiscountAmount,
 				TaxRate:        item.TaxRate,
 				TaxAmount:      item.TaxAmount,
-				LineTotal:      item.TotalAmount,    // 使用TotalAmount字段作为LineTotal
+				LineTotal:      item.TotalAmount, // 使用TotalAmount字段作为LineTotal
 				DeliveredQty:   item.DeliveredQty,
 				Description:    item.Description,
 				CreatedAt:      item.CreatedAt,
@@ -567,7 +695,7 @@ type QuotationServiceImpl struct {
 	customerRepo  repositories.CustomerRepository
 }
 
-// NewQuotationService 创建报价服务实例
+// NewQuotationService 创建报价单
 func NewQuotationService(quotationRepo repositories.QuotationRepository, customerRepo repositories.CustomerRepository) QuotationService {
 	return &QuotationServiceImpl{
 		quotationRepo: quotationRepo,
@@ -664,12 +792,13 @@ func (s *QuotationServiceImpl) DeleteQuotation(ctx context.Context, id uint) err
 
 // ListQuotations 获取报价列表
 func (s *QuotationServiceImpl) ListQuotations(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.QuotationResponse], error) {
-	offset := req.GetOffset()
 	limit := req.GetLimit()
 
-	quotations, total, err := s.quotationRepo.List(ctx, offset, limit)
+	quotations, total, err := s.quotationRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("获取报价列表失败: %w", err)
+		return nil, fmt.Errorf("获取报价单列表失败: %w", err)
 	}
 
 	// 转换为响应格式
@@ -678,6 +807,7 @@ func (s *QuotationServiceImpl) ListQuotations(ctx context.Context, req *dto.Pagi
 		quotationResponses[i] = *s.toQuotationResponse(quotation)
 	}
 
+	// 计算总页数
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
 		totalPages++
@@ -694,60 +824,80 @@ func (s *QuotationServiceImpl) ListQuotations(ctx context.Context, req *dto.Pagi
 
 // GetQuotationsByCustomer 根据客户获取报价
 func (s *QuotationServiceImpl) GetQuotationsByCustomer(ctx context.Context, customerID uint, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.QuotationResponse], error) {
-	offset := req.GetOffset()
-	limit := req.GetLimit()
-
-	quotations, total, err := s.quotationRepo.GetByCustomerID(ctx, customerID, offset, limit)
+	// 获取所有报价单
+	quotations, err := s.quotationRepo.GetByCustomerID(ctx, customerID)
 	if err != nil {
-		return nil, fmt.Errorf("获取客户报价失败: %w", err)
+		return nil, fmt.Errorf("获取客户报价单失败: %w", err)
 	}
+
+	// 计算分页
+	total := int64(len(quotations))
+	totalPages := int((total + int64(req.GetLimit()) - 1) / int64(req.GetLimit()))
+
+	// 手动分页
+	start := req.GetOffset()
+	end := start + req.GetLimit()
+	if end > len(quotations) {
+		end = len(quotations)
+	}
+	if start > len(quotations) {
+		start = len(quotations)
+	}
+
+	paginatedQuotations := quotations[start:end]
 
 	// 转换为响应格式
-	quotationResponses := make([]dto.QuotationResponse, len(quotations))
-	for i, quotation := range quotations {
+	quotationResponses := make([]dto.QuotationResponse, len(paginatedQuotations))
+	for i, quotation := range paginatedQuotations {
 		quotationResponses[i] = *s.toQuotationResponse(quotation)
-	}
-
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
 	}
 
 	return &dto.PaginatedResponse[dto.QuotationResponse]{
 		Data:       quotationResponses,
 		Total:      total,
 		Page:       req.Page,
-		Limit:      limit,
+		Limit:      req.GetLimit(),
 		TotalPages: totalPages,
 	}, nil
 }
 
 // SearchQuotations 搜索报价
 func (s *QuotationServiceImpl) SearchQuotations(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.QuotationResponse], error) {
-	offset := req.GetOffset()
-	limit := req.GetLimit()
-
-	quotations, total, err := s.quotationRepo.Search(ctx, req.Keyword, offset, limit)
+	// 搜索报价单
+	quotations, err := s.quotationRepo.Search(ctx, req.Keyword, &common.QueryOptions{
+		Pagination: &req.PaginationRequest,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("搜索报价失败: %w", err)
+		return nil, fmt.Errorf("搜索报价单失败: %w", err)
 	}
+
+	// 计算分页
+	total := int64(len(quotations))
+	totalPages := int((total + int64(req.GetLimit()) - 1) / int64(req.GetLimit()))
+
+	// 手动分页
+	start := req.GetOffset()
+	end := start + req.GetLimit()
+	if end > len(quotations) {
+		end = len(quotations)
+	}
+	if start > len(quotations) {
+		start = len(quotations)
+	}
+
+	paginatedQuotations := quotations[start:end]
 
 	// 转换为响应格式
-	quotationResponses := make([]dto.QuotationResponse, len(quotations))
-	for i, quotation := range quotations {
+	quotationResponses := make([]dto.QuotationResponse, len(paginatedQuotations))
+	for i, quotation := range paginatedQuotations {
 		quotationResponses[i] = *s.toQuotationResponse(quotation)
-	}
-
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
 	}
 
 	return &dto.PaginatedResponse[dto.QuotationResponse]{
 		Data:       quotationResponses,
 		Total:      total,
 		Page:       req.Page,
-		Limit:      limit,
+		Limit:      req.GetLimit(),
 		TotalPages: totalPages,
 	}, nil
 }
@@ -765,41 +915,41 @@ func (s *QuotationServiceImpl) toQuotationResponse(quotation *models.Quotation) 
 	var customerResponse dto.CustomerResponse
 	if quotation.Customer.ID != 0 {
 		customerResponse = dto.CustomerResponse{
-			ID:           quotation.Customer.ID,
-			Name:         quotation.Customer.Name,
-			Code:         quotation.Customer.Code,
-			ContactName:  quotation.Customer.ContactPerson,
-			Phone:        quotation.Customer.Phone,
-			Email:        quotation.Customer.Email,
-			Address:      quotation.Customer.Address,
-			CreditLimit:  quotation.Customer.CreditLimit,
-			IsActive:     quotation.Customer.IsActive,
-			CreatedAt:    quotation.Customer.CreatedAt,
-			UpdatedAt:    quotation.Customer.UpdatedAt,
+			ID:          quotation.Customer.ID,
+			Name:        quotation.Customer.Name,
+			Code:        quotation.Customer.Code,
+			ContactName: quotation.Customer.ContactPerson,
+			Phone:       quotation.Customer.Phone,
+			Email:       quotation.Customer.Email,
+			Address:     quotation.Customer.Address,
+			CreditLimit: quotation.Customer.CreditLimit,
+			IsActive:    quotation.Customer.IsActive,
+			CreatedAt:   quotation.Customer.CreatedAt,
+			UpdatedAt:   quotation.Customer.UpdatedAt,
 		}
 	}
 
 	return &dto.QuotationResponse{
-		ID:               quotation.ID,
-		Number:           quotation.QuotationNumber,
-		QuotationNumber:  quotation.QuotationNumber,  // 前端期望的字段名
-		Title:            quotation.Subject,          // 使用Subject作为Title
-		Subject:          quotation.Subject,          // 前端期望的字段名
-		Description:      "",                         // 模型中没有Description字段
-		Status:           quotation.Status,
-		ValidUntil:       quotation.ValidTill,        // 使用ValidTill字段
-		ValidTill:        quotation.ValidTill,        // 前端期望的字段名
-		Date:             quotation.CreatedAt,        // 前端期望的字段名
-		PaymentTerms:     quotation.Terms,            // 使用Terms字段
-		Notes:            quotation.Notes,
-		SubTotal:         quotation.TotalAmount,
-		DiscountAmount:   quotation.DiscountAmount,
-		TaxAmount:        quotation.TaxAmount,
-		TotalAmount:      quotation.TotalAmount,      // 前端表单期望的字段名，应该是基础总金额
-		GrandTotal:       quotation.GrandTotal,       // 前端表格期望的字段名，是最终总计金额
-		Customer:         customerResponse,           // 包含客户信息
-		CreatedAt:        quotation.CreatedAt,
-		UpdatedAt:        quotation.UpdatedAt,
+		ID:              quotation.ID,
+		Number:          quotation.QuotationNumber,
+		QuotationNumber: quotation.QuotationNumber, // 前端期望的字段名
+		Title:           quotation.Subject,         // 使用Subject作为Title
+		Subject:         quotation.Subject,         // 前端期望的字段名
+		Description:     "",                        // 模型中没有Description字段
+		Status:          quotation.Status,
+		ValidUntil:      quotation.ValidTill, // 使用ValidTill字段
+		ValidTill:       quotation.ValidTill, // 前端期望的字段名
+		Date:            quotation.CreatedAt, // 前端期望的字段名
+		PaymentTerms:    quotation.Terms,     // 使用Terms字段
+		Notes:           quotation.Notes,
+		SubTotal:        quotation.TotalAmount,
+		DiscountAmount:  quotation.DiscountAmount,
+		TaxAmount:       quotation.TaxAmount,
+		TotalAmount:     quotation.TotalAmount, // 前端表单期望的字段名，应该是基础总金额
+		GrandTotal:      quotation.GrandTotal,  // 前端表格期望的字段名，是最终总计金额
+		Customer:        customerResponse,      // 包含客户信息
+		CreatedAt:       quotation.CreatedAt,
+		UpdatedAt:       quotation.UpdatedAt,
 	}
 }
 
@@ -938,10 +1088,11 @@ func (s *QuotationTemplateServiceImpl) DeleteTemplate(ctx context.Context, id ui
 
 // ListTemplates 获取模板列表
 func (s *QuotationTemplateServiceImpl) ListTemplates(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.QuotationTemplateResponse], error) {
-	offset := req.GetOffset()
 	limit := req.GetLimit()
-
-	templates, total, err := s.templateRepo.List(ctx, offset, limit)
+	
+	templates, total, err := s.templateRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取模板列表失败: %w", err)
 	}
@@ -952,6 +1103,7 @@ func (s *QuotationTemplateServiceImpl) ListTemplates(ctx context.Context, req *d
 		templateResponses[i] = *s.toTemplateResponse(template)
 	}
 
+	// 计算总页数
 	totalPages := int(total) / limit
 	if int(total)%limit > 0 {
 		totalPages++
@@ -1171,9 +1323,9 @@ func (s *QuotationVersionServiceImpl) CreateVersion(ctx context.Context, req *dt
 		VersionNumber: nextVersion,
 		VersionName:   req.VersionName,
 		ChangeReason:  req.ChangeReason,
-		CreatedBy:     1, // 暂时硬编码，后续从上下文获取
+		CreatedBy:     1,     // 暂时硬编码，后续从上下文获取
 		IsActive:      false, // 新版本默认不激活
-		VersionData:   "", // 暂时为空，后续实现版本数据序列化
+		VersionData:   "",    // 暂时为空，后续实现版本数据序列化
 	}
 
 	err = s.versionRepo.Create(ctx, version)
@@ -1374,14 +1526,14 @@ func (s *QuotationVersionServiceImpl) compareVersionData(data1, data2 string) []
 	// 这里可以实现更复杂的数据比较逻辑
 	// 暂时返回简单的比较结果
 	changes := []string{}
-	
+
 	if data1 != data2 {
 		changes = append(changes, "版本数据已更改")
 	}
-	
+
 	if len(changes) == 0 {
 		changes = append(changes, "无变更")
 	}
-	
+
 	return changes
 }

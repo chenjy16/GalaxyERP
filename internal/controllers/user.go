@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
+	"github.com/galaxyerp/galaxyErp/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -34,7 +35,7 @@ func NewUserController(userService services.UserService) *UserController {
 // @Router /api/v1/users/login [post]
 func (c *UserController) Login(ctx *gin.Context) {
 	var req dto.LoginRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -60,16 +61,27 @@ func (c *UserController) Login(ctx *gin.Context) {
 // @Router /api/v1/users/register [post]
 func (c *UserController) Register(ctx *gin.Context) {
 	var req dto.RegisterRequest
-	if !c.utils.BindJSON(ctx, &req) {
+
+	// 添加详细的错误日志记录
+	utils.Info("开始处理用户注册请求")
+
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
+		utils.LogError("用户注册请求绑定或验证失败")
 		return
 	}
 
+	utils.Info("用户注册请求验证成功", 
+		utils.String("username", req.Username), 
+		utils.String("email", req.Email))
+
 	user, err := c.userService.Register(ctx.Request.Context(), &req)
 	if err != nil {
+		utils.LogError("用户注册服务调用失败", utils.ErrorField(err))
 		c.utils.RespondInternalError(ctx, "注册失败")
 		return
 	}
 
+	utils.Info("用户注册成功", utils.String("username", req.Username))
 	c.utils.RespondCreated(ctx, user)
 }
 
@@ -121,7 +133,7 @@ func (c *UserController) UpdateProfile(ctx *gin.Context) {
 	}
 
 	var req dto.UserUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -155,7 +167,7 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 	}
 
 	var req dto.ChangePasswordRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -170,75 +182,75 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 
 // CreateUser 创建用户
 func (c *UserController) CreateUser(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // GetUser 获取单个用户
 func (c *UserController) GetUser(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // UpdateUser 更新用户
 func (c *UserController) UpdateUser(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // DeleteUser 删除用户
 func (c *UserController) DeleteUser(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // GetUsers 获取用户列表
 func (c *UserController) GetUsers(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // SearchUsers 搜索用户
 func (c *UserController) SearchUsers(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // AssignRole 分配角色
 func (c *UserController) AssignRole(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // RemoveRole 移除角色
 func (c *UserController) RemoveRole(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // CreateRole 创建角色
 func (c *UserController) CreateRole(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // GetRoles 获取角色列表
 func (c *UserController) GetRoles(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // GetRole 获取角色
 func (c *UserController) GetRole(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // UpdateRole 更新角色
 func (c *UserController) UpdateRole(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // DeleteRole 删除角色
 func (c *UserController) DeleteRole(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // AssignPermission 分配权限
 func (c *UserController) AssignPermission(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 // RemovePermission 移除权限
 func (c *UserController) RemovePermission(ctx *gin.Context) {
-	ctx.JSON(501, gin.H{"error": "功能暂未实现"})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }

@@ -258,6 +258,9 @@ func registerRoutes(r *gin.Engine, appContainer *container.Container) {
 	// Add CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
+	// Add logging middleware
+	r.Use(middleware.LoggingMiddleware())
+
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -316,6 +319,8 @@ func registerRoutes(r *gin.Engine, appContainer *container.Container) {
 			routes.RegisterProjectRoutes(protected, appContainer)
 			// System management routes - modularized
 			routes.RegisterSystemRoutes(protected, appContainer)
+			// Audit log routes
+			routes.SetupAuditLogRoutes(protected, appContainer.AuditLogHandler)
 		}
 	}
 }

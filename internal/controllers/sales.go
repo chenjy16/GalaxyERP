@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/services"
 	"github.com/galaxyerp/galaxyErp/internal/utils"
@@ -52,7 +51,7 @@ func NewSalesController(
 // @Router /api/v1/customers [post]
 func (c *SalesController) CreateCustomer(ctx *gin.Context) {
 	var req dto.CustomerCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -112,7 +111,7 @@ func (c *SalesController) UpdateCustomer(ctx *gin.Context) {
 	}
 
 	var req dto.CustomerUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -173,7 +172,9 @@ func (c *SalesController) ListCustomers(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取客户列表成功")
 }
 
 // SearchCustomers 搜索客户
@@ -207,7 +208,9 @@ func (c *SalesController) SearchCustomers(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "搜索客户成功")
 }
 
 // CreateSalesOrder 创建销售订单
@@ -222,15 +225,16 @@ func (c *SalesController) SearchCustomers(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/sales/orders [post]
 func (c *SalesController) CreateSalesOrder(ctx *gin.Context) {
-	var req dto.SalesOrderCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	var req dto.CreateSalesOrderRequest
+
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	// 从上下文获取用户ID
 	userID := utils.GetUserIDFromContext(ctx)
 	// 添加调试日志
-	fmt.Printf("DEBUG: userID from context: %d\n", userID)
+	utils.Debug("userID from context", utils.Uint("user_id", userID))
 	if userID == 0 {
 		c.utils.RespondUnauthorized(ctx, "用户未认证")
 		return
@@ -292,7 +296,7 @@ func (c *SalesController) UpdateSalesOrder(ctx *gin.Context) {
 	}
 
 	var req dto.SalesOrderUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -353,7 +357,9 @@ func (c *SalesController) ListSalesOrders(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取销售订单列表成功")
 }
 
 // UpdateOrderStatus 更新订单状态
@@ -376,7 +382,7 @@ func (c *SalesController) UpdateOrderStatus(ctx *gin.Context) {
 	}
 
 	var req map[string]string
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -408,7 +414,7 @@ func (c *SalesController) UpdateOrderStatus(ctx *gin.Context) {
 // @Router /api/v1/quotations [post]
 func (c *SalesController) CreateQuotation(ctx *gin.Context) {
 	var req dto.QuotationCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -436,7 +442,7 @@ func (c *SalesController) CreateQuotation(ctx *gin.Context) {
 // @Router /api/v1/quotation-versions [post]
 func (c *SalesController) CreateQuotationVersion(ctx *gin.Context) {
 	var req dto.QuotationVersionCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -522,7 +528,7 @@ func (c *SalesController) SetActiveQuotationVersion(ctx *gin.Context) {
 // @Router /api/v1/quotation-versions/compare [post]
 func (c *SalesController) CompareQuotationVersions(ctx *gin.Context) {
 	var req dto.QuotationVersionCompareRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -574,7 +580,7 @@ func (c *SalesController) GetQuotationVersionHistory(ctx *gin.Context) {
 // @Router /api/v1/quotation-versions/rollback [post]
 func (c *SalesController) RollbackQuotationVersion(ctx *gin.Context) {
 	var req dto.QuotationVersionRollbackRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -661,7 +667,7 @@ func (c *SalesController) UpdateQuotation(ctx *gin.Context) {
 	}
 
 	var req dto.QuotationUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -722,7 +728,9 @@ func (c *SalesController) ListQuotations(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取报价单列表成功")
 }
 
 // SearchQuotations 搜索报价单
@@ -756,7 +764,9 @@ func (c *SalesController) SearchQuotations(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "搜索报价单成功")
 }
 
 // ==================== 销售发票管理 ====================
@@ -774,7 +784,7 @@ func (c *SalesController) SearchQuotations(ctx *gin.Context) {
 // @Router /api/v1/sales-invoices [post]
 func (c *SalesController) CreateSalesInvoice(ctx *gin.Context) {
 	var req dto.SalesInvoiceCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -834,7 +844,7 @@ func (c *SalesController) AddInvoicePayment(ctx *gin.Context) {
 	}
 
 	var req dto.InvoicePaymentCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -894,7 +904,7 @@ func (c *SalesController) UpdateSalesInvoice(ctx *gin.Context) {
 	}
 
 	var req dto.SalesInvoiceUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -958,7 +968,9 @@ func (c *SalesController) ListSalesInvoices(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination2, "获取销售发票列表成功")
 }
 
 // SubmitSalesInvoice 提交销售发票
@@ -1030,7 +1042,7 @@ func (c *SalesController) CancelSalesInvoice(ctx *gin.Context) {
 // @Router /api/v1/quotation-templates [post]
 func (c *SalesController) CreateQuotationTemplate(ctx *gin.Context) {
 	var req dto.QuotationTemplateCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -1090,7 +1102,7 @@ func (c *SalesController) UpdateQuotationTemplate(ctx *gin.Context) {
 	}
 
 	var req dto.QuotationTemplateUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -1143,13 +1155,15 @@ func (c *SalesController) DeleteQuotationTemplate(ctx *gin.Context) {
 func (c *SalesController) ListQuotationTemplates(ctx *gin.Context) {
 	req := c.utils.ParsePaginationParams(ctx)
 
-	templates, err := c.templateService.ListTemplates(ctx.Request.Context(), req)
+	response, err := c.templateService.ListTemplates(ctx.Request.Context(), req)
 	if err != nil {
 		c.utils.RespondInternalError(ctx, "获取模板列表失败")
 		return
 	}
 
-	c.utils.RespondOK(ctx, templates)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取模板列表成功")
 }
 
 // GetActiveQuotationTemplates 获取活跃的报价单模板
@@ -1236,7 +1250,7 @@ func (c *SalesController) SetDefaultQuotationTemplate(ctx *gin.Context) {
 // @Router /api/v1/quotation-templates/create-quotation [post]
 func (c *SalesController) CreateQuotationFromTemplate(ctx *gin.Context) {
 	var req dto.CreateQuotationFromTemplateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 

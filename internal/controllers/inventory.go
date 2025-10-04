@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/galaxyerp/galaxyErp/internal/dto"
@@ -15,6 +14,7 @@ type InventoryController struct {
 	stockService     services.StockService
 	warehouseService services.WarehouseService
 	movementService  services.MovementService
+	utils            *ControllerUtils
 }
 
 // NewInventoryController 创建库存控制器实例
@@ -29,6 +29,7 @@ func NewInventoryController(
 		stockService:     stockService,
 		warehouseService: warehouseService,
 		movementService:  movementService,
+		utils:            NewControllerUtils(),
 	}
 }
 
@@ -45,26 +46,17 @@ func NewInventoryController(
 // @Router /api/v1/items [post]
 func (c *InventoryController) CreateItem(ctx *gin.Context) {
 	var req dto.ItemCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	item, err := c.itemService.CreateItem(ctx.Request.Context(), &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "创建物料失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "创建物料失败")
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, item)
+	c.utils.RespondCreated(ctx, item)
 }
 
 // GetItem 获取物料
@@ -80,28 +72,18 @@ func (c *InventoryController) CreateItem(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/items/{id} [get]
 func (c *InventoryController) GetItem(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "物料ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
-	item, err := c.itemService.GetItem(ctx.Request.Context(), uint(id))
+	item, err := c.itemService.GetItem(ctx.Request.Context(), id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取物料失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取物料失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, item)
+	c.utils.RespondOK(ctx, item)
 }
 
 // UpdateItem 更新物料
@@ -118,41 +100,23 @@ func (c *InventoryController) GetItem(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/items/{id} [put]
 func (c *InventoryController) UpdateItem(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "物料ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
 	var req dto.ItemUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
-	_, err = c.itemService.UpdateItem(ctx.Request.Context(), uint(id), &req)
+	_, err := c.itemService.UpdateItem(ctx.Request.Context(), id, &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "更新物料失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "更新物料失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.BaseResponse{
-		Success: true,
-		Message: "更新物料成功",
-	})
+	c.utils.RespondSuccess(ctx, "更新物料成功")
 }
 
 // DeleteItem 删除物料
@@ -168,31 +132,18 @@ func (c *InventoryController) UpdateItem(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/items/{id} [delete]
 func (c *InventoryController) DeleteItem(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "物料ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
-	err = c.itemService.DeleteItem(ctx.Request.Context(), uint(id))
+	err := c.itemService.DeleteItem(ctx.Request.Context(), id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "删除物料失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "删除物料失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.BaseResponse{
-		Success: true,
-		Message: "删除物料成功",
-	})
+	c.utils.RespondSuccess(ctx, "删除物料成功")
 }
 
 // ListItems 获取物料列表
@@ -208,32 +159,17 @@ func (c *InventoryController) DeleteItem(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/items [get]
 func (c *InventoryController) ListItems(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "10"))
-
-	if page <= 0 {
-		page = 1
-	}
-	if pageSize <= 0 || pageSize > 100 {
-		pageSize = 10
-	}
-
-	req := &dto.PaginationRequest{
-		Page:     page,
-		PageSize: pageSize,
-	}
+	req := c.utils.ParsePaginationParams(ctx)
 
 	response, err := c.itemService.GetItems(ctx.Request.Context(), req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取物料列表失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取物料列表失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取物料列表成功")
 }
 
 // SearchItems 搜索物料
@@ -252,37 +188,24 @@ func (c *InventoryController) ListItems(ctx *gin.Context) {
 // @Router /api/v1/items/search [get]
 func (c *InventoryController) SearchItems(ctx *gin.Context) {
 	keyword := ctx.Query("keyword")
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("page_size", "10"))
+	req := c.utils.ParsePaginationParams(ctx)
 
-	if page <= 0 {
-		page = 1
-	}
-	if pageSize <= 0 || pageSize > 100 {
-		pageSize = 10
-	}
-
-	req := &dto.ItemSearchRequest{
+	searchReq := &dto.ItemSearchRequest{
 		SearchRequest: dto.SearchRequest{
-			PaginationRequest: dto.PaginationRequest{
-				Page:     page,
-				PageSize: pageSize,
-			},
-			Keyword: keyword,
+			PaginationRequest: *req,
+			Keyword:          keyword,
 		},
 	}
 
-	response, err := c.itemService.SearchItems(ctx.Request.Context(), req)
+	response, err := c.itemService.SearchItems(ctx.Request.Context(), searchReq)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "搜索物料失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "搜索物料失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, response)
+	// 使用统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "搜索物料成功")
 }
 
 // GetStockByItemID 根据物料ID获取库存
@@ -298,169 +221,104 @@ func (c *InventoryController) SearchItems(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/stock/item/{item_id} [get]
 func (c *InventoryController) GetStockByItemID(ctx *gin.Context) {
-	itemIDStr := ctx.Param("item_id")
-	itemID, err := strconv.ParseUint(itemIDStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "物料ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	itemID, ok := c.utils.ParseIDParam(ctx, "item_id")
+	if !ok {
 		return
 	}
 
 	stock, err := c.stockService.GetByItemID(ctx.Request.Context(), uint(itemID))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取库存失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取库存失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, stock)
+	c.utils.RespondOK(ctx, stock)
 }
 
 // ListStocks 获取库存列表
 func (c *InventoryController) ListStocks(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	req := c.utils.ParsePaginationParams(ctx)
 
-	req := &dto.PaginationRequest{
-		Page:     page,
-		PageSize: limit,
-	}
-
-	response, err := c.stockService.GetStocks(ctx.Request.Context(), req)
+	response, err := c.stockService.List(ctx.Request.Context(), req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取库存列表失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取库存列表失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取库存列表成功")
 }
 
 // CreateStock 创建库存
 func (c *InventoryController) CreateStock(ctx *gin.Context) {
 	var req dto.MovementCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	stock, err := c.stockService.CreateStock(ctx.Request.Context(), &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "创建库存失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "创建库存失败")
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, stock)
+	c.utils.RespondCreated(ctx, stock)
 }
 
 // GetStock 获取单个库存
 func (c *InventoryController) GetStock(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "库存ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
-	stock, err := c.stockService.GetStock(ctx.Request.Context(), uint(id))
+	stock, err := c.stockService.GetByID(ctx.Request.Context(), uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取库存失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取库存失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, stock)
+	c.utils.RespondOK(ctx, stock)
 }
 
 // UpdateStock 更新库存
 func (c *InventoryController) UpdateStock(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "库存ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
 	var req struct {
-		Quantity float64 `json:"quantity" binding:"required,min=0"`
+		Quantity float64 `json:"quantity" validate:"required,min=0"`
 	}
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	stock, err := c.stockService.UpdateStock(ctx.Request.Context(), uint(id), req.Quantity)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "更新库存失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "更新库存失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, stock)
+	c.utils.RespondOK(ctx, stock)
 }
 
 // DeleteStock 删除库存
 func (c *InventoryController) DeleteStock(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "库存ID格式错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
-	err = c.stockService.DeleteStock(ctx.Request.Context(), uint(id))
+	_, err := c.stockService.Delete(ctx.Request.Context(), uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "删除库存失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "删除库存失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.BaseResponse{
-		Success: true,
-		Message: "删除库存成功",
-	})
+	c.utils.RespondSuccess(ctx, "删除库存成功")
 }
 
 // 库存移动相关方法 - 占位符实现
@@ -480,8 +338,9 @@ func (c *InventoryController) DeleteStock(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/stock-movements [get]
 func (c *InventoryController) ListStockMovements(ctx *gin.Context) {
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	req := c.utils.ParsePaginationParams(ctx)
+	page := req.Page
+	limit := req.PageSize
 
 	itemIDStr := ctx.Query("item_id")
 	warehouseIDStr := ctx.Query("warehouse_id")
@@ -493,22 +352,14 @@ func (c *InventoryController) ListStockMovements(ctx *gin.Context) {
 	if itemIDStr != "" {
 		itemID, parseErr := strconv.ParseUint(itemIDStr, 10, 32)
 		if parseErr != nil {
-			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-				Success:    false,
-				Message:    "物料ID格式错误",
-				StatusCode: http.StatusBadRequest,
-			})
+			c.utils.RespondBadRequest(ctx, "物料ID格式错误")
 			return
 		}
 		result, err = c.movementService.GetMovementsByItemID(ctx, uint(itemID), page, limit)
 	} else if warehouseIDStr != "" {
 		warehouseID, parseErr := strconv.ParseUint(warehouseIDStr, 10, 32)
 		if parseErr != nil {
-			ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-				Success:    false,
-				Message:    "仓库ID格式错误",
-				StatusCode: http.StatusBadRequest,
-			})
+			c.utils.RespondBadRequest(ctx, "仓库ID格式错误")
 			return
 		}
 		result, err = c.movementService.GetMovementsByWarehouseID(ctx, uint(warehouseID), page, limit)
@@ -520,15 +371,13 @@ func (c *InventoryController) ListStockMovements(ctx *gin.Context) {
 	}
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取库存移动列表失败: " + err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取库存移动列表失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, result)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(result.Page, result.Limit, result.Total)
+	c.utils.RespondPaginated(ctx, result.Data, pagination, "获取库存移动列表成功")
 }
 
 // CreateStockMovement 创建库存移动
@@ -544,26 +393,17 @@ func (c *InventoryController) ListStockMovements(ctx *gin.Context) {
 // @Router /api/v1/stock-movements [post]
 func (c *InventoryController) CreateStockMovement(ctx *gin.Context) {
 	var req dto.MovementCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误: " + err.Error(),
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	movement, err := c.movementService.CreateMovement(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "创建库存移动失败: " + err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "创建库存移动失败: "+err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, movement)
+	c.utils.RespondCreated(ctx, movement)
 }
 
 // StockIn 入库操作
@@ -579,12 +419,7 @@ func (c *InventoryController) CreateStockMovement(ctx *gin.Context) {
 // @Router /api/v1/stock-movements/in [post]
 func (c *InventoryController) StockIn(ctx *gin.Context) {
 	var req dto.MovementCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误: " + err.Error(),
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -593,15 +428,11 @@ func (c *InventoryController) StockIn(ctx *gin.Context) {
 
 	movement, err := c.movementService.CreateMovement(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "入库操作失败: " + err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "入库操作失败: "+err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, movement)
+	c.utils.RespondCreated(ctx, movement)
 }
 
 // StockOut 出库操作
@@ -617,12 +448,7 @@ func (c *InventoryController) StockIn(ctx *gin.Context) {
 // @Router /api/v1/stock-movements/out [post]
 func (c *InventoryController) StockOut(ctx *gin.Context) {
 	var req dto.MovementCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误: " + err.Error(),
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -631,15 +457,11 @@ func (c *InventoryController) StockOut(ctx *gin.Context) {
 
 	movement, err := c.movementService.CreateMovement(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "出库操作失败: " + err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "出库操作失败: "+err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, movement)
+	c.utils.RespondCreated(ctx, movement)
 }
 
 // StockAdjustment 库存调整
@@ -655,12 +477,7 @@ func (c *InventoryController) StockOut(ctx *gin.Context) {
 // @Router /api/v1/stock-movements/adjustment [post]
 func (c *InventoryController) StockAdjustment(ctx *gin.Context) {
 	var req dto.MovementCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误: " + err.Error(),
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -669,15 +486,11 @@ func (c *InventoryController) StockAdjustment(ctx *gin.Context) {
 
 	movement, err := c.movementService.CreateMovement(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "库存调整失败: " + err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "库存调整失败: "+err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, movement)
+	c.utils.RespondCreated(ctx, movement)
 }
 
 // StockTransfer 库存调拨
@@ -693,12 +506,7 @@ func (c *InventoryController) StockAdjustment(ctx *gin.Context) {
 // @Router /api/v1/stock-movements/transfer [post]
 func (c *InventoryController) StockTransfer(ctx *gin.Context) {
 	var req dto.MovementCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "请求参数错误: " + err.Error(),
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -707,204 +515,106 @@ func (c *InventoryController) StockTransfer(ctx *gin.Context) {
 
 	movement, err := c.movementService.CreateMovement(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "库存调拨失败: " + err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "库存调拨失败: "+err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, movement)
+	c.utils.RespondCreated(ctx, movement)
 }
 
 // 仓库管理相关方法
 func (c *InventoryController) ListWarehouses(ctx *gin.Context) {
-	var req dto.PaginationRequest
-	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
-		return
-	}
+	req := c.utils.ParsePaginationParams(ctx)
 
-	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-
-	response, err := c.warehouseService.GetWarehouses(ctx.Request.Context(), &req)
+	response, err := c.warehouseService.GetWarehouses(ctx.Request.Context(), req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取仓库列表失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取仓库列表失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination, "获取仓库列表成功")
 }
 
 func (c *InventoryController) CreateWarehouse(ctx *gin.Context) {
 	var req dto.WarehouseCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	warehouse, err := c.warehouseService.CreateWarehouse(ctx.Request.Context(), &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "创建仓库失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "创建仓库失败")
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, dto.SuccessResponse{
-		Success: true,
-		Message: "创建仓库成功",
-		Data:    warehouse,
-	})
+	c.utils.RespondCreated(ctx, warehouse)
 }
 
 func (c *InventoryController) GetWarehouse(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "无效的仓库ID",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
 	warehouse, err := c.warehouseService.GetWarehouse(ctx.Request.Context(), uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "获取仓库失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "获取仓库失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.SuccessResponse{
-		Success: true,
-		Message: "获取仓库成功",
-		Data:    warehouse,
-	})
+	c.utils.RespondOK(ctx, warehouse)
 }
 
 func (c *InventoryController) UpdateWarehouse(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "无效的仓库ID",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
 	var req dto.WarehouseUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "参数错误",
-			StatusCode: http.StatusBadRequest,
-		})
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
 	warehouse, err := c.warehouseService.UpdateWarehouse(ctx.Request.Context(), uint(id), &req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "更新仓库失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "更新仓库失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.SuccessResponse{
-		Success: true,
-		Message: "更新仓库成功",
-		Data:    warehouse,
-	})
+	c.utils.RespondOK(ctx, warehouse)
 }
 
 func (c *InventoryController) DeleteWarehouse(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Success:    false,
-			Message:    "无效的仓库ID",
-			StatusCode: http.StatusBadRequest,
-		})
+	id, ok := c.utils.ParseIDParam(ctx, "id")
+	if !ok {
 		return
 	}
 
-	err = c.warehouseService.DeleteWarehouse(ctx.Request.Context(), uint(id))
+	err := c.warehouseService.DeleteWarehouse(ctx.Request.Context(), uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Success:    false,
-			Message:    "删除仓库失败",
-			StatusCode: http.StatusInternalServerError,
-		})
+		c.utils.RespondInternalError(ctx, "删除仓库失败")
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dto.SuccessResponse{
-		Success: true,
-		Message: "删除仓库成功",
-		Data:    nil,
-	})
+	c.utils.RespondSuccess(ctx, "删除仓库成功")
 }
 
 // 库存报告和统计相关方法
 func (c *InventoryController) GetInventoryStats(ctx *gin.Context) {
-	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
-		Success:    false,
-		Message:    "功能暂未实现",
-		StatusCode: http.StatusNotImplemented,
-	})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 func (c *InventoryController) GetInventoryReport(ctx *gin.Context) {
-	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
-		Success:    false,
-		Message:    "功能暂未实现",
-		StatusCode: http.StatusNotImplemented,
-	})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 func (c *InventoryController) GetABCAnalysis(ctx *gin.Context) {
-	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
-		Success:    false,
-		Message:    "功能暂未实现",
-		StatusCode: http.StatusNotImplemented,
-	})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }
 
 func (c *InventoryController) ExportInventoryReport(ctx *gin.Context) {
-	ctx.JSON(http.StatusNotImplemented, dto.ErrorResponse{
-		Success:    false,
-		Message:    "功能暂未实现",
-		StatusCode: http.StatusNotImplemented,
-	})
+	c.utils.RespondNotImplemented(ctx, "功能暂未实现")
 }

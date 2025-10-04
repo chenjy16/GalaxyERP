@@ -6,23 +6,23 @@ import (
 
 // UserCreateRequest 用户创建请求
 type UserCreateRequest struct {
-	Username     string `json:"username" binding:"required,min=3,max=50"`
-	Email        string `json:"email" binding:"required,email"`
-	Password     string `json:"password" binding:"required,min=6"`
-	FirstName    string `json:"first_name" binding:"required,max=50"`
-	LastName     string `json:"last_name" binding:"required,max=50"`
-	Phone        string `json:"phone,omitempty" binding:"omitempty,max=20"`
-	DepartmentID uint   `json:"department_id,omitempty"`
-	RoleIDs      []uint `json:"role_ids,omitempty"`
+	Username     string `json:"username" validate:"required,min=3,max=50"`
+	Email        string `json:"email" validate:"required,email"`
+	Password     string `json:"password" validate:"required,strong_password"`
+	FirstName    string `json:"first_name" validate:"required,max=50"`
+	LastName     string `json:"last_name" validate:"required,max=50"`
+	Phone        string `json:"phone,omitempty" validate:"omitempty,chinese_mobile"`
+	DepartmentID *uint  `json:"department_id,omitempty"`
+	PositionID   *uint  `json:"position_id,omitempty"`
 }
 
 // UserUpdateRequest 用户更新请求
 type UserUpdateRequest struct {
-	Username     string `json:"username,omitempty" binding:"omitempty,min=3,max=50"`
-	Email        string `json:"email,omitempty" binding:"omitempty,email"`
-	FirstName    string `json:"first_name,omitempty" binding:"omitempty,max=50"`
-	LastName     string `json:"last_name,omitempty" binding:"omitempty,max=50"`
-	Phone        string `json:"phone,omitempty" binding:"omitempty,max=20"`
+	Username     string `json:"username,omitempty" validate:"omitempty,min=3,max=50"`
+	Email        string `json:"email,omitempty" validate:"omitempty,email"`
+	FirstName    string `json:"first_name,omitempty" validate:"omitempty,max=50"`
+	LastName     string `json:"last_name,omitempty" validate:"omitempty,max=50"`
+	Phone        string `json:"phone,omitempty" validate:"omitempty,chinese_mobile"`
 	DepartmentID *uint  `json:"department_id,omitempty"`
 	RoleIDs      []uint `json:"role_ids,omitempty"`
 	IsActive     *bool  `json:"is_active,omitempty"`
@@ -59,18 +59,18 @@ type UserListResponse struct {
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 // RegisterRequest 注册请求
 type RegisterRequest struct {
-	Username  string `json:"username" binding:"required,min=3,max=50"`
-	Email     string `json:"email" binding:"required,email"`
-	Password  string `json:"password" binding:"required,min=6"`
-	FirstName string `json:"first_name" binding:"required,max=50"`
-	LastName  string `json:"last_name" binding:"required,max=50"`
-	Phone     string `json:"phone,omitempty" binding:"omitempty,max=20"`
+	Username  string `json:"username" validate:"required,min=3,max=50"`
+	Email     string `json:"email" validate:"required,email"`
+	Password  string `json:"password" validate:"required,strong_password"`
+	FirstName string `json:"first_name" validate:"required,max=50"`
+	LastName  string `json:"last_name" validate:"required,max=50"`
+	Phone     string `json:"phone,omitempty" validate:"omitempty,chinese_mobile"`
 }
 
 // LoginResponse 登录响应
@@ -83,33 +83,33 @@ type LoginResponse struct {
 
 // ChangePasswordRequest 修改密码请求
 type ChangePasswordRequest struct {
-	OldPassword string `json:"old_password" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
+	OldPassword string `json:"old_password" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required,strong_password"`
 }
 
 // ResetPasswordRequest 重置密码请求
 type ResetPasswordRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email" validate:"required,email"`
 }
 
 // ResetPasswordConfirmRequest 重置密码确认请求
 type ResetPasswordConfirmRequest struct {
-	Token       string `json:"token" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
+	Token       string `json:"token" validate:"required"`
+	NewPassword string `json:"new_password" validate:"required,strong_password"`
 }
 
 // RoleFilter 角色过滤器
 type RoleFilter struct {
-	Page     int    `form:"page" binding:"min=1" json:"page"`
-	Limit    int    `form:"limit" binding:"min=1,max=100" json:"limit"`
+	Page     int    `form:"page" validate:"min=1" json:"page"`
+	Limit    int    `form:"limit" validate:"min=1,max=100" json:"limit"`
 	Name     string `form:"name" json:"name,omitempty"`
 	IsActive *bool  `form:"is_active" json:"is_active,omitempty"`
 }
 
 // RoleCreateRequest 角色创建请求
 type RoleCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=50"`
-	Code        string `json:"code" binding:"required,max=50"`
+	Name        string `json:"name" validate:"required,max=50"`
+	Code        string `json:"code" validate:"required,max=50"`
 	Description string `json:"description,omitempty"`
 	IsActive    bool   `json:"is_active"`
 	Permissions []uint `json:"permissions,omitempty"`
@@ -117,7 +117,7 @@ type RoleCreateRequest struct {
 
 // RoleUpdateRequest 角色更新请求
 type RoleUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=50"`
+	Name        string `json:"name,omitempty" validate:"omitempty,max=50"`
 	Description string `json:"description,omitempty"`
 	Permissions []uint `json:"permissions,omitempty"`
 	IsActive    *bool  `json:"is_active,omitempty"`
@@ -137,16 +137,16 @@ type RoleResponse struct {
 
 // PermissionCreateRequest 权限创建请求
 type PermissionCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=50"`
-	Code        string `json:"code" binding:"required,max=50"`
-	Resource    string `json:"resource" binding:"required,max=50"`
-	Action      string `json:"action" binding:"required,max=50"`
+	Name        string `json:"name" validate:"required,max=50"`
+	Code        string `json:"code" validate:"required,max=50"`
+	Resource    string `json:"resource" validate:"required,max=50"`
+	Action      string `json:"action" validate:"required,max=50"`
 	Description string `json:"description,omitempty"`
 }
 
 // PermissionUpdateRequest 权限更新请求
 type PermissionUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=50"`
+	Name        string `json:"name,omitempty" validate:"omitempty,max=50"`
 	Description string `json:"description,omitempty"`
 	IsActive    *bool  `json:"is_active,omitempty"`
 }
@@ -166,8 +166,8 @@ type PermissionResponse struct {
 
 // DepartmentCreateRequest 部门创建请求
 type DepartmentCreateRequest struct {
-	Name        string `json:"name" binding:"required,max=100"`
-	Code        string `json:"code" binding:"required,max=50"`
+	Name        string `json:"name" validate:"required,max=100"`
+	Code        string `json:"code" validate:"required,max=50"`
 	Description string `json:"description,omitempty"`
 	ParentID    *uint  `json:"parent_id,omitempty"`
 	ManagerID   *uint  `json:"manager_id,omitempty"`
@@ -175,7 +175,7 @@ type DepartmentCreateRequest struct {
 
 // DepartmentUpdateRequest 部门更新请求
 type DepartmentUpdateRequest struct {
-	Name        string `json:"name,omitempty" binding:"omitempty,max=100"`
+	Name        string `json:"name,omitempty" validate:"omitempty,max=100"`
 	Description string `json:"description,omitempty"`
 	ParentID    *uint  `json:"parent_id,omitempty"`
 	ManagerID   *uint  `json:"manager_id,omitempty"`
@@ -214,22 +214,22 @@ type UserProfileResponse struct {
 
 // RefreshTokenRequest 刷新令牌请求
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
 // LogoutRequest 登出请求
 type LogoutRequest struct {
-	Token string `json:"token" binding:"required"`
+	Token string `json:"token" validate:"required"`
 }
 
 // CreateUserRequest 创建用户请求（服务层使用）
 type CreateUserRequest struct {
-	Username     string `json:"username" binding:"required,min=3,max=50"`
-	Email        string `json:"email" binding:"required,email"`
-	Password     string `json:"password" binding:"required,min=6"`
-	FirstName    string `json:"first_name" binding:"required,max=50"`
-	LastName     string `json:"last_name" binding:"required,max=50"`
-	Phone        string `json:"phone,omitempty" binding:"omitempty,max=20"`
+	Username     string `json:"username" validate:"required,min=3,max=50"`
+	Email        string `json:"email" validate:"required,email"`
+	Password     string `json:"password" validate:"required,strong_password"`
+	FirstName    string `json:"first_name" validate:"required,max=50"`
+	LastName     string `json:"last_name" validate:"required,max=50"`
+	Phone        string `json:"phone,omitempty" validate:"omitempty,chinese_mobile"`
 	CompanyID    uint   `json:"company_id,omitempty"`
 	DepartmentID uint   `json:"department_id,omitempty"`
 	PositionID   uint   `json:"position_id,omitempty"`
@@ -237,11 +237,11 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest 更新用户请求（服务层使用）
 type UpdateUserRequest struct {
-	Username     string `json:"username,omitempty" binding:"omitempty,min=3,max=50"`
-	Email        string `json:"email,omitempty" binding:"omitempty,email"`
-	FirstName    string `json:"first_name,omitempty" binding:"omitempty,max=50"`
-	LastName     string `json:"last_name,omitempty" binding:"omitempty,max=50"`
-	Phone        string `json:"phone,omitempty" binding:"omitempty,max=20"`
+	Username     string `json:"username,omitempty" validate:"omitempty,min=3,max=50"`
+	Email        string `json:"email,omitempty" validate:"omitempty,email"`
+	FirstName    string `json:"first_name,omitempty" validate:"omitempty,max=50"`
+	LastName     string `json:"last_name,omitempty" validate:"omitempty,max=50"`
+	Phone        string `json:"phone,omitempty" validate:"omitempty,chinese_mobile"`
 	CompanyID    *uint  `json:"company_id,omitempty"`
 	DepartmentID *uint  `json:"department_id,omitempty"`
 	PositionID   *uint  `json:"position_id,omitempty"`
@@ -259,8 +259,8 @@ type UserFilter struct {
 
 // PermissionFilter 权限过滤器
 type PermissionFilter struct {
-	Page     int    `form:"page" binding:"min=1" json:"page"`
-	Limit    int    `form:"limit" binding:"min=1,max=100" json:"limit"`
+	Page     int    `form:"page" validate:"min=1" json:"page"`
+	Limit    int    `form:"limit" validate:"min=1,max=100" json:"limit"`
 	Name     string `form:"name" json:"name,omitempty"`
 	Resource string `form:"resource" json:"resource,omitempty"`
 	Action   string `form:"action" json:"action,omitempty"`
@@ -268,8 +268,8 @@ type PermissionFilter struct {
 
 // DepartmentFilter 部门过滤器
 type DepartmentFilter struct {
-	Page     int    `form:"page" binding:"min=1" json:"page"`
-	Limit    int    `form:"limit" binding:"min=1,max=100" json:"limit"`
+	Page     int    `form:"page" validate:"min=1" json:"page"`
+	Limit    int    `form:"limit" validate:"min=1,max=100" json:"limit"`
 	Name     string `form:"name" json:"name,omitempty"`
 	ParentID *uint  `form:"parent_id" json:"parent_id,omitempty"`
 }

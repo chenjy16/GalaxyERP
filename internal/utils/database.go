@@ -2,11 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/glebarez/sqlite"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -26,10 +26,10 @@ func ConnectDatabase() {
 	switch env {
 	case "dev":
 		// Use SQLite for development
-		fmt.Println("Using SQLite for development")
+		zap.L().Info("Using SQLite for development")
 		DB, err = gorm.Open(sqlite.Open("galaxyerp.db"), &gorm.Config{})
 		if err != nil {
-			log.Fatal("Failed to connect to SQLite database:", err)
+			zap.L().Fatal("Failed to connect to SQLite database", zap.Error(err))
 		}
 	case "test":
 		fallthrough
@@ -47,18 +47,18 @@ func ConnectDatabase() {
 
 		DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err != nil {
-			log.Fatal("Failed to connect to PostgreSQL database:", err)
+			zap.L().Fatal("Failed to connect to PostgreSQL database", zap.Error(err))
 		}
 	default:
 		// Default to SQLite for development
-		fmt.Println("Using SQLite for development (default)")
+		zap.L().Info("Using SQLite for development (default)")
 		DB, err = gorm.Open(sqlite.Open("galaxyerp.db"), &gorm.Config{})
 		if err != nil {
-			log.Fatal("Failed to connect to SQLite database:", err)
+			zap.L().Fatal("Failed to connect to SQLite database", zap.Error(err))
 		}
 	}
 
-	fmt.Println("Database connected successfully!")
+	zap.L().Info("Database connected successfully!")
 }
 
 // GetDB returns the database instance

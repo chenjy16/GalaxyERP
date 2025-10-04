@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
@@ -13,28 +14,44 @@ import (
 
 // ItemService 物料服务接口
 type ItemService interface {
+	CRUDService[models.Item, dto.ItemCreateRequest, dto.ItemUpdateRequest, dto.ItemResponse]
 	CreateItem(ctx context.Context, req *dto.ItemCreateRequest) (*dto.ItemResponse, error)
 	GetItem(ctx context.Context, id uint) (*dto.ItemResponse, error)
 	UpdateItem(ctx context.Context, id uint, req *dto.ItemUpdateRequest) (*dto.ItemResponse, error)
 	DeleteItem(ctx context.Context, id uint) error
 	GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ItemResponse], error)
-	SearchItems(ctx context.Context, req *dto.ItemSearchRequest) (*dto.BaseResponse, error)
+	SearchItems(ctx context.Context, req *dto.ItemSearchRequest) (*dto.PaginatedResponse[dto.ItemResponse], error)
 }
 
 // ItemServiceImpl 物料服务实现
 type ItemServiceImpl struct {
+	*BaseService
 	itemRepo repositories.ItemRepository
 }
 
 // NewItemService 创建物料服务实例
 func NewItemService(itemRepo repositories.ItemRepository) ItemService {
+	config := &BaseServiceConfig{
+		EnableAudit:      true,
+		EnableValidation: true,
+		EnableCache:      true,
+		CacheExpiry:      time.Hour,
+		EnableMetrics:    true,
+	}
+
 	return &ItemServiceImpl{
-		itemRepo: itemRepo,
+		BaseService: NewBaseService(config),
+		itemRepo:    itemRepo,
 	}
 }
 
-// CreateItem 创建物料
-func (s *ItemServiceImpl) CreateItem(ctx context.Context, req *dto.ItemCreateRequest) (*dto.ItemResponse, error) {
+// Create 实现 CRUDService 接口的 Create 方法
+func (s *ItemServiceImpl) Create(ctx context.Context, req *dto.ItemCreateRequest) (*dto.CreateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "item", req); err != nil {
+		return nil, err
+	}
+
 	// 创建物料
 	item := &models.Item{
 		Code:        req.Code,
@@ -53,11 +70,29 @@ func (s *ItemServiceImpl) CreateItem(ctx context.Context, req *dto.ItemCreateReq
 		return nil, fmt.Errorf("创建物料失败: %w", err)
 	}
 
-	return s.toItemResponse(item), nil
+	// 清除相关缓存
+	s.DeleteFromCache(ctx, "items_list")
+
+	return s.CreateCreateResponse(item.ID, s.toItemResponse(item), "物料创建成功"), nil
 }
 
-// GetItem 获取物料
-func (s *ItemServiceImpl) GetItem(ctx context.Context, id uint) (*dto.ItemResponse, error) {
+// CreateItem 创建物料
+func (s *ItemServiceImpl) CreateItem(ctx context.Context, req *dto.ItemCreateRequest) (*dto.ItemResponse, error) {
+	createResp, err := s.Create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return createResp.Data.(*dto.ItemResponse), nil
+}
+
+// GetByID 实现 CRUDService 接口的 GetByID 方法
+func (s *ItemServiceImpl) GetByID(ctx context.Context, id uint) (*dto.ItemResponse, error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("item_%d", id)
+	if cached, found := s.GetFromCache(ctx, cacheKey); found {
+		return cached.(*dto.ItemResponse), nil
+	}
+
 	item, err := s.itemRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("获取物料失败: %w", err)
@@ -66,11 +101,26 @@ func (s *ItemServiceImpl) GetItem(ctx context.Context, id uint) (*dto.ItemRespon
 		return nil, errors.New("物料不存在")
 	}
 
-	return s.toItemResponse(item), nil
+	response := s.toItemResponse(item)
+	
+	// 缓存结果
+	s.SetToCache(ctx, cacheKey, response)
+
+	return response, nil
 }
 
-// UpdateItem 更新物料
-func (s *ItemServiceImpl) UpdateItem(ctx context.Context, id uint, req *dto.ItemUpdateRequest) (*dto.ItemResponse, error) {
+// GetItem 获取物料
+func (s *ItemServiceImpl) GetItem(ctx context.Context, id uint) (*dto.ItemResponse, error) {
+	return s.GetByID(ctx, id)
+}
+
+// Update 实现 CRUDService 接口的 Update 方法
+func (s *ItemServiceImpl) Update(ctx context.Context, id uint, req *dto.ItemUpdateRequest) (*dto.UpdateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "item", req); err != nil {
+		return nil, err
+	}
+
 	item, err := s.itemRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("获取物料失败: %w", err)
@@ -102,41 +152,63 @@ func (s *ItemServiceImpl) UpdateItem(ctx context.Context, id uint, req *dto.Item
 	if req.IsActive != nil {
 		item.IsActive = *req.IsActive
 	}
-	if req.IsActive != nil {
-		item.IsActive = *req.IsActive
-	}
 	item.UpdatedAt = time.Now()
 
 	if err := s.itemRepo.Update(ctx, item); err != nil {
 		return nil, fmt.Errorf("更新物料失败: %w", err)
 	}
 
-	return s.toItemResponse(item), nil
+	// 清除相关缓存
+	cacheKey := fmt.Sprintf("item_%d", id)
+	s.DeleteFromCache(ctx, cacheKey)
+	s.DeleteFromCache(ctx, "items_list")
+
+	return s.CreateUpdateResponse(s.toItemResponse(item), "物料更新成功"), nil
+}
+
+// UpdateItem 更新物料
+func (s *ItemServiceImpl) UpdateItem(ctx context.Context, id uint, req *dto.ItemUpdateRequest) (*dto.ItemResponse, error) {
+	updateResp, err := s.Update(ctx, id, req)
+	if err != nil {
+		return nil, err
+	}
+	return updateResp.Data.(*dto.ItemResponse), nil
+}
+
+// Delete 实现 CRUDService 接口的 Delete 方法
+func (s *ItemServiceImpl) Delete(ctx context.Context, id uint) (*dto.DeleteResponse, error) {
+	item, err := s.itemRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("获取物料失败: %w", err)
+	}
+	if item == nil {
+		return nil, errors.New("物料不存在")
+	}
+
+	if err := s.itemRepo.Delete(ctx, id); err != nil {
+		return nil, fmt.Errorf("删除物料失败: %w", err)
+	}
+
+	// 清除相关缓存
+	cacheKey := fmt.Sprintf("item_%d", id)
+	s.DeleteFromCache(ctx, cacheKey)
+	s.DeleteFromCache(ctx, "items_list")
+
+	return s.CreateDeleteResponse("物料删除成功"), nil
 }
 
 // DeleteItem 删除物料
 func (s *ItemServiceImpl) DeleteItem(ctx context.Context, id uint) error {
-	item, err := s.itemRepo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("获取物料失败: %w", err)
-	}
-	if item == nil {
-		return errors.New("物料不存在")
-	}
-
-	if err := s.itemRepo.Delete(ctx, id); err != nil {
-		return fmt.Errorf("删除物料失败: %w", err)
-	}
-
-	return nil
+	_, err := s.Delete(ctx, id)
+	return err
 }
 
-// GetItems 获取物料列表
-func (s *ItemServiceImpl) GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ItemResponse], error) {
+// List 实现 CRUDService 接口的 List 方法
+func (s *ItemServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ItemResponse], error) {
 	offset := req.GetOffset()
 	limit := req.GetLimit()
 
-	items, total, err := s.itemRepo.List(ctx, offset, limit)
+	items, total, err := s.itemRepo.ListItems(ctx, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("获取物料列表失败: %w", err)
 	}
@@ -147,21 +219,27 @@ func (s *ItemServiceImpl) GetItems(ctx context.Context, req *dto.PaginationReque
 		itemResponses[i] = *s.toItemResponse(item)
 	}
 
+	// 计算总页数
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
 	return &dto.PaginatedResponse[dto.ItemResponse]{
 		Data:       itemResponses,
 		Total:      total,
 		Page:       req.Page,
-		Limit:      req.PageSize,
-		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+		Limit:      limit,
+		TotalPages: totalPages,
 	}, nil
 }
 
-// SearchItems 搜索物料
-func (s *ItemServiceImpl) SearchItems(ctx context.Context, req *dto.ItemSearchRequest) (*dto.BaseResponse, error) {
+// Search 实现 CRUDService 接口的 Search 方法
+func (s *ItemServiceImpl) Search(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.ItemResponse], error) {
 	offset := req.GetOffset()
 	limit := req.GetLimit()
 
-	items, _, err := s.itemRepo.Search(ctx, req.Keyword, offset, limit)
+	items, total, err := s.itemRepo.Search(ctx, req.Keyword, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("搜索物料失败: %w", err)
 	}
@@ -172,11 +250,34 @@ func (s *ItemServiceImpl) SearchItems(ctx context.Context, req *dto.ItemSearchRe
 		itemResponses[i] = *s.toItemResponse(item)
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "搜索物料成功",
-		Data:    itemResponses,
+	// 计算总页数
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
+	return &dto.PaginatedResponse[dto.ItemResponse]{
+		Data:       itemResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      limit,
+		TotalPages: totalPages,
 	}, nil
+}
+
+// GetItems 获取物料列表
+func (s *ItemServiceImpl) GetItems(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.ItemResponse], error) {
+	return s.List(ctx, req)
+}
+
+// SearchItems 搜索物料
+func (s *ItemServiceImpl) SearchItems(ctx context.Context, req *dto.ItemSearchRequest) (*dto.PaginatedResponse[dto.ItemResponse], error) {
+	// 转换为通用搜索请求
+	searchReq := &dto.SearchRequest{
+		PaginationRequest: req.PaginationRequest,
+		Keyword:           req.Keyword,
+	}
+	return s.Search(ctx, searchReq)
 }
 
 // toItemResponse 转换为物料响应格式
@@ -200,25 +301,181 @@ func (s *ItemServiceImpl) toItemResponse(item *models.Item) *dto.ItemResponse {
 
 // StockService 库存服务接口
 type StockService interface {
+	CRUDService[models.Stock, dto.StockCreateRequest, dto.StockUpdateRequest, dto.StockResponse]
+	
+	// 原有的特定方法
 	CreateStock(ctx context.Context, req *dto.MovementCreateRequest) (*dto.StockResponse, error)
-	GetStock(ctx context.Context, id uint) (*dto.StockResponse, error)
 	UpdateStock(ctx context.Context, id uint, quantity float64) (*dto.StockResponse, error)
-	DeleteStock(ctx context.Context, id uint) error
-	GetStocks(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.StockResponse], error)
-	GetByItemID(ctx context.Context, itemID uint) (*dto.BaseResponse, error)
+	GetByItemID(ctx context.Context, itemID uint) ([]*dto.StockResponse, error)
 	AdjustStock(ctx context.Context, req *dto.StockAdjustmentCreateRequest) (*dto.StockAdjustmentResponse, error)
 }
 
 // StockServiceImpl 库存服务实现
 type StockServiceImpl struct {
+	*BaseService
 	stockRepo repositories.StockRepository
 }
 
-// NewStockService 创建库存服务实例
+// NewStockService 创建库存服务
 func NewStockService(stockRepo repositories.StockRepository) StockService {
-	return &StockServiceImpl{
-		stockRepo: stockRepo,
+	config := &BaseServiceConfig{
+		EnableAudit:      true,
+		EnableValidation: true,
+		EnableCache:      true,
+		EnableMetrics:    true,
+		CacheExpiry:      time.Hour,
 	}
+	
+	return &StockServiceImpl{
+		BaseService: NewBaseService(config),
+		stockRepo:   stockRepo,
+	}
+}
+
+// Create 实现 CRUDService 接口的 Create 方法
+func (s *StockServiceImpl) Create(ctx context.Context, req *dto.StockCreateRequest) (*dto.CreateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "stock", req); err != nil {
+		return nil, err
+	}
+
+	// 创建库存记录
+	stock := &models.Stock{
+		ItemID:      req.ItemID,
+		WarehouseID: req.WarehouseID,
+		Quantity:    req.Quantity,
+	}
+
+	if err := s.stockRepo.Create(ctx, stock); err != nil {
+		return nil, err
+	}
+
+	// 清除相关缓存
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:list"))
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:item:%d", req.ItemID))
+
+	return s.CreateCreateResponse(stock.ID, s.toStockResponse(stock), "库存创建成功"), nil
+}
+
+// GetByID 实现 CRUDService 接口的 GetByID 方法
+func (s *StockServiceImpl) GetByID(ctx context.Context, id uint) (*dto.StockResponse, error) {
+	// 尝试从缓存获取
+	if cached, found := s.GetFromCache(ctx, fmt.Sprintf("stock:%d", id)); found {
+		if stock, ok := cached.(*dto.StockResponse); ok {
+			return stock, nil
+		}
+	}
+
+	stock, err := s.stockRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	response := s.toStockResponse(stock)
+	
+	// 缓存结果
+	s.SetToCache(ctx, fmt.Sprintf("stock:%d", id), response)
+	
+	return response, nil
+}
+
+// Update 实现 CRUDService 接口的 Update 方法
+func (s *StockServiceImpl) Update(ctx context.Context, id uint, req *dto.StockUpdateRequest) (*dto.UpdateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "stock", req); err != nil {
+		return nil, err
+	}
+
+	// 获取现有库存
+	stock, err := s.stockRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新字段
+	if req.Quantity != nil {
+		stock.Quantity = *req.Quantity
+	}
+
+	if err := s.stockRepo.Update(ctx, stock); err != nil {
+		return nil, err
+	}
+
+	// 清除缓存
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:%d", id))
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:list"))
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:item:%d", stock.ItemID))
+
+	return s.CreateUpdateResponse(s.toStockResponse(stock), "库存更新成功"), nil
+}
+
+// Delete 实现 CRUDService 接口的 Delete 方法
+func (s *StockServiceImpl) Delete(ctx context.Context, id uint) (*dto.DeleteResponse, error) {
+	// 获取库存信息用于清除缓存
+	stock, err := s.stockRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.stockRepo.Delete(ctx, id); err != nil {
+		return nil, err
+	}
+
+	// 清除缓存
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:%d", id))
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:list"))
+	s.DeleteFromCache(ctx, fmt.Sprintf("stock:item:%d", stock.ItemID))
+
+	return s.CreateDeleteResponse("库存删除成功"), nil
+}
+
+// List 实现 CRUDService 接口的 List 方法
+func (s *StockServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.StockResponse], error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("stock:list:%d:%d", req.Page, req.PageSize)
+	if cached, found := s.GetFromCache(ctx, cacheKey); found {
+		if response, ok := cached.(*dto.PaginatedResponse[dto.StockResponse]); ok {
+			return response, nil
+		}
+	}
+
+	options := &common.QueryOptions{
+		Pagination: req,
+	}
+	stocks, total, err := s.stockRepo.List(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+
+	stockResponses := make([]dto.StockResponse, len(stocks))
+	for i, stock := range stocks {
+		stockResponses[i] = *s.toStockResponse(stock)
+	}
+
+	response := &dto.PaginatedResponse[dto.StockResponse]{
+		Data:       stockResponses,
+		Total:      total,
+		Page:       req.Page,
+		Limit:      req.PageSize,
+		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+	}
+
+	// 缓存结果
+	s.SetToCache(ctx, cacheKey, response)
+
+	return response, nil
+}
+
+// Search 实现 CRUDService 接口的 Search 方法
+func (s *StockServiceImpl) Search(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.StockResponse], error) {
+	// 这里可以实现更复杂的搜索逻辑
+	// 暂时使用 List 方法的逻辑
+	paginationReq := &dto.PaginationRequest{
+		Page:     req.Page,
+		PageSize: req.PageSize,
+	}
+	
+	return s.List(ctx, paginationReq)
 }
 
 // CreateStock 创建库存
@@ -281,10 +538,9 @@ func (s *StockServiceImpl) DeleteStock(ctx context.Context, id uint) error {
 
 // GetStocks 获取库存列表
 func (s *StockServiceImpl) GetStocks(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.StockResponse], error) {
-	offset := req.GetOffset()
-	limit := req.GetLimit()
-
-	stocks, total, err := s.stockRepo.List(ctx, offset, limit)
+	stocks, total, err := s.stockRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取库存列表失败: %w", err)
 	}
@@ -305,7 +561,7 @@ func (s *StockServiceImpl) GetStocks(ctx context.Context, req *dto.PaginationReq
 }
 
 // GetByItemID 根据物料ID获取库存
-func (s *StockServiceImpl) GetByItemID(ctx context.Context, itemID uint) (*dto.BaseResponse, error) {
+func (s *StockServiceImpl) GetByItemID(ctx context.Context, itemID uint) ([]*dto.StockResponse, error) {
 	stocks, err := s.stockRepo.GetByItemID(ctx, itemID)
 	if err != nil {
 		return nil, fmt.Errorf("获取物料库存失败: %w", err)
@@ -316,11 +572,7 @@ func (s *StockServiceImpl) GetByItemID(ctx context.Context, itemID uint) (*dto.B
 		stockResponses = append(stockResponses, s.toStockResponse(stock))
 	}
 
-	return &dto.BaseResponse{
-		Success: true,
-		Message: "获取物料库存成功",
-		Data:    stockResponses,
-	}, nil
+	return stockResponses, nil
 }
 
 // AdjustStock 调整库存
@@ -380,6 +632,7 @@ func (s *StockServiceImpl) toStockResponse(stock *models.Stock) *dto.StockRespon
 
 // WarehouseService 仓库服务接口
 type WarehouseService interface {
+	CRUDService[models.Warehouse, dto.WarehouseCreateRequest, dto.WarehouseUpdateRequest, dto.WarehouseResponse]
 	CreateWarehouse(ctx context.Context, req *dto.WarehouseCreateRequest) (*dto.WarehouseResponse, error)
 	GetWarehouse(ctx context.Context, id uint) (*dto.WarehouseResponse, error)
 	UpdateWarehouse(ctx context.Context, id uint, req *dto.WarehouseUpdateRequest) (*dto.WarehouseResponse, error)
@@ -389,18 +642,33 @@ type WarehouseService interface {
 
 // WarehouseServiceImpl 仓库服务实现
 type WarehouseServiceImpl struct {
+	*BaseService
 	warehouseRepo repositories.WarehouseRepository
 }
 
 // NewWarehouseService 创建仓库服务实例
 func NewWarehouseService(warehouseRepo repositories.WarehouseRepository) WarehouseService {
+	config := &BaseServiceConfig{
+		EnableAudit:      true,
+		EnableValidation: true,
+		EnableCache:      true,
+		CacheExpiry:      time.Hour,
+		EnableMetrics:    true,
+	}
+
 	return &WarehouseServiceImpl{
+		BaseService:   NewBaseService(config),
 		warehouseRepo: warehouseRepo,
 	}
 }
 
-// CreateWarehouse 创建仓库
-func (s *WarehouseServiceImpl) CreateWarehouse(ctx context.Context, req *dto.WarehouseCreateRequest) (*dto.WarehouseResponse, error) {
+// Create 实现 CRUDService 接口的 Create 方法
+func (s *WarehouseServiceImpl) Create(ctx context.Context, req *dto.WarehouseCreateRequest) (*dto.CreateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "warehouse", req); err != nil {
+		return nil, err
+	}
+
 	// 创建仓库
 	warehouse := &models.Warehouse{
 		Code:        req.Code,
@@ -414,11 +682,20 @@ func (s *WarehouseServiceImpl) CreateWarehouse(ctx context.Context, req *dto.War
 		return nil, fmt.Errorf("创建仓库失败: %w", err)
 	}
 
-	return s.toWarehouseResponse(warehouse), nil
+	// 清除相关缓存
+	s.DeleteFromCache(ctx, "warehouses_list")
+
+	return s.CreateCreateResponse(warehouse.ID, s.toWarehouseResponse(warehouse), "仓库创建成功"), nil
 }
 
-// GetWarehouse 获取仓库
-func (s *WarehouseServiceImpl) GetWarehouse(ctx context.Context, id uint) (*dto.WarehouseResponse, error) {
+// GetByID 实现 CRUDService 接口的 GetByID 方法
+func (s *WarehouseServiceImpl) GetByID(ctx context.Context, id uint) (*dto.WarehouseResponse, error) {
+	// 尝试从缓存获取
+	cacheKey := fmt.Sprintf("warehouse_%d", id)
+	if cached, found := s.GetFromCache(ctx, cacheKey); found {
+		return cached.(*dto.WarehouseResponse), nil
+	}
+
 	warehouse, err := s.warehouseRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("获取仓库失败: %w", err)
@@ -427,11 +704,21 @@ func (s *WarehouseServiceImpl) GetWarehouse(ctx context.Context, id uint) (*dto.
 		return nil, errors.New("仓库不存在")
 	}
 
-	return s.toWarehouseResponse(warehouse), nil
+	response := s.toWarehouseResponse(warehouse)
+	
+	// 缓存结果
+	s.SetToCache(ctx, cacheKey, response)
+
+	return response, nil
 }
 
-// UpdateWarehouse 更新仓库
-func (s *WarehouseServiceImpl) UpdateWarehouse(ctx context.Context, id uint, req *dto.WarehouseUpdateRequest) (*dto.WarehouseResponse, error) {
+// Update 实现 CRUDService 接口的 Update 方法
+func (s *WarehouseServiceImpl) Update(ctx context.Context, id uint, req *dto.WarehouseUpdateRequest) (*dto.UpdateResponse, error) {
+	// 验证请求
+	if err := s.ValidateRequest(ctx, "warehouse", req); err != nil {
+		return nil, err
+	}
+
 	warehouse, err := s.warehouseRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("获取仓库失败: %w", err)
@@ -453,50 +740,111 @@ func (s *WarehouseServiceImpl) UpdateWarehouse(ctx context.Context, id uint, req
 	if req.IsActive != nil {
 		warehouse.IsActive = *req.IsActive
 	}
+	warehouse.UpdatedAt = time.Now()
 
 	if err := s.warehouseRepo.Update(ctx, warehouse); err != nil {
 		return nil, fmt.Errorf("更新仓库失败: %w", err)
 	}
 
-	return s.toWarehouseResponse(warehouse), nil
+	// 清除相关缓存
+	cacheKey := fmt.Sprintf("warehouse_%d", id)
+	s.DeleteFromCache(ctx, cacheKey)
+	s.DeleteFromCache(ctx, "warehouses_list")
+
+	return s.CreateUpdateResponse(s.toWarehouseResponse(warehouse), "仓库更新成功"), nil
 }
 
-// DeleteWarehouse 删除仓库
-func (s *WarehouseServiceImpl) DeleteWarehouse(ctx context.Context, id uint) error {
+// Delete 实现 CRUDService 接口的 Delete 方法
+func (s *WarehouseServiceImpl) Delete(ctx context.Context, id uint) (*dto.DeleteResponse, error) {
 	warehouse, err := s.warehouseRepo.GetByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("获取仓库失败: %w", err)
+		return nil, fmt.Errorf("获取仓库失败: %w", err)
 	}
 	if warehouse == nil {
-		return errors.New("仓库不存在")
+		return nil, errors.New("仓库不存在")
 	}
 
 	if err := s.warehouseRepo.Delete(ctx, id); err != nil {
-		return fmt.Errorf("删除仓库失败: %w", err)
+		return nil, fmt.Errorf("删除仓库失败: %w", err)
 	}
 
-	return nil
+	// 清除相关缓存
+	cacheKey := fmt.Sprintf("warehouse_%d", id)
+	s.DeleteFromCache(ctx, cacheKey)
+	s.DeleteFromCache(ctx, "warehouses_list")
+
+	return s.CreateDeleteResponse("仓库删除成功"), nil
 }
 
-// GetWarehouses 获取仓库列表
-func (s *WarehouseServiceImpl) GetWarehouses(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.WarehouseResponse], error) {
-	warehouses, total, err := s.warehouseRepo.List(ctx, req.GetOffset(), req.GetLimit())
+// List 实现 CRUDService 接口的 List 方法
+func (s *WarehouseServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.WarehouseResponse], error) {
+	warehouses, total, err := s.warehouseRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取仓库列表失败: %w", err)
 	}
 
+	// 转换为响应格式
 	warehouseResponses := make([]dto.WarehouseResponse, len(warehouses))
 	for i, warehouse := range warehouses {
 		warehouseResponses[i] = *s.toWarehouseResponse(warehouse)
+	}
+
+	// 计算总页数
+	limit := req.GetLimit()
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
 	}
 
 	return &dto.PaginatedResponse[dto.WarehouseResponse]{
 		Data:       warehouseResponses,
 		Total:      total,
 		Page:       req.Page,
-		Limit:      req.PageSize,
-		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+		Limit:      limit,
+		TotalPages: totalPages,
 	}, nil
+}
+
+// Search 实现 CRUDService 接口的 Search 方法
+func (s *WarehouseServiceImpl) Search(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.WarehouseResponse], error) {
+	// 目前使用 List 方法，后续可以在 repository 层添加搜索功能
+	return s.List(ctx, &req.PaginationRequest)
+}
+
+// CreateWarehouse 创建仓库
+func (s *WarehouseServiceImpl) CreateWarehouse(ctx context.Context, req *dto.WarehouseCreateRequest) (*dto.WarehouseResponse, error) {
+	createResp, err := s.Create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return createResp.Data.(*dto.WarehouseResponse), nil
+}
+
+// GetWarehouse 获取仓库
+func (s *WarehouseServiceImpl) GetWarehouse(ctx context.Context, id uint) (*dto.WarehouseResponse, error) {
+	return s.GetByID(ctx, id)
+}
+
+// UpdateWarehouse 更新仓库
+func (s *WarehouseServiceImpl) UpdateWarehouse(ctx context.Context, id uint, req *dto.WarehouseUpdateRequest) (*dto.WarehouseResponse, error) {
+	updateResp, err := s.Update(ctx, id, req)
+	if err != nil {
+		return nil, err
+	}
+	return updateResp.Data.(*dto.WarehouseResponse), nil
+}
+
+// DeleteWarehouse 删除仓库
+func (s *WarehouseServiceImpl) DeleteWarehouse(ctx context.Context, id uint) error {
+	_, err := s.Delete(ctx, id)
+	return err
+}
+
+// GetWarehouses 获取仓库列表
+func (s *WarehouseServiceImpl) GetWarehouses(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.WarehouseResponse], error) {
+	return s.List(ctx, req)
 }
 
 // toWarehouseResponse 转换为仓库响应
@@ -532,6 +880,7 @@ func (s *WarehouseServiceImpl) toWarehouseResponse(warehouse *models.Warehouse) 
 
 // MovementService 库存移动服务接口
 type MovementService interface {
+	CRUDService[models.Movement, dto.MovementCreateRequest, dto.MovementCreateRequest, dto.MovementResponse]
 	CreateMovement(ctx context.Context, req dto.MovementCreateRequest) (*dto.MovementResponse, error)
 	GetMovementByID(ctx context.Context, id uint) (*dto.MovementResponse, error)
 	ListMovements(ctx context.Context, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error)
@@ -542,6 +891,7 @@ type MovementService interface {
 
 // MovementServiceImpl 库存移动服务实现
 type MovementServiceImpl struct {
+	*BaseService
 	movementRepo  repositories.MovementRepository
 	stockRepo     repositories.StockRepository
 	itemRepo      repositories.ItemRepository
@@ -555,12 +905,66 @@ func NewMovementService(
 	itemRepo repositories.ItemRepository,
 	warehouseRepo repositories.WarehouseRepository,
 ) MovementService {
+	config := &BaseServiceConfig{
+		EnableAudit:      true,
+		EnableValidation: true,
+		EnableCache:      true,
+		CacheExpiry:      time.Hour,
+		EnableMetrics:    true,
+	}
+	
 	return &MovementServiceImpl{
+		BaseService:   NewBaseService(config),
 		movementRepo:  movementRepo,
 		stockRepo:     stockRepo,
 		itemRepo:      itemRepo,
 		warehouseRepo: warehouseRepo,
 	}
+}
+
+// Create 实现 CRUDService 接口的 Create 方法
+func (s *MovementServiceImpl) Create(ctx context.Context, req *dto.MovementCreateRequest) (*dto.CreateResponse, error) {
+	resp, err := s.CreateMovement(ctx, *req)
+	if err != nil {
+		return nil, err
+	}
+	return s.CreateCreateResponse(resp.ID, resp, "库存移动创建成功"), nil
+}
+
+// GetByID 实现 CRUDService 接口的 GetByID 方法
+func (s *MovementServiceImpl) GetByID(ctx context.Context, id uint) (*dto.MovementResponse, error) {
+	return s.GetMovementByID(ctx, id)
+}
+
+// Update 实现 CRUDService 接口的 Update 方法
+func (s *MovementServiceImpl) Update(ctx context.Context, id uint, req *dto.MovementCreateRequest) (*dto.UpdateResponse, error) {
+	// Movement 通常不允许更新，返回错误
+	return nil, errors.New("movement records cannot be updated")
+}
+
+// Delete 实现 CRUDService 接口的 Delete 方法
+func (s *MovementServiceImpl) Delete(ctx context.Context, id uint) (*dto.DeleteResponse, error) {
+	// Movement 通常不允许删除，返回错误
+	return nil, errors.New("movement records cannot be deleted")
+}
+
+// List 实现 CRUDService 接口的 List 方法
+func (s *MovementServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.MovementResponse], error) {
+	page := 1
+	limit := 10
+	if req.Page > 0 {
+		page = req.Page
+	}
+	if req.PageSize > 0 {
+		limit = req.PageSize
+	}
+	return s.ListMovements(ctx, page, limit)
+}
+
+// Search 实现 CRUDService 接口的 Search 方法
+func (s *MovementServiceImpl) Search(ctx context.Context, req *dto.SearchRequest) (*dto.PaginatedResponse[dto.MovementResponse], error) {
+	// 使用 List 方法实现搜索，后续可以在 repository 层添加搜索功能
+	return s.List(ctx, &req.PaginationRequest)
 }
 
 // CreateMovement 创建库存移动
@@ -624,8 +1028,13 @@ func (s *MovementServiceImpl) GetMovementByID(ctx context.Context, id uint) (*dt
 
 // ListMovements 获取库存移动列表
 func (s *MovementServiceImpl) ListMovements(ctx context.Context, page, limit int) (*dto.PaginatedResponse[dto.MovementResponse], error) {
-	offset := (page - 1) * limit
-	movements, total, err := s.movementRepo.List(ctx, offset, limit)
+	req := &dto.PaginationRequest{
+		Page:     page,
+		PageSize: limit,
+	}
+	movements, total, err := s.movementRepo.List(ctx, &common.QueryOptions{
+		Pagination: req,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("获取库存移动列表失败: %w", err)
 	}

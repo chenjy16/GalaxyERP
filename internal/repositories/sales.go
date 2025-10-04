@@ -2,469 +2,537 @@ package repositories
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"gorm.io/gorm"
-	"time"
 )
 
 // CustomerRepository 客户仓储接口
 type CustomerRepository interface {
-	Create(ctx context.Context, customer *models.Customer) error
-	GetByID(ctx context.Context, id uint) (*models.Customer, error)
-	Update(ctx context.Context, customer *models.Customer) error
-	Delete(ctx context.Context, id uint) error
-	List(ctx context.Context, offset, limit int) ([]*models.Customer, int64, error)
-	Search(ctx context.Context, query string, offset, limit int) ([]*models.Customer, int64, error)
+	BaseRepository[models.Customer]
+	GetByCode(ctx context.Context, code string) (*models.Customer, error)
+	GetByEmail(ctx context.Context, email string) (*models.Customer, error)
+	Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.Customer, error)
+	GetActiveCustomers(ctx context.Context) ([]*models.Customer, error)
+	UpdateStatus(ctx context.Context, id uint, isActive bool) error
 }
 
 // CustomerRepositoryImpl 客户仓储实现
 type CustomerRepositoryImpl struct {
+	BaseRepository[models.Customer]
 	db *gorm.DB
 }
 
-// NewCustomerRepository 创建客户仓储实例
+// NewCustomerRepository 创建客户仓储
 func NewCustomerRepository(db *gorm.DB) CustomerRepository {
 	return &CustomerRepositoryImpl{
-		db: db,
+		BaseRepository: NewBaseRepository[models.Customer](db),
+		db:             db,
 	}
 }
 
-// Create 创建客户
-func (r *CustomerRepositoryImpl) Create(ctx context.Context, customer *models.Customer) error {
-	return r.db.WithContext(ctx).Create(customer).Error
-}
-
-// GetByID 根据ID获取客户
-func (r *CustomerRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.Customer, error) {
+// GetByCode 根据编码获取客户
+func (r *CustomerRepositoryImpl) GetByCode(ctx context.Context, code string) (*models.Customer, error) {
 	var customer models.Customer
-	err := r.db.WithContext(ctx).First(&customer, id).Error
+	err := r.db.WithContext(ctx).Where("code = ?", code).First(&customer).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &customer, nil
 }
 
-// Update 更新客户
-func (r *CustomerRepositoryImpl) Update(ctx context.Context, customer *models.Customer) error {
-	return r.db.WithContext(ctx).Save(customer).Error
-}
-
-// Delete 删除客户
-func (r *CustomerRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.Customer{}, id).Error
-}
-
-// List 获取客户列表
-func (r *CustomerRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Customer, int64, error) {
-	var customers []*models.Customer
-	var total int64
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.Customer{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&customers).Error
+// GetByEmail 根据邮箱获取客户
+func (r *CustomerRepositoryImpl) GetByEmail(ctx context.Context, email string) (*models.Customer, error) {
+	var customer models.Customer
+	err := r.db.WithContext(ctx).Where("email = ?", email).First(&customer).Error
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-
-	return customers, total, nil
+	return &customer, nil
 }
 
 // Search 搜索客户
-func (r *CustomerRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Customer, int64, error) {
+func (r *CustomerRepositoryImpl) Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.Customer, error) {
 	var customers []*models.Customer
-	var total int64
+	query := r.db.WithContext(ctx).Model(&models.Customer{})
+	
+	if keyword != "" {
+		query = query.Where("name LIKE ? OR code LIKE ? OR email LIKE ?", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	}
+	
+	if options != nil {
+		query = r.buildQuery(options)
+	}
+	
+	err := query.Find(&customers).Error
+	return customers, err
+}
 
-	searchQuery := "%" + query + "%"
+// GetActiveCustomers 获取活跃客户
+func (r *CustomerRepositoryImpl) GetActiveCustomers(ctx context.Context) ([]*models.Customer, error) {
+	var customers []*models.Customer
+	err := r.db.WithContext(ctx).Where("is_active = ?", true).Find(&customers).Error
+	return customers, err
+}
 
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.Customer{}).
-		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?",
-			searchQuery, searchQuery, searchQuery).
-		Count(&total).Error; err != nil {
-		return nil, 0, err
+// UpdateStatus 更新客户状态
+func (r *CustomerRepositoryImpl) UpdateStatus(ctx context.Context, id uint, isActive bool) error {
+	return r.db.WithContext(ctx).Model(&models.Customer{}).Where("id = ?", id).Update("is_active", isActive).Error
+}
+
+// buildQuery 构建查询
+func (r *CustomerRepositoryImpl) buildQuery(options *common.QueryOptions) *gorm.DB {
+	query := r.db.Model(&models.Customer{})
+
+	if options == nil {
+		return query
 	}
 
-	// 获取分页数据
-	err := r.db.WithContext(ctx).
-		Where("name LIKE ? OR email LIKE ? OR phone LIKE ?",
-			searchQuery, searchQuery, searchQuery).
-		Offset(offset).Limit(limit).Find(&customers).Error
+	// 应用过滤条件
+	for _, filter := range options.Filters {
+		query = r.applyFilter(query, filter)
+	}
+
+	// 应用排序
+	for _, sort := range options.Sorts {
+		order := "ASC"
+		if sort.Order == common.SortOrderDesc {
+			order = "DESC"
+		}
+		query = query.Order(sort.Field + " " + order)
+	}
+
+	// 应用分页
+	if options.Pagination != nil {
+		query = query.Offset(options.Pagination.GetOffset()).Limit(options.Pagination.GetLimit())
+	}
+
+	// 应用关联查询
+	for _, include := range options.Includes {
+		query = query.Preload(include)
+	}
+
+	return query
+}
+
+// applyFilter 应用过滤条件
+func (r *CustomerRepositoryImpl) applyFilter(query *gorm.DB, filter common.FilterCondition) *gorm.DB {
+	switch filter.Operator {
+	case common.FilterOperatorEq:
+		return query.Where(filter.Field+" = ?", filter.Value)
+	case common.FilterOperatorNe:
+		return query.Where(filter.Field+" != ?", filter.Value)
+	case common.FilterOperatorLike:
+		return query.Where(filter.Field+" LIKE ?", "%"+filter.Value.(string)+"%")
+	case common.FilterOperatorIn:
+		return query.Where(filter.Field+" IN ?", filter.Values)
+	case common.FilterOperatorNotIn:
+		return query.Where(filter.Field+" NOT IN ?", filter.Values)
+	case common.FilterOperatorGt:
+		return query.Where(filter.Field+" > ?", filter.Value)
+	case common.FilterOperatorGte:
+		return query.Where(filter.Field+" >= ?", filter.Value)
+	case common.FilterOperatorLt:
+		return query.Where(filter.Field+" < ?", filter.Value)
+	case common.FilterOperatorLte:
+		return query.Where(filter.Field+" <= ?", filter.Value)
+	case common.FilterOperatorIsNull:
+		return query.Where(filter.Field + " IS NULL")
+	case common.FilterOperatorNotNull:
+		return query.Where(filter.Field + " IS NOT NULL")
+	default:
+		return query
+	}
+}
+
+// GetNextInvoiceNumber 获取下一个发票编号
+func (r *SalesInvoiceRepositoryImpl) GetNextInvoiceNumber(ctx context.Context) (string, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.SalesInvoice{}).Count(&count).Error
 	if err != nil {
-		return nil, 0, err
+		return "", err
 	}
+	return fmt.Sprintf("INV-%06d", count+1), nil
+}
 
-	return customers, total, nil
+// AddPaymentWithTransaction 在事务中添加付款记录
+func (r *SalesInvoiceRepositoryImpl) AddPaymentWithTransaction(ctx context.Context, invoiceID uint, payment *models.InvoicePayment) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 创建付款记录
+		payment.SalesInvoiceID = invoiceID
+		if err := tx.Create(payment).Error; err != nil {
+			return err
+		}
+
+		// 更新发票的已付金额和付款状态
+		var invoice models.SalesInvoice
+		if err := tx.First(&invoice, invoiceID).Error; err != nil {
+			return err
+		}
+
+		invoice.PaidAmount += payment.Amount
+		invoice.OutstandingAmount = invoice.GrandTotal - invoice.PaidAmount
+
+		// 更新付款状态
+		if invoice.OutstandingAmount <= 0 {
+			invoice.PaymentStatus = "Paid"
+		} else if invoice.PaidAmount > 0 {
+			invoice.PaymentStatus = "Partially Paid"
+		}
+
+		return tx.Save(&invoice).Error
+	})
+}
+
+// GetPayments 获取发票的付款记录
+func (r *SalesInvoiceRepositoryImpl) GetPayments(ctx context.Context, invoiceID uint) ([]*models.InvoicePayment, error) {
+	var payments []*models.InvoicePayment
+	err := r.db.WithContext(ctx).Where("sales_invoice_id = ?", invoiceID).Find(&payments).Error
+	return payments, err
 }
 
 // SalesOrderRepository 销售订单仓储接口
 type SalesOrderRepository interface {
-	Create(ctx context.Context, order *models.SalesOrder) error
-	GetByID(ctx context.Context, id uint) (*models.SalesOrder, error)
-	Update(ctx context.Context, order *models.SalesOrder) error
-	Delete(ctx context.Context, id uint) error
-	List(ctx context.Context, offset, limit int) ([]*models.SalesOrder, int64, error)
-	GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesOrder, int64, error)
-	CreateItem(ctx context.Context, item *models.SalesOrderItem) error
+	BaseRepository[models.SalesOrder]
+	GetByOrderNumber(ctx context.Context, orderNumber string) (*models.SalesOrder, error)
+	GetByCustomerID(ctx context.Context, customerID uint) ([]*models.SalesOrder, error)
+	GetByStatus(ctx context.Context, status string) ([]*models.SalesOrder, error)
+	UpdateStatus(ctx context.Context, id uint, status string) error
+	GetStatistics(ctx context.Context, startDate, endDate string) (*dto.SalesStatisticsResponse, error)
+	GetSalesTrend(ctx context.Context, period string) ([]*dto.MonthlySales, error)
+	Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.SalesOrder, error)
 }
 
 // SalesOrderRepositoryImpl 销售订单仓储实现
 type SalesOrderRepositoryImpl struct {
+	BaseRepository[models.SalesOrder]
 	db *gorm.DB
 }
 
-// NewSalesOrderRepository 创建销售订单仓储实例
+// NewSalesOrderRepository 创建销售订单仓储
 func NewSalesOrderRepository(db *gorm.DB) SalesOrderRepository {
 	return &SalesOrderRepositoryImpl{
-		db: db,
+		BaseRepository: NewBaseRepository[models.SalesOrder](db),
+		db:             db,
 	}
 }
 
-// Create 创建销售订单
-func (r *SalesOrderRepositoryImpl) Create(ctx context.Context, order *models.SalesOrder) error {
-	return r.db.WithContext(ctx).Create(order).Error
-}
-
-// GetByID 根据ID获取销售订单
-func (r *SalesOrderRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.SalesOrder, error) {
+// GetByOrderNumber 根据订单号获取销售订单
+func (r *SalesOrderRepositoryImpl) GetByOrderNumber(ctx context.Context, orderNumber string) (*models.SalesOrder, error) {
 	var order models.SalesOrder
-	err := r.db.WithContext(ctx).
-		Preload("Customer").
-		Preload("CreatedByUser").
-		Preload("Items").
-		Preload("Items.Item").
-		First(&order, id).Error
+	err := r.db.WithContext(ctx).Where("order_number = ?", orderNumber).First(&order).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &order, nil
 }
 
-// Update 更新销售订单
-func (r *SalesOrderRepositoryImpl) Update(ctx context.Context, order *models.SalesOrder) error {
-	return r.db.WithContext(ctx).Save(order).Error
-}
-
-// Delete 删除销售订单
-func (r *SalesOrderRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.SalesOrder{}, id).Error
-}
-
-// List 获取销售订单列表
-func (r *SalesOrderRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.SalesOrder, int64, error) {
+// GetByCustomerID 根据客户ID获取销售订单
+func (r *SalesOrderRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint) ([]*models.SalesOrder, error) {
 	var orders []*models.SalesOrder
-	var total int64
+	err := r.db.WithContext(ctx).Where("customer_id = ?", customerID).Find(&orders).Error
+	return orders, err
+}
 
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.SalesOrder{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
+// GetByStatus 根据状态获取销售订单
+func (r *SalesOrderRepositoryImpl) GetByStatus(ctx context.Context, status string) ([]*models.SalesOrder, error) {
+	var orders []*models.SalesOrder
+	err := r.db.WithContext(ctx).Where("status = ?", status).Find(&orders).Error
+	return orders, err
+}
 
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").Offset(offset).Limit(limit).Find(&orders).Error
+// UpdateStatus 更新销售订单状态
+func (r *SalesOrderRepositoryImpl) UpdateStatus(ctx context.Context, id uint, status string) error {
+	return r.db.WithContext(ctx).Model(&models.SalesOrder{}).Where("id = ?", id).Update("status", status).Error
+}
+
+// GetStatistics 获取销售统计
+func (r *SalesOrderRepositoryImpl) GetStatistics(ctx context.Context, startDate, endDate string) (*dto.SalesStatisticsResponse, error) {
+	var stats dto.SalesStatisticsResponse
+	
+	// 获取基本统计信息
+	err := r.db.WithContext(ctx).Model(&models.SalesOrder{}).
+		Select("COUNT(*) as total_orders, SUM(total_amount) as total_amount").
+		Where("created_at BETWEEN ? AND ?", startDate, endDate).
+		Scan(&stats).Error
+	
 	if err != nil {
-		return nil, 0, err
+		return nil, err
+	}
+	
+	// 获取各状态订单数量
+	r.db.WithContext(ctx).Model(&models.SalesOrder{}).
+		Where("status = ? AND created_at BETWEEN ? AND ?", "pending", startDate, endDate).
+		Count(&stats.PendingOrders)
+	
+	r.db.WithContext(ctx).Model(&models.SalesOrder{}).
+		Where("status = ? AND created_at BETWEEN ? AND ?", "approved", startDate, endDate).
+		Count(&stats.ApprovedOrders)
+	
+	r.db.WithContext(ctx).Model(&models.SalesOrder{}).
+		Where("status = ? AND created_at BETWEEN ? AND ?", "completed", startDate, endDate).
+		Count(&stats.CompletedOrders)
+	
+	return &stats, nil
+}
+
+// GetSalesTrend 获取销售趋势
+func (r *SalesOrderRepositoryImpl) GetSalesTrend(ctx context.Context, period string) ([]*dto.MonthlySales, error) {
+	var trends []*dto.MonthlySales
+	
+	err := r.db.WithContext(ctx).Model(&models.SalesOrder{}).
+		Select("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as order_count, SUM(total_amount) as total_amount").
+		Group("DATE_FORMAT(created_at, '%Y-%m')").
+		Order("month").
+		Scan(&trends).Error
+	
+	return trends, err
+}
+
+// Search 搜索销售订单
+func (r *SalesOrderRepositoryImpl) Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.SalesOrder, error) {
+	var orders []*models.SalesOrder
+	query := r.db.WithContext(ctx).Model(&models.SalesOrder{})
+	
+	if keyword != "" {
+		query = query.Where("order_number LIKE ? OR notes LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+	
+	if options != nil {
+		query = r.buildQueryForSalesOrder(options)
+	}
+	
+	err := query.Find(&orders).Error
+	return orders, err
+}
+
+// buildQueryForSalesOrder 构建销售订单查询
+func (r *SalesOrderRepositoryImpl) buildQueryForSalesOrder(options *common.QueryOptions) *gorm.DB {
+	query := r.db.Model(&models.SalesOrder{})
+
+	if options == nil {
+		return query
 	}
 
-	return orders, total, nil
+	// 应用过滤条件
+	for _, filter := range options.Filters {
+		query = r.applySalesOrderFilter(query, filter)
+	}
+
+	// 应用排序
+	for _, sort := range options.Sorts {
+		order := "ASC"
+		if sort.Order == common.SortOrderDesc {
+			order = "DESC"
+		}
+		query = query.Order(sort.Field + " " + order)
+	}
+
+	// 应用分页
+	if options.Pagination != nil {
+		query = query.Offset(options.Pagination.GetOffset()).Limit(options.Pagination.GetLimit())
+	}
+
+	// 应用关联查询
+	for _, include := range options.Includes {
+		query = query.Preload(include)
+	}
+
+	return query
 }
 
-// QuotationRepository 报价仓储接口
+// applySalesOrderFilter 应用销售订单过滤条件
+func (r *SalesOrderRepositoryImpl) applySalesOrderFilter(query *gorm.DB, filter common.FilterCondition) *gorm.DB {
+	switch filter.Operator {
+	case common.FilterOperatorEq:
+		return query.Where(filter.Field+" = ?", filter.Value)
+	case common.FilterOperatorNe:
+		return query.Where(filter.Field+" != ?", filter.Value)
+	case common.FilterOperatorLike:
+		return query.Where(filter.Field+" LIKE ?", "%"+filter.Value.(string)+"%")
+	case common.FilterOperatorIn:
+		return query.Where(filter.Field+" IN ?", filter.Values)
+	case common.FilterOperatorNotIn:
+		return query.Where(filter.Field+" NOT IN ?", filter.Values)
+	case common.FilterOperatorGt:
+		return query.Where(filter.Field+" > ?", filter.Value)
+	case common.FilterOperatorGte:
+		return query.Where(filter.Field+" >= ?", filter.Value)
+	case common.FilterOperatorLt:
+		return query.Where(filter.Field+" < ?", filter.Value)
+	case common.FilterOperatorLte:
+		return query.Where(filter.Field+" <= ?", filter.Value)
+	case common.FilterOperatorIsNull:
+		return query.Where(filter.Field + " IS NULL")
+	case common.FilterOperatorNotNull:
+		return query.Where(filter.Field + " IS NOT NULL")
+	default:
+		return query
+	}
+}
+
+// QuotationRepository 报价单仓储接口
 type QuotationRepository interface {
-	Create(ctx context.Context, quotation *models.Quotation) error
-	GetByID(ctx context.Context, id uint) (*models.Quotation, error)
-	Update(ctx context.Context, quotation *models.Quotation) error
-	Delete(ctx context.Context, id uint) error
-	List(ctx context.Context, offset, limit int) ([]*models.Quotation, int64, error)
-	GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.Quotation, int64, error)
-	Search(ctx context.Context, query string, offset, limit int) ([]*models.Quotation, int64, error)
+	BaseRepository[models.Quotation]
+	GetByQuotationNumber(ctx context.Context, quotationNumber string) (*models.Quotation, error)
+	GetByCustomerID(ctx context.Context, customerID uint) ([]*models.Quotation, error)
+	GetByStatus(ctx context.Context, status string) ([]*models.Quotation, error)
+	UpdateStatus(ctx context.Context, id uint, status string) error
+	Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.Quotation, error)
 }
 
-// QuotationRepositoryImpl 报价仓储实现
+// QuotationRepositoryImpl 报价单仓储实现
 type QuotationRepositoryImpl struct {
+	BaseRepository[models.Quotation]
 	db *gorm.DB
 }
 
-// NewQuotationRepository 创建报价仓储实例
+// NewQuotationRepository 创建报价单仓储
 func NewQuotationRepository(db *gorm.DB) QuotationRepository {
 	return &QuotationRepositoryImpl{
-		db: db,
+		BaseRepository: NewBaseRepository[models.Quotation](db),
+		db:             db,
 	}
 }
 
-// Create 创建报价
-func (r *QuotationRepositoryImpl) Create(ctx context.Context, quotation *models.Quotation) error {
-	return r.db.WithContext(ctx).Create(quotation).Error
-}
-
-// GetByID 根据ID获取报价
-func (r *QuotationRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.Quotation, error) {
+// GetByQuotationNumber 根据报价单号获取报价单
+func (r *QuotationRepositoryImpl) GetByQuotationNumber(ctx context.Context, quotationNumber string) (*models.Quotation, error) {
 	var quotation models.Quotation
-	err := r.db.WithContext(ctx).Preload("Items").Preload("Customer").First(&quotation, id).Error
+	err := r.db.WithContext(ctx).Where("quotation_number = ?", quotationNumber).First(&quotation).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &quotation, nil
 }
 
-// Update 更新报价
-func (r *QuotationRepositoryImpl) Update(ctx context.Context, quotation *models.Quotation) error {
-	return r.db.WithContext(ctx).Save(quotation).Error
-}
-
-// Delete 删除报价
-func (r *QuotationRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.Quotation{}, id).Error
-}
-
-// List 获取报价列表
-func (r *QuotationRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.Quotation, int64, error) {
+// GetByCustomerID 根据客户ID获取报价单
+func (r *QuotationRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint) ([]*models.Quotation, error) {
 	var quotations []*models.Quotation
-	var total int64
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.Quotation{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").Offset(offset).Limit(limit).Find(&quotations).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return quotations, total, nil
+	err := r.db.WithContext(ctx).Where("customer_id = ?", customerID).Find(&quotations).Error
+	return quotations, err
 }
 
-// GetByCustomerID 根据客户ID获取报价列表
-func (r *QuotationRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.Quotation, int64, error) {
+// GetByStatus 根据状态获取报价单
+func (r *QuotationRepositoryImpl) GetByStatus(ctx context.Context, status string) ([]*models.Quotation, error) {
 	var quotations []*models.Quotation
-	var total int64
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.Quotation{}).Where("customer_id = ?", customerID).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").Where("customer_id = ?", customerID).Offset(offset).Limit(limit).Find(&quotations).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return quotations, total, nil
+	err := r.db.WithContext(ctx).Where("status = ?", status).Find(&quotations).Error
+	return quotations, err
 }
 
-// Search 搜索报价
-func (r *QuotationRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.Quotation, int64, error) {
+// UpdateStatus 更新报价单状态
+func (r *QuotationRepositoryImpl) UpdateStatus(ctx context.Context, id uint, status string) error {
+	return r.db.WithContext(ctx).Model(&models.Quotation{}).Where("id = ?", id).Update("status", status).Error
+}
+
+// Search 搜索报价单
+func (r *QuotationRepositoryImpl) Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.Quotation, error) {
 	var quotations []*models.Quotation
-	var total int64
-
-	searchQuery := "%" + query + "%"
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.Quotation{}).Joins("LEFT JOIN customers ON quotations.customer_id = customers.id").Where("quotations.quotation_number LIKE ? OR customers.name LIKE ?", searchQuery, searchQuery).Count(&total).Error; err != nil {
-		return nil, 0, err
+	query := r.db.WithContext(ctx).Model(&models.Quotation{})
+	
+	if keyword != "" {
+		query = query.Where("quotation_number LIKE ? OR subject LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
-
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").Joins("LEFT JOIN customers ON quotations.customer_id = customers.id").Where("quotations.quotation_number LIKE ? OR customers.name LIKE ?", searchQuery, searchQuery).Offset(offset).Limit(limit).Find(&quotations).Error
-	if err != nil {
-		return nil, 0, err
+	
+	if options != nil {
+		query = r.buildQueryForQuotation(options)
 	}
-
-	return quotations, total, nil
+	
+	err := query.Find(&quotations).Error
+	return quotations, err
 }
 
-// GetByCustomerID 根据客户ID获取销售订单
-func (r *SalesOrderRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesOrder, int64, error) {
-	var orders []*models.SalesOrder
-	var total int64
+// buildQueryForQuotation 构建报价单查询
+func (r *QuotationRepositoryImpl) buildQueryForQuotation(options *common.QueryOptions) *gorm.DB {
+	query := r.db.Model(&models.Quotation{})
 
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.SalesOrder{}).
-		Where("customer_id = ?", customerID).Count(&total).Error; err != nil {
-		return nil, 0, err
+	if options == nil {
+		return query
 	}
 
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").
-		Where("customer_id = ?", customerID).
-		Offset(offset).Limit(limit).Find(&orders).Error
-	if err != nil {
-		return nil, 0, err
+	// 应用过滤条件
+	for _, filter := range options.Filters {
+		query = r.applyQuotationFilter(query, filter)
 	}
 
-	return orders, total, nil
+	// 应用排序
+	for _, sort := range options.Sorts {
+		order := "ASC"
+		if sort.Order == common.SortOrderDesc {
+			order = "DESC"
+		}
+		query = query.Order(sort.Field + " " + order)
+	}
+
+	// 应用分页
+	if options.Pagination != nil {
+		query = query.Offset(options.Pagination.GetOffset()).Limit(options.Pagination.GetLimit())
+	}
+
+	// 应用关联查询
+	for _, include := range options.Includes {
+		query = query.Preload(include)
+	}
+
+	return query
 }
 
-// CreateItem 创建销售订单项目
-func (r *SalesOrderRepositoryImpl) CreateItem(ctx context.Context, item *models.SalesOrderItem) error {
-	return r.db.WithContext(ctx).Create(item).Error
+// applyQuotationFilter 应用报价单过滤条件
+func (r *QuotationRepositoryImpl) applyQuotationFilter(query *gorm.DB, filter common.FilterCondition) *gorm.DB {
+	switch filter.Operator {
+	case common.FilterOperatorEq:
+		return query.Where(filter.Field+" = ?", filter.Value)
+	case common.FilterOperatorNe:
+		return query.Where(filter.Field+" != ?", filter.Value)
+	case common.FilterOperatorLike:
+		return query.Where(filter.Field+" LIKE ?", "%"+filter.Value.(string)+"%")
+	case common.FilterOperatorIn:
+		return query.Where(filter.Field+" IN ?", filter.Values)
+	case common.FilterOperatorNotIn:
+		return query.Where(filter.Field+" NOT IN ?", filter.Values)
+	case common.FilterOperatorGt:
+		return query.Where(filter.Field+" > ?", filter.Value)
+	case common.FilterOperatorGte:
+		return query.Where(filter.Field+" >= ?", filter.Value)
+	case common.FilterOperatorLt:
+		return query.Where(filter.Field+" < ?", filter.Value)
+	case common.FilterOperatorLte:
+		return query.Where(filter.Field+" <= ?", filter.Value)
+	case common.FilterOperatorIsNull:
+		return query.Where(filter.Field + " IS NULL")
+	case common.FilterOperatorNotNull:
+		return query.Where(filter.Field + " IS NOT NULL")
+	default:
+		return query
+	}
 }
-
-// ==================== 销售发票仓储 ====================
 
 // SalesInvoiceRepository 销售发票仓储接口
 type SalesInvoiceRepository interface {
-	Create(ctx context.Context, invoice *models.SalesInvoice) error
-	GetByID(ctx context.Context, id uint) (*models.SalesInvoice, error)
-	Update(ctx context.Context, invoice *models.SalesInvoice) error
-	Delete(ctx context.Context, id uint) error
-	List(ctx context.Context, filter *dto.SalesInvoiceListRequest) ([]*models.SalesInvoice, int64, error)
-	GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesInvoice, int64, error)
+	BaseRepository[models.SalesInvoice]
 	GetByInvoiceNumber(ctx context.Context, invoiceNumber string) (*models.SalesInvoice, error)
-	Search(ctx context.Context, query string, offset, limit int) ([]*models.SalesInvoice, int64, error)
+	GetByCustomerID(ctx context.Context, customerID uint) ([]*models.SalesInvoice, error)
+	GetByStatus(ctx context.Context, status string) ([]*models.SalesInvoice, error)
 	UpdateStatus(ctx context.Context, id uint, status string) error
+	Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.SalesInvoice, error)
 	GetNextInvoiceNumber(ctx context.Context) (string, error)
+	AddPaymentWithTransaction(ctx context.Context, invoiceID uint, payment *models.InvoicePayment) error
+	GetPayments(ctx context.Context, invoiceID uint) ([]*models.InvoicePayment, error)
 }
 
 // SalesInvoiceRepositoryImpl 销售发票仓储实现
 type SalesInvoiceRepositoryImpl struct {
+	BaseRepository[models.SalesInvoice]
 	db *gorm.DB
 }
 
-// NewSalesInvoiceRepository 创建销售发票仓储实例
+// NewSalesInvoiceRepository 创建销售发票仓储
 func NewSalesInvoiceRepository(db *gorm.DB) SalesInvoiceRepository {
-	return &SalesInvoiceRepositoryImpl{db: db}
-}
-
-// Create 创建销售发票
-func (r *SalesInvoiceRepositoryImpl) Create(ctx context.Context, invoice *models.SalesInvoice) error {
-	return r.db.WithContext(ctx).Create(invoice).Error
-}
-
-// GetByID 根据ID获取销售发票
-func (r *SalesInvoiceRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.SalesInvoice, error) {
-	var invoice models.SalesInvoice
-	err := r.db.WithContext(ctx).
-		Preload("Customer").
-		Preload("SalesOrder").
-		Preload("DeliveryNote").
-		Preload("Items").
-		Preload("Items.Item").
-		Preload("Payments").
-		Preload("StatusLogs").
-		First(&invoice, id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
+	return &SalesInvoiceRepositoryImpl{
+		BaseRepository: NewBaseRepository[models.SalesInvoice](db),
+		db:             db,
 	}
-	return &invoice, nil
-}
-
-// Update 更新销售发票
-func (r *SalesInvoiceRepositoryImpl) Update(ctx context.Context, invoice *models.SalesInvoice) error {
-	return r.db.WithContext(ctx).Save(invoice).Error
-}
-
-// Delete 删除销售发票
-func (r *SalesInvoiceRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.SalesInvoice{}, id).Error
-}
-
-// List 获取销售发票列表
-func (r *SalesInvoiceRepositoryImpl) List(ctx context.Context, filter *dto.SalesInvoiceListRequest) ([]*models.SalesInvoice, int64, error) {
-	var invoices []*models.SalesInvoice
-	var total int64
-
-	query := r.db.WithContext(ctx).Model(&models.SalesInvoice{})
-
-	// 应用过滤条件
-	if filter.CustomerID != nil {
-		query = query.Where("customer_id = ?", *filter.CustomerID)
-	}
-	if filter.DocStatus != "" {
-		query = query.Where("doc_status = ?", filter.DocStatus)
-	}
-	if filter.PaymentStatus != "" {
-		query = query.Where("payment_status = ?", filter.PaymentStatus)
-	}
-	if filter.Currency != "" {
-		query = query.Where("currency = ?", filter.Currency)
-	}
-	if filter.SalesPersonID != nil {
-		query = query.Where("sales_person_id = ?", *filter.SalesPersonID)
-	}
-	if filter.Territory != "" {
-		query = query.Where("territory = ?", filter.Territory)
-	}
-	if filter.DateFrom != "" {
-		query = query.Where("invoice_date >= ?", filter.DateFrom)
-	}
-	if filter.DateTo != "" {
-		query = query.Where("invoice_date <= ?", filter.DateTo)
-	}
-	if filter.Search != "" {
-		searchQuery := "%" + filter.Search + "%"
-		query = query.Where("invoice_number LIKE ? OR customer_po_number LIKE ?", searchQuery, searchQuery)
-	}
-
-	// 获取总数
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 应用分页和排序
-	offset := (filter.Page - 1) * filter.PageSize
-	query = query.Offset(offset).Limit(filter.PageSize)
-
-	if filter.SortBy != "" {
-		order := filter.SortBy
-		if filter.SortDesc {
-			order += " DESC"
-		}
-		query = query.Order(order)
-	} else {
-		query = query.Order("created_at DESC")
-	}
-
-	// 获取数据
-	err := r.db.WithContext(ctx).Preload("Customer").Find(&invoices).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return invoices, total, nil
-}
-
-// GetByCustomerID 根据客户ID获取销售发票列表
-func (r *SalesInvoiceRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint, offset, limit int) ([]*models.SalesInvoice, int64, error) {
-	var invoices []*models.SalesInvoice
-	var total int64
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
-		Where("customer_id = ?", customerID).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").
-		Where("customer_id = ?", customerID).
-		Offset(offset).Limit(limit).Find(&invoices).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return invoices, total, nil
 }
 
 // GetByInvoiceNumber 根据发票号获取销售发票
@@ -472,176 +540,158 @@ func (r *SalesInvoiceRepositoryImpl) GetByInvoiceNumber(ctx context.Context, inv
 	var invoice models.SalesInvoice
 	err := r.db.WithContext(ctx).Where("invoice_number = ?", invoiceNumber).First(&invoice).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &invoice, nil
 }
 
-// Search 搜索销售发票
-func (r *SalesInvoiceRepositoryImpl) Search(ctx context.Context, query string, offset, limit int) ([]*models.SalesInvoice, int64, error) {
+// GetByCustomerID 根据客户ID获取销售发票
+func (r *SalesInvoiceRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint) ([]*models.SalesInvoice, error) {
 	var invoices []*models.SalesInvoice
-	var total int64
+	err := r.db.WithContext(ctx).Where("customer_id = ?", customerID).Find(&invoices).Error
+	return invoices, err
+}
 
-	searchQuery := "%" + query + "%"
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
-		Joins("LEFT JOIN customers ON sales_invoices.customer_id = customers.id").
-		Where("sales_invoices.invoice_number LIKE ? OR customers.name LIKE ? OR sales_invoices.customer_po_number LIKE ?",
-			searchQuery, searchQuery, searchQuery).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 获取分页数据
-	err := r.db.WithContext(ctx).Preload("Customer").
-		Joins("LEFT JOIN customers ON sales_invoices.customer_id = customers.id").
-		Where("sales_invoices.invoice_number LIKE ? OR customers.name LIKE ? OR sales_invoices.customer_po_number LIKE ?",
-			searchQuery, searchQuery, searchQuery).
-		Offset(offset).Limit(limit).Find(&invoices).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return invoices, total, nil
+// GetByStatus 根据状态获取销售发票
+func (r *SalesInvoiceRepositoryImpl) GetByStatus(ctx context.Context, status string) ([]*models.SalesInvoice, error) {
+	var invoices []*models.SalesInvoice
+	err := r.db.WithContext(ctx).Where("doc_status = ?", status).Find(&invoices).Error
+	return invoices, err
 }
 
 // UpdateStatus 更新销售发票状态
 func (r *SalesInvoiceRepositoryImpl) UpdateStatus(ctx context.Context, id uint, status string) error {
-	return r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
-		Where("id = ?", id).Update("doc_status", status).Error
+	return r.db.WithContext(ctx).Model(&models.SalesInvoice{}).Where("id = ?", id).Update("doc_status", status).Error
 }
 
-// GetNextInvoiceNumber 获取下一个发票号
-func (r *SalesInvoiceRepositoryImpl) GetNextInvoiceNumber(ctx context.Context) (string, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&models.SalesInvoice{}).Count(&count).Error
-	if err != nil {
-		return "", err
+// Search 搜索销售发票
+func (r *SalesInvoiceRepositoryImpl) Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.SalesInvoice, error) {
+	var invoices []*models.SalesInvoice
+	query := r.db.WithContext(ctx).Model(&models.SalesInvoice{})
+	
+	if keyword != "" {
+		query = query.Where("invoice_number LIKE ?", "%"+keyword+"%")
+	}
+	
+	if options != nil {
+		query = r.buildQueryForSalesInvoice(options)
+	}
+	
+	err := query.Find(&invoices).Error
+	return invoices, err
+}
+
+// buildQueryForSalesInvoice 构建销售发票查询
+func (r *SalesInvoiceRepositoryImpl) buildQueryForSalesInvoice(options *common.QueryOptions) *gorm.DB {
+	query := r.db.Model(&models.SalesInvoice{})
+
+	if options == nil {
+		return query
 	}
 
-	// 生成格式: INV-YYYYMM-000001
-	now := time.Now()
-	prefix := fmt.Sprintf("INV-%04d%02d", now.Year(), now.Month())
-
-	// 查询当月已有的发票数量
-	var monthlyCount int64
-	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Nanosecond)
-
-	err = r.db.WithContext(ctx).Model(&models.SalesInvoice{}).
-		Where("created_at >= ? AND created_at <= ?", startOfMonth, endOfMonth).
-		Count(&monthlyCount).Error
-	if err != nil {
-		return "", err
+	// 应用过滤条件
+	for _, filter := range options.Filters {
+		query = r.applySalesInvoiceFilter(query, filter)
 	}
 
-	return fmt.Sprintf("%s-%06d", prefix, monthlyCount+1), nil
+	// 应用排序
+	for _, sort := range options.Sorts {
+		order := "ASC"
+		if sort.Order == common.SortOrderDesc {
+			order = "DESC"
+		}
+		query = query.Order(sort.Field + " " + order)
+	}
+
+	// 应用分页
+	if options.Pagination != nil {
+		query = query.Offset(options.Pagination.GetOffset()).Limit(options.Pagination.GetLimit())
+	}
+
+	// 应用关联查询
+	for _, include := range options.Includes {
+		query = query.Preload(include)
+	}
+
+	return query
+}
+
+// applySalesInvoiceFilter 应用销售发票过滤条件
+func (r *SalesInvoiceRepositoryImpl) applySalesInvoiceFilter(query *gorm.DB, filter common.FilterCondition) *gorm.DB {
+	switch filter.Operator {
+	case common.FilterOperatorEq:
+		return query.Where(filter.Field+" = ?", filter.Value)
+	case common.FilterOperatorNe:
+		return query.Where(filter.Field+" != ?", filter.Value)
+	case common.FilterOperatorLike:
+		return query.Where(filter.Field+" LIKE ?", "%"+filter.Value.(string)+"%")
+	case common.FilterOperatorIn:
+		return query.Where(filter.Field+" IN ?", filter.Values)
+	case common.FilterOperatorNotIn:
+		return query.Where(filter.Field+" NOT IN ?", filter.Values)
+	case common.FilterOperatorGt:
+		return query.Where(filter.Field+" > ?", filter.Value)
+	case common.FilterOperatorGte:
+		return query.Where(filter.Field+" >= ?", filter.Value)
+	case common.FilterOperatorLt:
+		return query.Where(filter.Field+" < ?", filter.Value)
+	case common.FilterOperatorLte:
+		return query.Where(filter.Field+" <= ?", filter.Value)
+	case common.FilterOperatorIsNull:
+		return query.Where(filter.Field + " IS NULL")
+	case common.FilterOperatorNotNull:
+		return query.Where(filter.Field + " IS NOT NULL")
+	default:
+		return query
+	}
 }
 
 // QuotationTemplateRepository 报价单模板仓储接口
 type QuotationTemplateRepository interface {
-	Create(ctx context.Context, template *models.QuotationTemplate) error
-	GetByID(ctx context.Context, id uint) (*models.QuotationTemplate, error)
-	Update(ctx context.Context, template *models.QuotationTemplate) error
-	Delete(ctx context.Context, id uint) error
-	List(ctx context.Context, offset, limit int) ([]*models.QuotationTemplate, int64, error)
+	BaseRepository[models.QuotationTemplate]
+	GetByName(ctx context.Context, name string) (*models.QuotationTemplate, error)
 	GetActiveTemplates(ctx context.Context) ([]*models.QuotationTemplate, error)
 	GetDefaultTemplate(ctx context.Context) (*models.QuotationTemplate, error)
 	SetAsDefault(ctx context.Context, id uint) error
+	Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.QuotationTemplate, error)
 }
 
 // QuotationTemplateRepositoryImpl 报价单模板仓储实现
 type QuotationTemplateRepositoryImpl struct {
+	BaseRepository[models.QuotationTemplate]
 	db *gorm.DB
 }
 
-// NewQuotationTemplateRepository 创建报价单模板仓储实例
+// NewQuotationTemplateRepository 创建报价单模板仓储
 func NewQuotationTemplateRepository(db *gorm.DB) QuotationTemplateRepository {
 	return &QuotationTemplateRepositoryImpl{
-		db: db,
+		BaseRepository: NewBaseRepository[models.QuotationTemplate](db),
+		db:             db,
 	}
 }
 
-// Create 创建模板
-func (r *QuotationTemplateRepositoryImpl) Create(ctx context.Context, template *models.QuotationTemplate) error {
-	return r.db.WithContext(ctx).Create(template).Error
-}
-
-// GetByID 根据ID获取模板
-func (r *QuotationTemplateRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.QuotationTemplate, error) {
+// GetByName 根据名称获取报价单模板
+func (r *QuotationTemplateRepositoryImpl) GetByName(ctx context.Context, name string) (*models.QuotationTemplate, error) {
 	var template models.QuotationTemplate
-	err := r.db.WithContext(ctx).
-		Preload("Items").
-		Preload("Items.Item").
-		First(&template, id).Error
+	err := r.db.WithContext(ctx).Where("name = ?", name).First(&template).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &template, nil
 }
 
-// Update 更新模板
-func (r *QuotationTemplateRepositoryImpl) Update(ctx context.Context, template *models.QuotationTemplate) error {
-	return r.db.WithContext(ctx).Save(template).Error
-}
-
-// Delete 删除模板
-func (r *QuotationTemplateRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.QuotationTemplate{}, id).Error
-}
-
-// List 获取模板列表
-func (r *QuotationTemplateRepositoryImpl) List(ctx context.Context, offset, limit int) ([]*models.QuotationTemplate, int64, error) {
-	var templates []*models.QuotationTemplate
-	var total int64
-
-	// 获取总数
-	if err := r.db.WithContext(ctx).Model(&models.QuotationTemplate{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// 获取数据
-	err := r.db.WithContext(ctx).
-		Preload("Items").
-		Preload("Items.Item").
-		Offset(offset).
-		Limit(limit).
-		Order("created_at DESC").
-		Find(&templates).Error
-
-	return templates, total, err
-}
-
-// GetActiveTemplates 获取活跃的模板
+// GetActiveTemplates 获取活跃的报价单模板
 func (r *QuotationTemplateRepositoryImpl) GetActiveTemplates(ctx context.Context) ([]*models.QuotationTemplate, error) {
 	var templates []*models.QuotationTemplate
-	err := r.db.WithContext(ctx).
-		Where("is_active = ?", true).
-		Preload("Items").
-		Preload("Items.Item").
-		Order("name ASC").
-		Find(&templates).Error
+	err := r.db.WithContext(ctx).Where("is_active = ?", true).Find(&templates).Error
 	return templates, err
 }
 
-// GetDefaultTemplate 获取默认模板
+// GetDefaultTemplate 获取默认报价单模板
 func (r *QuotationTemplateRepositoryImpl) GetDefaultTemplate(ctx context.Context) (*models.QuotationTemplate, error) {
 	var template models.QuotationTemplate
-	err := r.db.WithContext(ctx).
-		Where("is_default = ? AND is_active = ?", true, true).
-		Preload("Items").
-		Preload("Items.Item").
-		First(&template).Error
+	err := r.db.WithContext(ctx).Where("is_default = ? AND is_active = ?", true, true).First(&template).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &template, nil
@@ -649,116 +699,150 @@ func (r *QuotationTemplateRepositoryImpl) GetDefaultTemplate(ctx context.Context
 
 // SetAsDefault 设置为默认模板
 func (r *QuotationTemplateRepositoryImpl) SetAsDefault(ctx context.Context, id uint) error {
+	// 开启事务
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 先取消所有默认模板
-		if err := tx.Model(&models.QuotationTemplate{}).
-			Where("is_default = ?", true).
-			Update("is_default", false).Error; err != nil {
+		// 先将所有模板的默认状态设为false
+		if err := tx.Model(&models.QuotationTemplate{}).Where("is_default = ?", true).Update("is_default", false).Error; err != nil {
 			return err
 		}
-
-		// 设置新的默认模板
-		return tx.Model(&models.QuotationTemplate{}).
-			Where("id = ?", id).
-			Update("is_default", true).Error
+		
+		// 将指定模板设为默认
+		return tx.Model(&models.QuotationTemplate{}).Where("id = ?", id).Update("is_default", true).Error
 	})
 }
 
+// Search 搜索报价单模板
+func (r *QuotationTemplateRepositoryImpl) Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.QuotationTemplate, error) {
+	var templates []*models.QuotationTemplate
+	query := r.db.WithContext(ctx).Model(&models.QuotationTemplate{})
+	
+	if keyword != "" {
+		query = query.Where("name LIKE ? OR description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+	
+	if options != nil {
+		query = r.buildQueryForQuotationTemplate(options)
+	}
+	
+	err := query.Find(&templates).Error
+	return templates, err
+}
+
+// buildQueryForQuotationTemplate 构建报价单模板查询
+func (r *QuotationTemplateRepositoryImpl) buildQueryForQuotationTemplate(options *common.QueryOptions) *gorm.DB {
+	query := r.db.Model(&models.QuotationTemplate{})
+
+	if options == nil {
+		return query
+	}
+
+	// 应用过滤条件
+	for _, filter := range options.Filters {
+		query = r.applyQuotationTemplateFilter(query, filter)
+	}
+
+	// 应用排序
+	for _, sort := range options.Sorts {
+		order := "ASC"
+		if sort.Order == common.SortOrderDesc {
+			order = "DESC"
+		}
+		query = query.Order(sort.Field + " " + order)
+	}
+
+	// 应用分页
+	if options.Pagination != nil {
+		query = query.Offset(options.Pagination.GetOffset()).Limit(options.Pagination.GetLimit())
+	}
+
+	// 应用关联查询
+	for _, include := range options.Includes {
+		query = query.Preload(include)
+	}
+
+	return query
+}
+
+// applyQuotationTemplateFilter 应用报价单模板过滤条件
+func (r *QuotationTemplateRepositoryImpl) applyQuotationTemplateFilter(query *gorm.DB, filter common.FilterCondition) *gorm.DB {
+	switch filter.Operator {
+	case common.FilterOperatorEq:
+		return query.Where(filter.Field+" = ?", filter.Value)
+	case common.FilterOperatorNe:
+		return query.Where(filter.Field+" != ?", filter.Value)
+	case common.FilterOperatorLike:
+		return query.Where(filter.Field+" LIKE ?", "%"+filter.Value.(string)+"%")
+	case common.FilterOperatorIn:
+		return query.Where(filter.Field+" IN ?", filter.Values)
+	case common.FilterOperatorNotIn:
+		return query.Where(filter.Field+" NOT IN ?", filter.Values)
+	case common.FilterOperatorGt:
+		return query.Where(filter.Field+" > ?", filter.Value)
+	case common.FilterOperatorGte:
+		return query.Where(filter.Field+" >= ?", filter.Value)
+	case common.FilterOperatorLt:
+		return query.Where(filter.Field+" < ?", filter.Value)
+	case common.FilterOperatorLte:
+		return query.Where(filter.Field+" <= ?", filter.Value)
+	case common.FilterOperatorIsNull:
+		return query.Where(filter.Field + " IS NULL")
+	case common.FilterOperatorNotNull:
+		return query.Where(filter.Field + " IS NOT NULL")
+	default:
+		return query
+	}
+}
 
 // QuotationVersionRepository 报价单版本仓储接口
 type QuotationVersionRepository interface {
-	Create(ctx context.Context, version *models.QuotationVersion) error
-	GetByID(ctx context.Context, id uint) (*models.QuotationVersion, error)
+	BaseRepository[models.QuotationVersion]
 	GetByQuotationID(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error)
 	GetActiveVersion(ctx context.Context, quotationID uint) (*models.QuotationVersion, error)
-	SetActiveVersion(ctx context.Context, quotationID, versionID uint) error
-	GetVersionHistory(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error)
+	GetVersionByNumber(ctx context.Context, quotationID uint, versionNumber int) (*models.QuotationVersion, error)
 	GetNextVersionNumber(ctx context.Context, quotationID uint) (int, error)
-	Delete(ctx context.Context, id uint) error
+	SetActiveVersion(ctx context.Context, quotationID uint, versionNumber uint) error
+	Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.QuotationVersion, error)
 }
 
 // QuotationVersionRepositoryImpl 报价单版本仓储实现
 type QuotationVersionRepositoryImpl struct {
+	BaseRepository[models.QuotationVersion]
 	db *gorm.DB
 }
 
-// NewQuotationVersionRepository 创建报价单版本仓储实例
+// NewQuotationVersionRepository 创建报价单版本仓储
 func NewQuotationVersionRepository(db *gorm.DB) QuotationVersionRepository {
 	return &QuotationVersionRepositoryImpl{
-		db: db,
+		BaseRepository: NewBaseRepository[models.QuotationVersion](db),
+		db:             db,
 	}
 }
 
-// Create 创建报价单版本
-func (r *QuotationVersionRepositoryImpl) Create(ctx context.Context, version *models.QuotationVersion) error {
-	return r.db.WithContext(ctx).Create(version).Error
-}
-
-// GetByID 根据ID获取报价单版本
-func (r *QuotationVersionRepositoryImpl) GetByID(ctx context.Context, id uint) (*models.QuotationVersion, error) {
-	var version models.QuotationVersion
-	err := r.db.WithContext(ctx).
-		Preload("Quotation").
-		First(&version, id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &version, nil
-}
-
-// GetByQuotationID 根据报价单ID获取所有版本
+// GetByQuotationID 根据报价单ID获取版本列表
 func (r *QuotationVersionRepositoryImpl) GetByQuotationID(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error) {
 	var versions []*models.QuotationVersion
-	err := r.db.WithContext(ctx).
-		Where("quotation_id = ?", quotationID).
-		Order("version_number DESC").
-		Find(&versions).Error
+	err := r.db.WithContext(ctx).Where("quotation_id = ?", quotationID).Order("version_number DESC").Find(&versions).Error
 	return versions, err
 }
 
-// GetActiveVersion 获取报价单的活跃版本
+// GetActiveVersion 获取活跃版本
 func (r *QuotationVersionRepositoryImpl) GetActiveVersion(ctx context.Context, quotationID uint) (*models.QuotationVersion, error) {
 	var version models.QuotationVersion
-	err := r.db.WithContext(ctx).
-		Where("quotation_id = ? AND is_active = ?", quotationID, true).
-		First(&version).Error
+	err := r.db.WithContext(ctx).Where("quotation_id = ? AND is_active = ?", quotationID, true).First(&version).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &version, nil
 }
 
-// SetActiveVersion 设置活跃版本
-func (r *QuotationVersionRepositoryImpl) SetActiveVersion(ctx context.Context, quotationID, versionID uint) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 先将所有版本设为非活跃
-		if err := tx.Model(&models.QuotationVersion{}).
-			Where("quotation_id = ?", quotationID).
-			Update("is_active", false).Error; err != nil {
-			return err
-		}
-		
-		// 设置指定版本为活跃
-		return tx.Model(&models.QuotationVersion{}).
-			Where("id = ? AND quotation_id = ?", versionID, quotationID).
-			Update("is_active", true).Error
-	})
-}
-
-// GetVersionHistory 获取版本历史
-func (r *QuotationVersionRepositoryImpl) GetVersionHistory(ctx context.Context, quotationID uint) ([]*models.QuotationVersion, error) {
-	var versions []*models.QuotationVersion
-	err := r.db.WithContext(ctx).
-		Where("quotation_id = ?", quotationID).
-		Order("version_number ASC").
-		Find(&versions).Error
-	return versions, err
+// GetVersionByNumber 根据版本号获取版本
+func (r *QuotationVersionRepositoryImpl) GetVersionByNumber(ctx context.Context, quotationID uint, versionNumber int) (*models.QuotationVersion, error) {
+	var version models.QuotationVersion
+	err := r.db.WithContext(ctx).Where("quotation_id = ? AND version_number = ?", quotationID, versionNumber).First(&version).Error
+	if err != nil {
+		return nil, err
+	}
+	return &version, nil
 }
 
 // GetNextVersionNumber 获取下一个版本号
@@ -774,7 +858,102 @@ func (r *QuotationVersionRepositoryImpl) GetNextVersionNumber(ctx context.Contex
 	return maxVersion + 1, nil
 }
 
-// Delete 删除报价单版本
-func (r *QuotationVersionRepositoryImpl) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&models.QuotationVersion{}, id).Error
+// SetActiveVersion 设置活跃版本
+func (r *QuotationVersionRepositoryImpl) SetActiveVersion(ctx context.Context, quotationID uint, versionNumber uint) error {
+	// 开启事务
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 先将该报价单的所有版本设为非活跃
+		if err := tx.Model(&models.QuotationVersion{}).
+			Where("quotation_id = ?", quotationID).
+			Update("is_active", false).Error; err != nil {
+			return err
+		}
+		
+		// 将指定版本设为活跃
+		return tx.Model(&models.QuotationVersion{}).
+			Where("quotation_id = ? AND version_number = ?", quotationID, versionNumber).
+			Update("is_active", true).Error
+	})
+}
+
+// Search 搜索报价单版本
+func (r *QuotationVersionRepositoryImpl) Search(ctx context.Context, keyword string, options *common.QueryOptions) ([]*models.QuotationVersion, error) {
+	var versions []*models.QuotationVersion
+	query := r.db.WithContext(ctx).Model(&models.QuotationVersion{})
+	
+	if keyword != "" {
+		query = query.Where("version_name LIKE ? OR change_reason LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+	
+	if options != nil {
+		query = r.buildQueryForQuotationVersion(options)
+	}
+	
+	err := query.Find(&versions).Error
+	return versions, err
+}
+
+// buildQueryForQuotationVersion 构建报价单版本查询
+func (r *QuotationVersionRepositoryImpl) buildQueryForQuotationVersion(options *common.QueryOptions) *gorm.DB {
+	query := r.db.Model(&models.QuotationVersion{})
+
+	if options == nil {
+		return query
+	}
+
+	// 应用过滤条件
+	for _, filter := range options.Filters {
+		query = r.applyQuotationVersionFilter(query, filter)
+	}
+
+	// 应用排序
+	for _, sort := range options.Sorts {
+		order := "ASC"
+		if sort.Order == common.SortOrderDesc {
+			order = "DESC"
+		}
+		query = query.Order(sort.Field + " " + order)
+	}
+
+	// 应用分页
+	if options.Pagination != nil {
+		query = query.Offset(options.Pagination.GetOffset()).Limit(options.Pagination.GetLimit())
+	}
+
+	// 应用关联查询
+	for _, include := range options.Includes {
+		query = query.Preload(include)
+	}
+
+	return query
+}
+
+// applyQuotationVersionFilter 应用报价单版本过滤条件
+func (r *QuotationVersionRepositoryImpl) applyQuotationVersionFilter(query *gorm.DB, filter common.FilterCondition) *gorm.DB {
+	switch filter.Operator {
+	case common.FilterOperatorEq:
+		return query.Where(filter.Field+" = ?", filter.Value)
+	case common.FilterOperatorNe:
+		return query.Where(filter.Field+" != ?", filter.Value)
+	case common.FilterOperatorLike:
+		return query.Where(filter.Field+" LIKE ?", "%"+filter.Value.(string)+"%")
+	case common.FilterOperatorIn:
+		return query.Where(filter.Field+" IN ?", filter.Values)
+	case common.FilterOperatorNotIn:
+		return query.Where(filter.Field+" NOT IN ?", filter.Values)
+	case common.FilterOperatorGt:
+		return query.Where(filter.Field+" > ?", filter.Value)
+	case common.FilterOperatorGte:
+		return query.Where(filter.Field+" >= ?", filter.Value)
+	case common.FilterOperatorLt:
+		return query.Where(filter.Field+" < ?", filter.Value)
+	case common.FilterOperatorLte:
+		return query.Where(filter.Field+" <= ?", filter.Value)
+	case common.FilterOperatorIsNull:
+		return query.Where(filter.Field + " IS NULL")
+	case common.FilterOperatorNotNull:
+		return query.Where(filter.Field + " IS NOT NULL")
+	default:
+		return query
+	}
 }

@@ -91,7 +91,7 @@ function SalesPage() {
     try {
       setLoading(true);
       const response = await CustomerService.getCustomers({ page, limit });
-      setCustomers(response.data);
+      setCustomers(response.data || []);
       setCustomerPagination({
         current: response.page,
         pageSize: response.limit,
@@ -100,6 +100,8 @@ function SalesPage() {
     } catch (error) {
       message.error('加载客户数据失败');
       console.error('Error loading customers:', error);
+      setCustomers([]); // 确保在错误时设置为空数组
+      setCustomerPagination({ current: 1, pageSize: 10, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,7 @@ function SalesPage() {
     try {
       setLoading(true);
       const response = await QuotationService.getQuotations({ page, limit });
-      setQuotations(response.data);
+      setQuotations(response.data || []);
       setQuotationPagination({
         current: response.page,
         pageSize: response.limit,
@@ -119,6 +121,8 @@ function SalesPage() {
     } catch (error) {
       message.error('加载报价数据失败');
       console.error('Error loading quotations:', error);
+      setQuotations([]); // 确保在错误时设置为空数组
+      setQuotationPagination({ current: 1, pageSize: 10, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -129,7 +133,7 @@ function SalesPage() {
     try {
       setLoading(true);
       const response = await SalesOrderService.getSalesOrders({ page, limit });
-      setSalesOrders(response.data);
+      setSalesOrders(response.data || []);
       setOrderPagination({
         current: response.page,
         pageSize: response.limit,
@@ -138,6 +142,8 @@ function SalesPage() {
     } catch (error) {
       message.error('加载销售订单数据失败');
       console.error('Error loading sales orders:', error);
+      setSalesOrders([]); // 确保在错误时设置为空数组
+      setOrderPagination({ current: 1, pageSize: 10, total: 0 });
     } finally {
       setLoading(false);
     }
@@ -751,7 +757,7 @@ function SalesPage() {
         handleCreate(values);
       }
     }).catch(info => {
-      console.log('Validate Failed:', info);
+      // 表单验证失败
     });
   };
 
@@ -762,11 +768,11 @@ function SalesPage() {
     setIsModalVisible(true);
   };
 
-  // 计算统计数据
-  const totalOrders = salesOrders.length;
-  const totalCustomers = customers.length;
-  const totalRevenue = salesOrders.reduce((sum: number, order: SalesOrder) => sum + order.grandTotal, 0);
-  const pendingOrders = salesOrders.filter((order: SalesOrder) => order.status === 'pending').length;
+  // 计算统计数据 - 添加安全检查
+  const totalOrders = salesOrders?.length || 0;
+  const totalCustomers = customers?.length || 0;
+  const totalRevenue = salesOrders?.reduce((sum: number, order: SalesOrder) => sum + (order.grandTotal || 0), 0) || 0;
+  const pendingOrders = salesOrders?.filter((order: SalesOrder) => order.status === 'pending')?.length || 0;
 
   // 定义Tabs的items
   const tabItems = [

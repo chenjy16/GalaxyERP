@@ -32,30 +32,27 @@ func NewAccountingController(
 // @Tags 会计科目
 // @Accept json
 // @Produce json
-// @Param account body models.Account true "会计科目信息"
-// @Success 201 {object} dto.SuccessResponse{data=models.Account}
+// @Param account body dto.AccountCreateRequest true "会计科目信息"
+// @Success 201 {object} dto.SuccessResponse{data=dto.AccountResponse}
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/accounting/accounts [post]
 func (c *AccountingController) CreateAccount(ctx *gin.Context) {
-	var account models.Account
-	if err := ctx.ShouldBindJSON(&account); err != nil {
-		c.utils.RespondBadRequest(ctx, "请求参数无效: "+err.Error())
+	var req dto.AccountCreateRequest
+
+	// 使用新的统一验证方法
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
-	// 验证必填字段
-	if account.Code == "" {
-		c.utils.RespondBadRequest(ctx, "科目编码不能为空")
-		return
-	}
-	if account.Name == "" {
-		c.utils.RespondBadRequest(ctx, "科目名称不能为空")
-		return
-	}
-	if account.AccountType == "" {
-		c.utils.RespondBadRequest(ctx, "科目类型不能为空")
-		return
+	// 转换为模型
+	account := models.Account{
+		Code:        req.Code,
+		Name:        req.Name,
+		AccountType: req.Type,
+		ParentID:    req.ParentID,
+		Balance:     req.Balance,
+		IsActive:    req.Status == "active",
 	}
 
 	if err := c.accountService.CreateAccount(ctx.Request.Context(), &account); err != nil {
@@ -63,19 +60,32 @@ func (c *AccountingController) CreateAccount(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondCreated(ctx, account)
+	// 转换为响应 DTO
+	response := dto.AccountResponse{
+		ID:        account.ID,
+		Code:      account.Code,
+		Name:      account.Name,
+		Type:      account.AccountType,
+		ParentID:  account.ParentID,
+		Balance:   account.Balance,
+		Status:    map[bool]string{true: "active", false: "inactive"}[account.IsActive],
+		CreatedAt: account.CreatedAt,
+		UpdatedAt: account.UpdatedAt,
+	}
+
+	c.utils.RespondCreated(ctx, response)
 }
 
 // GetAccountList 获取会计科目列表
 // @Summary 获取会计科目列表
-// @Description 获取会计科目列表，支持分页
+// @Description 获取会计科目列表，支持按类型筛选和关键字搜索
 // @Tags 会计科目
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
-// @Param page_size query int false "每页数量" default(20)
-// @Param account_type query string false "科目类型" Enums(ASSET,LIABILITY,EQUITY,REVENUE,EXPENSE)
-// @Param keyword query string false "搜索关键词"
+// @Param page_size query int false "每页数量" default(10)
+// @Param account_type query string false "科目类型"
+// @Param keyword query string false "搜索关键字"
 // @Success 200 {object} dto.PaginatedResponse{data=[]models.Account}
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
@@ -105,16 +115,9 @@ func (c *AccountingController) GetAccountList(ctx *gin.Context) {
 		return
 	}
 
-	// 构造分页响应
-	response := gin.H{
-		"data":        accounts,
-		"total":       total,
-		"page":        pagination.Page,
-		"page_size":   pagination.PageSize,
-		"total_pages": (total + int64(pagination.PageSize) - 1) / int64(pagination.PageSize),
-	}
-
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(pagination.Page, pagination.PageSize, total)
+	c.utils.RespondPaginated(ctx, accounts, pagination2, "获取科目列表成功")
 }
 
 // GetAccount 获取会计科目详情
@@ -168,8 +171,7 @@ func (c *AccountingController) UpdateAccount(ctx *gin.Context) {
 	}
 
 	var account models.Account
-	if err := ctx.ShouldBindJSON(&account); err != nil {
-		c.utils.RespondBadRequest(ctx, "请求参数无效: "+err.Error())
+	if !c.utils.BindAndValidateJSON(ctx, &account) {
 		return
 	}
 
@@ -228,7 +230,7 @@ func (c *AccountingController) DeleteAccount(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, gin.H{"message": "科目删除成功"})
+	c.utils.RespondSuccess(ctx, "科目删除成功")
 }
 
 // GetAccountByCode 根据编码获取会计科目
@@ -302,8 +304,7 @@ func (c *AccountingController) GetAccountChildren(ctx *gin.Context) {
 // @Router /api/v1/accounting/journal-entries [post]
 func (c *AccountingController) CreateJournalEntry(ctx *gin.Context) {
 	var req dto.JournalEntryCreateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		c.utils.RespondBadRequest(ctx, "请求参数无效: "+err.Error())
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -330,14 +331,14 @@ func (c *AccountingController) CreateJournalEntry(ctx *gin.Context) {
 
 // GetJournalEntryList 获取会计分录列表
 // @Summary 获取会计分录列表
-// @Description 获取会计分录列表，支持分页和日期范围筛选
+// @Description 获取会计分录列表，支持按日期范围筛选
 // @Tags 会计分录
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
-// @Param page_size query int false "每页数量" default(20)
-// @Param start_date query string false "开始日期 (YYYY-MM-DD)"
-// @Param end_date query string false "结束日期 (YYYY-MM-DD)"
+// @Param page_size query int false "每页数量" default(10)
+// @Param start_date query string false "开始日期"
+// @Param end_date query string false "结束日期"
 // @Success 200 {object} dto.PaginatedResponse{data=[]models.JournalEntry}
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
@@ -364,16 +365,9 @@ func (c *AccountingController) GetJournalEntryList(ctx *gin.Context) {
 		return
 	}
 
-	// 构造分页响应
-	response := gin.H{
-		"data":        entries,
-		"total":       total,
-		"page":        pagination.Page,
-		"page_size":   pagination.PageSize,
-		"total_pages": (total + int64(pagination.PageSize) - 1) / int64(pagination.PageSize),
-	}
-
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination2 := c.utils.CreatePagination(pagination.Page, pagination.PageSize, total)
+	c.utils.RespondPaginated(ctx, entries, pagination2, "获取分录列表成功")
 }
 
 // GetJournalEntry 获取会计分录详情
@@ -427,8 +421,7 @@ func (c *AccountingController) UpdateJournalEntry(ctx *gin.Context) {
 	}
 
 	var entry models.JournalEntry
-	if err := ctx.ShouldBindJSON(&entry); err != nil {
-		c.utils.RespondBadRequest(ctx, "请求参数无效: "+err.Error())
+	if !c.utils.BindAndValidateJSON(ctx, &entry) {
 		return
 	}
 
@@ -483,7 +476,7 @@ func (c *AccountingController) DeleteJournalEntry(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, gin.H{"message": "分录删除成功"})
+	c.utils.RespondSuccess(ctx, "分录删除成功")
 }
 
 // GetAccountTypes 获取科目类型列表

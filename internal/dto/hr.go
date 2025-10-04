@@ -6,38 +6,38 @@ import (
 
 // EmployeeCreateRequest 员工创建请求
 type EmployeeCreateRequest struct {
-	Code             string     `json:"code" binding:"required,max=50"`
-	FirstName        string     `json:"first_name" binding:"required,max=50"`
-	LastName         string     `json:"last_name" binding:"required,max=50"`
-	Email            string     `json:"email" binding:"required,email"`
-	Phone            string     `json:"phone,omitempty" binding:"omitempty,max=20"`
+	Code             string     `json:"code" validate:"required,max=50"`
+	FirstName        string     `json:"first_name" validate:"required,max=50"`
+	LastName         string     `json:"last_name" validate:"required,max=50"`
+	Email            string     `json:"email" validate:"required,email"`
+	Phone            string     `json:"phone,omitempty" validate:"omitempty,max=20"`
 	DateOfBirth      *time.Time `json:"date_of_birth,omitempty"`
-	Gender           string     `json:"gender,omitempty" binding:"omitempty,oneof=male female other"`
-	HireDate         time.Time  `json:"hire_date" binding:"required"`
+	Gender           string     `json:"gender,omitempty" validate:"omitempty,oneof=male female other"`
+	HireDate         time.Time  `json:"hire_date" validate:"required"`
 	DepartmentID     *uint      `json:"department_id,omitempty"`
 	PositionID       *uint      `json:"position_id,omitempty"`
 	ManagerID        *uint      `json:"manager_id,omitempty"`
-	Status           string     `json:"status" binding:"required,oneof=active inactive terminated"`
+	Status           string     `json:"status" validate:"required,oneof=active inactive terminated"`
 	EmergencyContact string     `json:"emergency_contact,omitempty"`
-	IDNumber         string     `json:"id_number,omitempty" binding:"omitempty,max=50"`
+	IDNumber         string     `json:"id_number,omitempty" validate:"omitempty,max=50"`
 	Address          string     `json:"address,omitempty"`
 	BankAccount      string     `json:"bank_account,omitempty"`
 }
 
 // EmployeeUpdateRequest 员工更新请求
 type EmployeeUpdateRequest struct {
-	FirstName        string     `json:"first_name,omitempty" binding:"omitempty,max=50"`
-	LastName         string     `json:"last_name,omitempty" binding:"omitempty,max=50"`
-	Email            string     `json:"email,omitempty" binding:"omitempty,email"`
-	Phone            string     `json:"phone,omitempty" binding:"omitempty,max=20"`
+	FirstName        string     `json:"first_name,omitempty" validate:"omitempty,max=50"`
+	LastName         string     `json:"last_name,omitempty" validate:"omitempty,max=50"`
+	Email            string     `json:"email,omitempty" validate:"omitempty,email"`
+	Phone            string     `json:"phone,omitempty" validate:"omitempty,max=20"`
 	DateOfBirth      *time.Time `json:"date_of_birth,omitempty"`
-	Gender           string     `json:"gender,omitempty" binding:"omitempty,oneof=male female other"`
+	Gender           string     `json:"gender,omitempty" validate:"omitempty,oneof=male female other"`
 	DepartmentID     *uint      `json:"department_id,omitempty"`
 	PositionID       *uint      `json:"position_id,omitempty"`
 	ManagerID        *uint      `json:"manager_id,omitempty"`
-	Status           string     `json:"status,omitempty" binding:"omitempty,oneof=active inactive terminated"`
+	Status           string     `json:"status,omitempty" validate:"omitempty,oneof=active inactive terminated"`
 	EmergencyContact string     `json:"emergency_contact,omitempty"`
-	IDNumber         string     `json:"id_number,omitempty" binding:"omitempty,max=50"`
+	IDNumber         string     `json:"id_number,omitempty" validate:"omitempty,max=50"`
 	Address          string     `json:"address,omitempty"`
 	BankAccount      string     `json:"bank_account,omitempty"`
 }
@@ -85,23 +85,23 @@ type EmployeeListResponse struct {
 
 // PositionCreateRequest 职位创建请求
 type PositionCreateRequest struct {
-	Name         string  `json:"name" binding:"required,max=100"`
-	Code         string  `json:"code" binding:"required,max=50"`
+	Name         string  `json:"name" validate:"required,max=100"`
+	Code         string  `json:"code" validate:"required,max=50"`
 	Description  string  `json:"description,omitempty"`
-	DepartmentID uint    `json:"department_id" binding:"required"`
-	Level        int     `json:"level" binding:"required,min=1"`
-	MinSalary    float64 `json:"min_salary,omitempty" binding:"omitempty,min=0"`
-	MaxSalary    float64 `json:"max_salary,omitempty" binding:"omitempty,min=0"`
+	DepartmentID uint    `json:"department_id" validate:"required"`
+	Level        int     `json:"level" validate:"required,min=1"`
+	MinSalary    float64 `json:"min_salary,omitempty" validate:"omitempty,min=0"`
+	MaxSalary    float64 `json:"max_salary,omitempty" validate:"omitempty,min=0"`
 }
 
 // PositionUpdateRequest 职位更新请求
 type PositionUpdateRequest struct {
-	Name         string   `json:"name,omitempty" binding:"omitempty,max=100"`
+	Name         string   `json:"name,omitempty" validate:"omitempty,max=100"`
 	Description  string   `json:"description,omitempty"`
 	DepartmentID *uint    `json:"department_id,omitempty"`
-	Level        *int     `json:"level,omitempty" binding:"omitempty,min=1"`
-	MinSalary    *float64 `json:"min_salary,omitempty" binding:"omitempty,min=0"`
-	MaxSalary    *float64 `json:"max_salary,omitempty" binding:"omitempty,min=0"`
+	Level        *int     `json:"level,omitempty" validate:"omitempty,min=1"`
+	MinSalary    *float64 `json:"min_salary,omitempty" validate:"omitempty,min=0"`
+	MaxSalary    *float64 `json:"max_salary,omitempty" validate:"omitempty,min=0"`
 	IsActive     *bool    `json:"is_active,omitempty"`
 }
 
@@ -142,11 +142,11 @@ type EmployeeFilter struct {
 
 // AttendanceCreateRequest 考勤创建请求
 type AttendanceCreateRequest struct {
-	EmployeeID   uint       `json:"employee_id" binding:"required"`
-	Date         time.Time  `json:"date" binding:"required"`
+	EmployeeID   uint       `json:"employee_id" validate:"required"`
+	Date         time.Time  `json:"date" validate:"required"`
 	CheckInTime  *time.Time `json:"check_in_time,omitempty"`
 	CheckOutTime *time.Time `json:"check_out_time,omitempty"`
-	Status       string     `json:"status" binding:"required,oneof=present absent late early_leave"`
+	Status       string     `json:"status" validate:"required,oneof=present absent late early_leave"`
 	Notes        string     `json:"notes,omitempty"`
 }
 
@@ -154,7 +154,7 @@ type AttendanceCreateRequest struct {
 type AttendanceUpdateRequest struct {
 	CheckInTime  *time.Time `json:"check_in_time,omitempty"`
 	CheckOutTime *time.Time `json:"check_out_time,omitempty"`
-	Status       string     `json:"status,omitempty" binding:"omitempty,oneof=present absent late early_leave"`
+	Status       string     `json:"status,omitempty" validate:"omitempty,oneof=present absent late early_leave"`
 	Notes        string     `json:"notes,omitempty"`
 }
 
@@ -172,35 +172,35 @@ type AttendanceResponse struct {
 	UpdatedAt    time.Time             `json:"updated_at"`
 }
 
-// PayrollCreateRequest 薪资创建请求
+// PayrollCreateRequest 工资单创建请求
 type PayrollCreateRequest struct {
-	EmployeeID      uint      `json:"employee_id" binding:"required"`
-	PayPeriodStart  time.Time `json:"pay_period_start" binding:"required"`
-	PayPeriodEnd    time.Time `json:"pay_period_end" binding:"required"`
-	BasicSalary     float64   `json:"basic_salary" binding:"required,min=0"`
-	OvertimePay     float64   `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
-	Allowance       float64   `json:"allowance,omitempty" binding:"omitempty,min=0"`
-	Bonus           float64   `json:"bonus,omitempty" binding:"omitempty,min=0"`
-	Deductions      float64   `json:"deductions,omitempty" binding:"omitempty,min=0"`
-	SocialInsurance float64   `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
-	HousingFund     float64   `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
-	Tax             float64   `json:"tax,omitempty" binding:"omitempty,min=0"`
-	NetPay          float64   `json:"net_pay" binding:"required,min=0"`
-	Status          string    `json:"status" binding:"required,oneof=draft confirmed paid"`
+	EmployeeID      uint      `json:"employee_id" validate:"required"`
+	PayPeriodStart  time.Time `json:"pay_period_start" validate:"required"`
+	PayPeriodEnd    time.Time `json:"pay_period_end" validate:"required"`
+	BasicSalary     float64   `json:"basic_salary" validate:"required,min=0"`
+	OvertimePay     float64   `json:"overtime_pay,omitempty" validate:"omitempty,min=0"`
+	Allowance       float64   `json:"allowance,omitempty" validate:"omitempty,min=0"`
+	Bonus           float64   `json:"bonus,omitempty" validate:"omitempty,min=0"`
+	Deductions      float64   `json:"deductions,omitempty" validate:"omitempty,min=0"`
+	SocialInsurance float64   `json:"social_insurance,omitempty" validate:"omitempty,min=0"`
+	HousingFund     float64   `json:"housing_fund,omitempty" validate:"omitempty,min=0"`
+	Tax             float64   `json:"tax,omitempty" validate:"omitempty,min=0"`
+	NetPay          float64   `json:"net_pay" validate:"required,min=0"`
+	Status          string    `json:"status" validate:"required,oneof=draft confirmed paid"`
 }
 
-// PayrollUpdateRequest 薪资更新请求
+// PayrollUpdateRequest 工资单更新请求
 type PayrollUpdateRequest struct {
-	BasicSalary     *float64 `json:"basic_salary,omitempty" binding:"omitempty,min=0"`
-	OvertimePay     *float64 `json:"overtime_pay,omitempty" binding:"omitempty,min=0"`
-	Allowance       *float64 `json:"allowance,omitempty" binding:"omitempty,min=0"`
-	Bonus           *float64 `json:"bonus,omitempty" binding:"omitempty,min=0"`
-	Deductions      *float64 `json:"deductions,omitempty" binding:"omitempty,min=0"`
-	SocialInsurance *float64 `json:"social_insurance,omitempty" binding:"omitempty,min=0"`
-	HousingFund     *float64 `json:"housing_fund,omitempty" binding:"omitempty,min=0"`
-	Tax             *float64 `json:"tax,omitempty" binding:"omitempty,min=0"`
-	NetPay          *float64 `json:"net_pay,omitempty" binding:"omitempty,min=0"`
-	Status          string   `json:"status,omitempty" binding:"omitempty,oneof=draft confirmed paid"`
+	BasicSalary     *float64 `json:"basic_salary,omitempty" validate:"omitempty,min=0"`
+	OvertimePay     *float64 `json:"overtime_pay,omitempty" validate:"omitempty,min=0"`
+	Allowance       *float64 `json:"allowance,omitempty" validate:"omitempty,min=0"`
+	Bonus           *float64 `json:"bonus,omitempty" validate:"omitempty,min=0"`
+	Deductions      *float64 `json:"deductions,omitempty" validate:"omitempty,min=0"`
+	SocialInsurance *float64 `json:"social_insurance,omitempty" validate:"omitempty,min=0"`
+	HousingFund     *float64 `json:"housing_fund,omitempty" validate:"omitempty,min=0"`
+	Tax             *float64 `json:"tax,omitempty" validate:"omitempty,min=0"`
+	NetPay          *float64 `json:"net_pay,omitempty" validate:"omitempty,min=0"`
+	Status          string   `json:"status,omitempty" validate:"omitempty,oneof=draft confirmed paid"`
 }
 
 // PayrollResponse 薪资响应
@@ -227,29 +227,29 @@ type PayrollResponse struct {
 
 // ===== 请假管理 =====
 
-// LeaveCreateRequest 请假申请创建请求
+// LeaveCreateRequest 请假创建请求
 type LeaveCreateRequest struct {
-	EmployeeID uint      `json:"employee_id" binding:"required"`
-	LeaveType  string    `json:"leave_type" binding:"required,oneof=annual sick personal maternity paternity emergency"`
-	StartDate  time.Time `json:"start_date" binding:"required"`
-	EndDate    time.Time `json:"end_date" binding:"required"`
-	Days       float64   `json:"days" binding:"required,min=0.5"`
-	Reason     string    `json:"reason" binding:"required,max=500"`
+	EmployeeID uint      `json:"employee_id" validate:"required"`
+	LeaveType  string    `json:"leave_type" validate:"required,oneof=annual sick personal maternity paternity emergency"`
+	StartDate  time.Time `json:"start_date" validate:"required"`
+	EndDate    time.Time `json:"end_date" validate:"required"`
+	Days       float64   `json:"days" validate:"required,min=0.5"`
+	Reason     string    `json:"reason" validate:"required,max=500"`
 }
 
-// LeaveUpdateRequest 请假申请更新请求
+// LeaveUpdateRequest 请假更新请求
 type LeaveUpdateRequest struct {
-	LeaveType *string    `json:"leave_type,omitempty" binding:"omitempty,oneof=annual sick personal maternity paternity emergency"`
+	LeaveType *string    `json:"leave_type,omitempty" validate:"omitempty,oneof=annual sick personal maternity paternity emergency"`
 	StartDate *time.Time `json:"start_date,omitempty"`
 	EndDate   *time.Time `json:"end_date,omitempty"`
-	Days      *float64   `json:"days,omitempty" binding:"omitempty,min=0.5"`
-	Reason    *string    `json:"reason,omitempty" binding:"omitempty,max=500"`
+	Days      *float64   `json:"days,omitempty" validate:"omitempty,min=0.5"`
+	Reason    *string    `json:"reason,omitempty" validate:"omitempty,max=500"`
 }
 
 // LeaveApprovalRequest 请假审批请求
 type LeaveApprovalRequest struct {
-	Status   string `json:"status" binding:"required,oneof=approved rejected"`
-	Comments string `json:"comments,omitempty" binding:"omitempty,max=500"`
+	Status   string `json:"status" validate:"required,oneof=approved rejected"`
+	Comments string `json:"comments,omitempty" validate:"omitempty,max=500"`
 }
 
 // LeaveResponse 请假申请响应

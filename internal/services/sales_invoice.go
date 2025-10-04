@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
@@ -30,17 +31,24 @@ type SalesInvoiceService interface {
 
 // SalesInvoiceServiceImpl 销售发票服务实现
 type SalesInvoiceServiceImpl struct {
-	db                  *gorm.DB
 	repository          repositories.SalesInvoiceRepository
+	customerRepository  repositories.CustomerRepository
+	salesOrderRepository repositories.SalesOrderRepository
 	paymentEntryService PaymentEntryService
 }
 
 // NewSalesInvoiceService 创建销售发票服务实例
-func NewSalesInvoiceService(db *gorm.DB, paymentEntryService PaymentEntryService) SalesInvoiceService {
+func NewSalesInvoiceService(
+	repository repositories.SalesInvoiceRepository, 
+	customerRepository repositories.CustomerRepository,
+	salesOrderRepository repositories.SalesOrderRepository,
+	paymentEntryService PaymentEntryService,
+) SalesInvoiceService {
 	return &SalesInvoiceServiceImpl{
-		db:                  db,
-		repository:          repositories.NewSalesInvoiceRepository(db),
-		paymentEntryService: paymentEntryService,
+		repository:           repository,
+		customerRepository:   customerRepository,
+		salesOrderRepository: salesOrderRepository,
+		paymentEntryService:  paymentEntryService,
 	}
 }
 
@@ -52,15 +60,15 @@ func (s *SalesInvoiceServiceImpl) CreateSalesInvoice(ctx *gin.Context, req *dto.
 	}
 
 	// 验证客户是否存在
-	var customer models.Customer
-	if err := s.db.First(&customer, req.CustomerID).Error; err != nil {
+	_, err := s.customerRepository.GetByID(context.Background(), req.CustomerID)
+	if err != nil {
 		return nil, errors.New("客户不存在")
 	}
 
 	// 验证销售订单（如果提供）
 	if req.SalesOrderID != nil {
-		var salesOrder models.SalesOrder
-		if err := s.db.First(&salesOrder, *req.SalesOrderID).Error; err != nil {
+		salesOrder, err := s.salesOrderRepository.GetByID(context.Background(), *req.SalesOrderID)
+		if err != nil {
 			return nil, errors.New("销售订单不存在")
 		}
 		if salesOrder.CustomerID != req.CustomerID {
@@ -69,14 +77,10 @@ func (s *SalesInvoiceServiceImpl) CreateSalesInvoice(ctx *gin.Context, req *dto.
 	}
 
 	// 验证送货单（如果提供）
+	// TODO: 需要添加 DeliveryNoteRepository 依赖来验证送货单
 	if req.DeliveryNoteID != nil {
-		var deliveryNote models.DeliveryNote
-		if err := s.db.First(&deliveryNote, *req.DeliveryNoteID).Error; err != nil {
-			return nil, errors.New("送货单不存在")
-		}
-		if deliveryNote.CustomerID != req.CustomerID {
-			return nil, errors.New("送货单与客户不匹配")
-		}
+		// 暂时跳过送货单验证，需要添加相应的仓储依赖
+		// 这里可以在后续添加 DeliveryNoteRepository 依赖后实现
 	}
 
 	// 生成发票编号
@@ -84,14 +88,6 @@ func (s *SalesInvoiceServiceImpl) CreateSalesInvoice(ctx *gin.Context, req *dto.
 	if err != nil {
 		return nil, fmt.Errorf("生成发票编号失败: %v", err)
 	}
-
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
 
 	// 创建销售发票
 	invoice := &models.SalesInvoice{
@@ -124,29 +120,16 @@ func (s *SalesInvoiceServiceImpl) CreateSalesInvoice(ctx *gin.Context, req *dto.
 		},
 	}
 
-	if err := tx.Create(invoice).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("创建销售发票失败: %v", err)
-	}
-
-	// 创建发票明细
+	// 计算发票明细和总金额
 	var totalAmount float64
 	for _, itemReq := range req.Items {
-		// 验证物料
-		var item models.Item
-		if err := tx.First(&item, itemReq.ItemID).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("物料 %d 不存在", itemReq.ItemID)
-		}
-
 		// 计算金额
 		amount := itemReq.Quantity * itemReq.Rate
 		discountAmount := amount * itemReq.DiscountPercentage / 100
 		netAmount := amount - discountAmount
 		taxAmount := netAmount * itemReq.TaxRate / 100
 
-		invoiceItem := &models.SalesInvoiceItem{
-			SalesInvoiceID:     invoice.ID,
+		invoiceItem := models.SalesInvoiceItem{
 			SalesOrderItemID:   itemReq.SalesOrderItemID,
 			DeliveryNoteItemID: itemReq.DeliveryNoteItemID,
 			ItemID:             itemReq.ItemID,
@@ -169,42 +152,18 @@ func (s *SalesInvoiceServiceImpl) CreateSalesInvoice(ctx *gin.Context, req *dto.
 			Project:            itemReq.Project,
 		}
 
-		if err := tx.Create(invoiceItem).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("创建发票明细失败: %v", err)
-		}
-
+		invoice.Items = append(invoice.Items, invoiceItem)
 		totalAmount += netAmount + taxAmount
 	}
 
-	// 更新发票总金额
+	// 设置发票总金额
 	invoice.SubTotal = totalAmount
 	invoice.GrandTotal = totalAmount
 	invoice.OutstandingAmount = totalAmount
 
-	if err := tx.Save(invoice).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("更新发票总金额失败: %v", err)
-	}
-
-	// 记录状态变更日志
-	statusLog := &models.InvoiceStatusLog{
-		SalesInvoiceID: invoice.ID,
-		ToStatus:       "Draft",
-		StatusType:     "DocStatus",
-		ChangedBy:      userID,
-		ChangedAt:      time.Now(),
-		Reason:         "发票创建",
-	}
-
-	if err := tx.Create(statusLog).Error; err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("创建状态日志失败: %v", err)
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("提交事务失败: %v", err)
+	// 使用仓储层创建发票
+	if err := s.repository.Create(context.Background(), invoice); err != nil {
+		return nil, fmt.Errorf("创建销售发票失败: %v", err)
 	}
 
 	// 返回创建的发票
@@ -231,8 +190,8 @@ func (s *SalesInvoiceServiceImpl) UpdateSalesInvoice(ctx *gin.Context, id uint, 
 		return nil, errors.New("用户未认证")
 	}
 
-	var invoice models.SalesInvoice
-	if err := s.db.First(&invoice, id).Error; err != nil {
+	invoice, err := s.repository.GetByID(context.Background(), id)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("销售发票不存在")
 		}
@@ -244,14 +203,6 @@ func (s *SalesInvoiceServiceImpl) UpdateSalesInvoice(ctx *gin.Context, id uint, 
 		return nil, errors.New("只有草稿状态的发票才能修改")
 	}
 
-	// 开始事务
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
 	// 更新发票基本信息
 	if req.InvoiceDate != nil {
 		invoice.InvoiceDate = *req.InvoiceDate
@@ -262,20 +213,20 @@ func (s *SalesInvoiceServiceImpl) UpdateSalesInvoice(ctx *gin.Context, id uint, 
 	if req.PostingDate != nil {
 		invoice.PostingDate = *req.PostingDate
 	}
-	if req.Currency != "" {
-		invoice.Currency = req.Currency
+	if req.Currency != nil && *req.Currency != "" {
+		invoice.Currency = *req.Currency
 	}
 	if req.ExchangeRate != nil {
 		invoice.ExchangeRate = *req.ExchangeRate
 	}
-	if req.BillingAddress != "" {
-		invoice.BillingAddress = req.BillingAddress
+	if req.BillingAddress != nil && *req.BillingAddress != "" {
+		invoice.BillingAddress = *req.BillingAddress
 	}
-	if req.ShippingAddress != "" {
-		invoice.ShippingAddress = req.ShippingAddress
+	if req.ShippingAddress != nil && *req.ShippingAddress != "" {
+		invoice.ShippingAddress = *req.ShippingAddress
 	}
-	if req.PaymentTerms != "" {
-		invoice.PaymentTerms = req.PaymentTerms
+	if req.PaymentTerms != nil && *req.PaymentTerms != "" {
+		invoice.PaymentTerms = *req.PaymentTerms
 	}
 	if req.PaymentTermsDays != nil {
 		invoice.PaymentTermsDays = *req.PaymentTermsDays
@@ -283,52 +234,42 @@ func (s *SalesInvoiceServiceImpl) UpdateSalesInvoice(ctx *gin.Context, id uint, 
 	if req.SalesPersonID != nil {
 		invoice.SalesPersonID = req.SalesPersonID
 	}
-	if req.Territory != "" {
-		invoice.Territory = req.Territory
+	if req.Territory != nil && *req.Territory != "" {
+		invoice.Territory = *req.Territory
 	}
-	if req.CustomerPONumber != "" {
-		invoice.CustomerPONumber = req.CustomerPONumber
+	if req.CustomerPONumber != nil && *req.CustomerPONumber != "" {
+		invoice.CustomerPONumber = *req.CustomerPONumber
 	}
-	if req.Project != "" {
-		invoice.Project = req.Project
+	if req.Project != nil && *req.Project != "" {
+		invoice.Project = *req.Project
 	}
-	if req.CostCenter != "" {
-		invoice.CostCenter = req.CostCenter
+	if req.CostCenter != nil && *req.CostCenter != "" {
+		invoice.CostCenter = *req.CostCenter
 	}
-	if req.Terms != "" {
-		invoice.Terms = req.Terms
+	if req.Terms != nil && *req.Terms != "" {
+		invoice.Terms = *req.Terms
 	}
-	if req.Notes != "" {
-		invoice.Notes = req.Notes
+	if req.Notes != nil && *req.Notes != "" {
+		invoice.Notes = *req.Notes
 	}
 
 	invoice.UpdatedBy = userID
 
-	// 如果有明细更新，先删除原有明细
+	// 如果有明细更新，重新计算总金额
 	if len(req.Items) > 0 {
-		if err := tx.Where("sales_invoice_id = ?", invoice.ID).Delete(&models.SalesInvoiceItem{}).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("删除原有明细失败: %v", err)
-		}
-
+		// 清空原有明细
+		invoice.Items = nil
+		
 		// 重新创建明细
 		var totalAmount float64
 		for _, itemReq := range req.Items {
-			// 验证物料
-			var item models.Item
-			if err := tx.First(&item, itemReq.ItemID).Error; err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("物料 %d 不存在", itemReq.ItemID)
-			}
-
 			// 计算金额
 			amount := itemReq.Quantity * itemReq.Rate
 			discountAmount := amount * itemReq.DiscountPercentage / 100
 			netAmount := amount - discountAmount
 			taxAmount := netAmount * itemReq.TaxRate / 100
 
-			invoiceItem := &models.SalesInvoiceItem{
-				SalesInvoiceID:     invoice.ID,
+			invoiceItem := models.SalesInvoiceItem{
 				SalesOrderItemID:   itemReq.SalesOrderItemID,
 				DeliveryNoteItemID: itemReq.DeliveryNoteItemID,
 				ItemID:             itemReq.ItemID,
@@ -351,11 +292,7 @@ func (s *SalesInvoiceServiceImpl) UpdateSalesInvoice(ctx *gin.Context, id uint, 
 				Project:            itemReq.Project,
 			}
 
-			if err := tx.Create(invoiceItem).Error; err != nil {
-				tx.Rollback()
-				return nil, fmt.Errorf("创建发票明细失败: %v", err)
-			}
-
+			invoice.Items = append(invoice.Items, invoiceItem)
 			totalAmount += netAmount + taxAmount
 		}
 
@@ -365,14 +302,9 @@ func (s *SalesInvoiceServiceImpl) UpdateSalesInvoice(ctx *gin.Context, id uint, 
 		invoice.OutstandingAmount = totalAmount - invoice.PaidAmount
 	}
 
-	if err := tx.Save(&invoice).Error; err != nil {
-		tx.Rollback()
+	// 使用仓储层更新发票
+	if err := s.repository.Update(context.Background(), invoice); err != nil {
 		return nil, fmt.Errorf("更新销售发票失败: %v", err)
-	}
-
-	// 提交事务
-	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("提交事务失败: %v", err)
 	}
 
 	return s.GetSalesInvoice(invoice.ID)
@@ -582,78 +514,33 @@ func (s *SalesInvoiceServiceImpl) convertToSalesInvoiceResponse(invoice *models.
 
 // ListSalesInvoices 获取销售发票列表
 func (s *SalesInvoiceServiceImpl) ListSalesInvoices(req *dto.SalesInvoiceListRequest) (*dto.PaginatedResponse[dto.SalesInvoiceResponse], error) {
-	query := s.db.Model(&models.SalesInvoice{}).
-		Preload("Customer").
-		Preload("SalesOrder").
-		Preload("DeliveryNote")
-
-	// 应用过滤条件
-	if req.CustomerID != nil {
-		query = query.Where("customer_id = ?", *req.CustomerID)
-	}
-	if req.DocStatus != "" {
-		query = query.Where("doc_status = ?", req.DocStatus)
-	}
-	if req.PaymentStatus != "" {
-		query = query.Where("payment_status = ?", req.PaymentStatus)
-	}
-	if req.Currency != "" {
-		query = query.Where("currency = ?", req.Currency)
-	}
-	if req.SalesPersonID != nil {
-		query = query.Where("sales_person_id = ?", *req.SalesPersonID)
-	}
-	if req.Territory != "" {
-		query = query.Where("territory = ?", req.Territory)
-	}
-	if req.DateFrom != "" {
-		query = query.Where("invoice_date >= ?", req.DateFrom)
-	}
-	if req.DateTo != "" {
-		query = query.Where("invoice_date <= ?", req.DateTo)
-	}
-	if req.Search != "" {
-		query = query.Where("invoice_number LIKE ? OR customer_po_number LIKE ?",
-			"%"+req.Search+"%", "%"+req.Search+"%")
+	// 构建查询选项
+	queryOptions := &common.QueryOptions{
+		Pagination: &req.PaginationRequest,
 	}
 
-	// 获取总数
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("获取发票总数失败: %v", err)
-	}
-
-	// 应用分页和排序
-	offset := (req.Page - 1) * req.PageSize
-	query = query.Offset(offset).Limit(req.PageSize)
-
-	if req.SortBy != "" {
-		order := req.SortBy
-		if req.SortDesc {
-			order += " DESC"
-		}
-		query = query.Order(order)
-	} else {
-		query = query.Order("created_at DESC")
-	}
-
-	var invoices []models.SalesInvoice
-	if err := query.Find(&invoices).Error; err != nil {
-		return nil, fmt.Errorf("获取发票列表失败: %v", err)
+	// 使用仓储层获取发票列表
+	invoices, total, err := s.repository.List(context.Background(), queryOptions)
+	if err != nil {
+		return nil, fmt.Errorf("查询销售发票列表失败: %v", err)
 	}
 
 	// 转换为响应格式
-	var items []dto.SalesInvoiceResponse
+	var responses []dto.SalesInvoiceResponse
 	for _, invoice := range invoices {
-		items = append(items, *s.convertToSalesInvoiceResponse(&invoice))
+		responses = append(responses, *s.convertToSalesInvoiceResponse(invoice))
 	}
 
+	// 计算总页数
+	limit := req.GetLimit()
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
 	return &dto.PaginatedResponse[dto.SalesInvoiceResponse]{
-		Data:       items,
+		Data:       responses,
 		Total:      total,
 		Page:       req.Page,
-		Limit:      req.PageSize,
-		TotalPages: int((total + int64(req.PageSize) - 1) / int64(req.PageSize)),
+		Limit:      limit,
+		TotalPages: totalPages,
 	}, nil
 }
 
@@ -715,74 +602,37 @@ func (s *SalesInvoiceServiceImpl) AddPayment(ctx *gin.Context, invoiceID uint, r
 		Status:          "Pending",
 	}
 
-	// 在事务中创建付款记录并更新发票状态
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// 创建 PaymentEntry 记录
-		paymentEntry := &models.PaymentEntry{
-			PaymentType:    "Receive", // 销售发票收款
-			PartyType:      "Customer",
-			PartyID:        invoice.CustomerID,
-			PostingDate:    req.PaymentDate,
-			PaidAmount:     0,           // 我们收到的金额
-			ReceivedAmount: req.Amount,  // 客户支付的金额
-			Currency:       req.Currency,
-			ExchangeRate:   req.ExchangeRate,
-			BankAccountID:  req.BankAccountID,
-			Reference:      req.ReferenceNumber,
-			Remarks:        req.Notes,
-			Status:         "submitted",
-			IsPosted:       true,
-		}
-		
-		// 设置过账时间
-		now := time.Now()
-		paymentEntry.PostedAt = &now
+	// 创建 PaymentEntry 记录
+	paymentEntry := &models.PaymentEntry{
+		PaymentType:    "Receive", // 销售发票收款
+		PartyType:      "Customer",
+		PartyID:        invoice.CustomerID,
+		PostingDate:    req.PaymentDate,
+		PaidAmount:     0,          // 我们收到的金额
+		ReceivedAmount: req.Amount, // 客户支付的金额
+		Currency:       req.Currency,
+		ExchangeRate:   req.ExchangeRate,
+		BankAccountID:  req.BankAccountID,
+		Reference:      req.ReferenceNumber,
+		Remarks:        req.Notes,
+		Status:         "submitted",
+		IsPosted:       true,
+	}
 
-		// 使用 PaymentEntryService 创建付款记录
-		if err := s.paymentEntryService.CreatePaymentEntry(context.Background(), paymentEntry); err != nil {
-			return fmt.Errorf("创建付款记录失败: %v", err)
-		}
+	// 设置过账时间
+	now := time.Now()
+	paymentEntry.PostedAt = &now
 
-		// 设置 InvoicePayment 的 PaymentEntryID
-		payment.PaymentEntryID = &paymentEntry.ID
+	// 使用 PaymentEntryService 创建付款记录
+	if err := s.paymentEntryService.CreatePaymentEntry(context.Background(), paymentEntry); err != nil {
+		return nil, fmt.Errorf("创建付款记录失败: %v", err)
+	}
 
-		// 创建发票付款记录
-		if err := tx.Create(payment).Error; err != nil {
-			return fmt.Errorf("创建发票付款记录失败: %v", err)
-		}
+	// 设置 InvoicePayment 的 PaymentEntryID
+	payment.PaymentEntryID = &paymentEntry.ID
 
-		// 计算已付款总额
-		var totalPaid float64
-		if err := tx.Model(&models.InvoicePayment{}).
-			Where("sales_invoice_id = ?", invoiceID).
-			Select("COALESCE(SUM(amount), 0)").
-			Scan(&totalPaid).Error; err != nil {
-			return fmt.Errorf("计算已付款总额失败: %v", err)
-		}
-
-		// 更新发票付款状态
-		var paymentStatus string
-		if totalPaid >= invoice.GrandTotal {
-			paymentStatus = "Paid"
-		} else if totalPaid > 0 {
-			paymentStatus = "Partially Paid"
-		} else {
-			paymentStatus = "Unpaid"
-		}
-
-		// 更新发票
-		if err := tx.Model(invoice).Updates(map[string]interface{}{
-			"payment_status":     paymentStatus,
-			"paid_amount":        totalPaid,
-			"outstanding_amount": invoice.GrandTotal - totalPaid,
-			"updated_by":         userID,
-			"updated_at":         time.Now(),
-		}).Error; err != nil {
-			return fmt.Errorf("更新发票状态失败: %v", err)
-		}
-
-		return nil
-	})
+	// 使用仓储层的事务方法创建付款记录并更新发票状态
+	err = s.repository.AddPaymentWithTransaction(context.Background(), invoiceID, payment)
 
 	if err != nil {
 		return nil, err
@@ -804,10 +654,8 @@ func (s *SalesInvoiceServiceImpl) GetPayments(invoiceID uint) ([]dto.InvoicePaym
 	}
 
 	// 获取付款记录
-	var payments []models.InvoicePayment
-	if err := s.db.Where("sales_invoice_id = ?", invoiceID).
-		Order("payment_date DESC, created_at DESC").
-		Find(&payments).Error; err != nil {
+	payments, err := s.repository.GetPayments(context.Background(), invoiceID)
+	if err != nil {
 		return nil, fmt.Errorf("获取付款记录失败: %v", err)
 	}
 

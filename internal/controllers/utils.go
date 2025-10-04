@@ -1,39 +1,76 @@
 package controllers
 
 import (
-	"net/http"
 	"strconv"
 
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
+	"github.com/galaxyerp/galaxyErp/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
-// ControllerUtils 控制器工具类
+// ControllerUtils controller utility class
 type ControllerUtils struct{}
 
-// NewControllerUtils 创建控制器工具实例
+// NewControllerUtils creates a controller utility instance
 func NewControllerUtils() *ControllerUtils {
 	return &ControllerUtils{}
 }
 
-// ParseIDParam 解析路径中的ID参数
+// ParseIDParam parses ID parameter from path
 func (u *ControllerUtils) ParseIDParam(ctx *gin.Context, paramName string) (uint, bool) {
 	idStr := ctx.Param(paramName)
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		u.RespondBadRequest(ctx, "ID格式错误")
+		u.RespondBadRequest(ctx, "Invalid ID format")
 		return 0, false
 	}
 	return uint(id), true
 }
 
-// BindJSON 绑定JSON请求体
+// BindJSON binds JSON request body
 func (u *ControllerUtils) BindJSON(ctx *gin.Context, req interface{}) bool {
 	if err := ctx.ShouldBindJSON(req); err != nil {
-		u.RespondBadRequest(ctx, "请求参数错误: "+err.Error())
+		u.RespondBadRequest(ctx, "Invalid request parameters: "+err.Error())
 		return false
 	}
 	return true
+}
+
+// BindAndValidateJSON binds and validates JSON request body
+func (u *ControllerUtils) BindAndValidateJSON(ctx *gin.Context, req interface{}) bool {
+	return utils.BindAndValidate(ctx, req)
+}
+
+// BindAndValidateJSONWithMessage binds and validates JSON request body with custom error message
+func (u *ControllerUtils) BindAndValidateJSONWithMessage(ctx *gin.Context, req interface{}, message string) bool {
+	return utils.BindAndValidateWithCustomError(ctx, req, message)
+}
+
+// BindAndValidateQuery binds and validates query parameters
+func (u *ControllerUtils) BindAndValidateQuery(ctx *gin.Context, req interface{}) bool {
+	if err := ctx.ShouldBindQuery(req); err != nil {
+		u.RespondBadRequest(ctx, "查询参数错误: "+err.Error())
+		return false
+	}
+	
+	// Validate the bound struct
+	if validationErrors := u.ValidateStruct(req); len(validationErrors) > 0 {
+		u.RespondBadRequest(ctx, "查询参数验证失败")
+		return false
+	}
+	
+	return true
+}
+
+// ValidateStruct validates struct
+func (u *ControllerUtils) ValidateStruct(req interface{}) map[string]string {
+	return utils.ValidateStruct(req)
+}
+
+// ValidateField validates single field
+func (u *ControllerUtils) ValidateField(field interface{}, tag string) error {
+	return utils.ValidateField(field, tag)
 }
 
 // ParsePaginationParams 解析分页参数
@@ -54,64 +91,54 @@ func (u *ControllerUtils) ParsePaginationParams(ctx *gin.Context) *dto.Paginatio
 	}
 }
 
-// RespondBadRequest 返回400错误响应
+// RespondBadRequest returns 400 error response
 func (u *ControllerUtils) RespondBadRequest(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
-		Success:    false,
-		Message:    message,
-		StatusCode: http.StatusBadRequest,
-	})
+	common.APIBadRequestResponse(ctx, message)
 }
 
-// RespondInternalError 返回500错误响应
+// RespondInternalError returns 500 error response
 func (u *ControllerUtils) RespondInternalError(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-		Success:    false,
-		Message:    message,
-		StatusCode: http.StatusInternalServerError,
-	})
+	common.APIInternalErrorResponse(ctx, message)
 }
 
-// RespondUnauthorized 返回401错误响应
+// RespondUnauthorized returns 401 error response
 func (u *ControllerUtils) RespondUnauthorized(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-		Success:    false,
-		Message:    message,
-		StatusCode: http.StatusUnauthorized,
-	})
+	helper := common.NewAPIResponseHelper(ctx)
+	helper.Unauthorized(message)
 }
 
-// RespondNotFound 返回404错误响应
+// RespondNotFound returns 404 error response
 func (u *ControllerUtils) RespondNotFound(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusNotFound, dto.ErrorResponse{
-		Success:    false,
-		Message:    message,
-		StatusCode: http.StatusNotFound,
-	})
+	common.APINotFoundResponse(ctx, message)
 }
 
-// RespondSuccess 返回成功响应
+// RespondSuccess returns success response
 func (u *ControllerUtils) RespondSuccess(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusOK, dto.BaseResponse{
-		Success: true,
-		Message: message,
-	})
+	common.APISuccessResponse(ctx, nil, message)
 }
 
 // RespondCreated 返回201创建成功响应
 func (u *ControllerUtils) RespondCreated(ctx *gin.Context, data interface{}) {
-	ctx.JSON(http.StatusCreated, data)
+	common.APICreatedResponse(ctx, data)
 }
 
 // RespondOK 返回200成功响应
 func (u *ControllerUtils) RespondOK(ctx *gin.Context, data interface{}) {
-	ctx.JSON(http.StatusOK, data)
+	common.APISuccessResponse(ctx, data)
 }
 
 // RespondNotImplemented 返回501未实现响应
 func (u *ControllerUtils) RespondNotImplemented(ctx *gin.Context, message string) {
-	ctx.JSON(http.StatusNotImplemented, gin.H{
-		"message": message,
-		"success": false,
-	})
+	helper := common.NewAPIResponseHelper(ctx)
+	helper.NotImplemented(message)
+}
+
+// RespondPaginated 返回分页响应
+func (u *ControllerUtils) RespondPaginated(ctx *gin.Context, data interface{}, pagination *common.Pagination, message ...string) {
+	common.APIPaginatedResponse(ctx, data, pagination, message...)
+}
+
+// CreatePagination 创建分页对象
+func (u *ControllerUtils) CreatePagination(page, pageSize int, total int64) *common.Pagination {
+	return common.NewPagination(page, pageSize, total)
 }

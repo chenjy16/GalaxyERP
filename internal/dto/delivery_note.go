@@ -4,36 +4,48 @@ import (
 	"time"
 )
 
-// DeliveryNoteCreateRequest 发货单创建请求
+// DeliveryNoteCreateRequest 送货单创建请求
 type DeliveryNoteCreateRequest struct {
-	CustomerID     uint                        `json:"customer_id" binding:"required"`
-	SalesOrderID   *uint                       `json:"sales_order_id,omitempty"`
-	Date           time.Time                   `json:"date" binding:"required"`
-	Transporter    string                      `json:"transporter,omitempty"`
-	DriverName     string                      `json:"driver_name,omitempty"`
-	VehicleNumber  string                      `json:"vehicle_number,omitempty"`
-	Destination    string                      `json:"destination,omitempty"`
-	Notes          string                      `json:"notes,omitempty"`
-	Items          []DeliveryNoteItemRequest   `json:"items" binding:"required,min=1"`
+	CustomerID     uint                      `json:"customer_id" validate:"required"`
+	SalesOrderID   *uint                     `json:"sales_order_id,omitempty"`
+	DeliveryDate   time.Time                 `json:"delivery_date"`
+	Date           time.Time                 `json:"date" validate:"required"`
+	Reference      string                    `json:"reference,omitempty"`
+	Notes          string                    `json:"notes,omitempty"`
+	Status         string                    `json:"status" validate:"required,oneof=Draft Submitted Delivered Cancelled"`
+	WarehouseID    uint                      `json:"warehouse_id"`
+	Transporter    string                    `json:"transporter,omitempty"`
+	DriverName     string                    `json:"driver_name,omitempty"`
+	VehicleNumber  string                    `json:"vehicle_number,omitempty"`
+	Destination    string                    `json:"destination,omitempty"`
+	Items          []DeliveryNoteItemRequest `json:"items" validate:"required,min=1"`
 }
 
-// DeliveryNoteUpdateRequest 发货单更新请求
+// DeliveryNoteUpdateRequest 送货单更新请求
 type DeliveryNoteUpdateRequest struct {
-	Date           *time.Time                  `json:"date,omitempty"`
-	Transporter    string                      `json:"transporter,omitempty"`
-	DriverName     string                      `json:"driver_name,omitempty"`
-	VehicleNumber  string                      `json:"vehicle_number,omitempty"`
-	Destination    string                      `json:"destination,omitempty"`
-	Notes          string                      `json:"notes,omitempty"`
-	Items          []DeliveryNoteItemRequest   `json:"items,omitempty"`
+	CustomerID    *uint                     `json:"customer_id,omitempty"`
+	DeliveryDate  *time.Time                `json:"delivery_date,omitempty"`
+	Date          *time.Time                `json:"date,omitempty"`
+	Reference     string                    `json:"reference,omitempty"`
+	Notes         string                    `json:"notes,omitempty"`
+	Status        string                    `json:"status" validate:"required,oneof=Draft Submitted Delivered Cancelled"`
+	WarehouseID   *uint                     `json:"warehouse_id,omitempty"`
+	Transporter   string                    `json:"transporter,omitempty"`
+	DriverName    string                    `json:"driver_name,omitempty"`
+	VehicleNumber string                    `json:"vehicle_number,omitempty"`
+	Destination   string                    `json:"destination,omitempty"`
+	Items         []DeliveryNoteItemRequest `json:"items,omitempty"`
 }
 
-// DeliveryNoteItemRequest 发货单明细请求
+// DeliveryNoteItemRequest 送货单项目请求
 type DeliveryNoteItemRequest struct {
 	SalesOrderItemID *uint   `json:"sales_order_item_id,omitempty"`
-	ItemID           uint    `json:"item_id" binding:"required"`
+	ItemID           uint    `json:"item_id" validate:"required"`
 	Description      string  `json:"description,omitempty"`
-	Quantity         float64 `json:"quantity" binding:"required,gt=0"`
+	Quantity         float64 `json:"quantity" validate:"required,gt=0"`
+	UOM              string  `json:"uom,omitempty"`
+	Rate             float64 `json:"rate,omitempty"`
+	Amount           float64 `json:"amount,omitempty"`
 	BatchNo          string  `json:"batch_no,omitempty"`
 	SerialNo         string  `json:"serial_no,omitempty"`
 	WarehouseID      *uint   `json:"warehouse_id,omitempty"`
@@ -41,24 +53,24 @@ type DeliveryNoteItemRequest struct {
 
 // DeliveryNoteDetailResponse 发货单详细响应
 type DeliveryNoteDetailResponse struct {
-	ID             uint                        `json:"id"`
-	DeliveryNumber string                      `json:"delivery_number"`
-	CustomerID     uint                        `json:"customer_id"`
-	SalesOrderID   *uint                       `json:"sales_order_id,omitempty"`
-	Date           time.Time                   `json:"date"`
-	Status         string                      `json:"status"`
-	TotalQuantity  float64                     `json:"total_quantity"`
-	Transporter    string                      `json:"transporter,omitempty"`
-	DriverName     string                      `json:"driver_name,omitempty"`
-	VehicleNumber  string                      `json:"vehicle_number,omitempty"`
-	Destination    string                      `json:"destination,omitempty"`
-	Notes          string                      `json:"notes,omitempty"`
-	CreatedBy      uint                        `json:"created_by"`
-	Customer       CustomerResponse            `json:"customer"`
-	SalesOrder     *SalesOrderResponse         `json:"sales_order,omitempty"`
-	Items          []DeliveryNoteItemResponse  `json:"items"`
-	CreatedAt      time.Time                   `json:"created_at"`
-	UpdatedAt      time.Time                   `json:"updated_at"`
+	ID             uint                       `json:"id"`
+	DeliveryNumber string                     `json:"delivery_number"`
+	CustomerID     uint                       `json:"customer_id"`
+	SalesOrderID   *uint                      `json:"sales_order_id,omitempty"`
+	Date           time.Time                  `json:"date"`
+	Status         string                     `json:"status"`
+	TotalQuantity  float64                    `json:"total_quantity"`
+	Transporter    string                     `json:"transporter,omitempty"`
+	DriverName     string                     `json:"driver_name,omitempty"`
+	VehicleNumber  string                     `json:"vehicle_number,omitempty"`
+	Destination    string                     `json:"destination,omitempty"`
+	Notes          string                     `json:"notes,omitempty"`
+	CreatedBy      uint                       `json:"created_by"`
+	Customer       CustomerResponse           `json:"customer"`
+	SalesOrder     *SalesOrderResponse        `json:"sales_order,omitempty"`
+	Items          []DeliveryNoteItemResponse `json:"items"`
+	CreatedAt      time.Time                  `json:"created_at"`
+	UpdatedAt      time.Time                  `json:"updated_at"`
 }
 
 // DeliveryNoteItemResponse 发货单明细响应
@@ -92,26 +104,29 @@ type DeliveryNoteListRequest struct {
 
 // DeliveryNoteStatusUpdateRequest 发货单状态更新请求
 type DeliveryNoteStatusUpdateRequest struct {
-	Status string `json:"status" binding:"required,oneof=Draft Submitted Delivered Cancelled"`
+	Status string `json:"status" validate:"required,oneof=Draft Submitted Delivered Cancelled"`
 	Notes  string `json:"notes,omitempty"`
 }
 
-// DeliveryNoteBatchCreateRequest 批量创建发货单请求（从销售订单）
+// DeliveryNoteBatchCreateRequest 批量创建送货单请求
 type DeliveryNoteBatchCreateRequest struct {
-	SalesOrderID  uint                      `json:"sales_order_id" binding:"required"`
-	Date          time.Time                 `json:"date" binding:"required"`
-	Transporter   string                    `json:"transporter,omitempty"`
-	DriverName    string                    `json:"driver_name,omitempty"`
-	VehicleNumber string                    `json:"vehicle_number,omitempty"`
-	Destination   string                    `json:"destination,omitempty"`
-	Notes         string                    `json:"notes,omitempty"`
-	Items         []DeliveryNoteBatchItem   `json:"items" binding:"required,min=1"`
+	SalesOrderID  uint                    `json:"sales_order_id" validate:"required"`
+	Date          time.Time               `json:"date" validate:"required"`
+	Reference     string                  `json:"reference,omitempty"`
+	Notes         string                  `json:"notes,omitempty"`
+	Status        string                  `json:"status,omitempty"`
+	CustomerID    uint                    `json:"customer_id"`
+	WarehouseID   uint                    `json:"warehouse_id"`
+	Transporter   string                  `json:"transporter,omitempty"`
+	DriverName    string                  `json:"driver_name,omitempty"`
+	VehicleNumber string                  `json:"vehicle_number,omitempty"`
+	Destination   string                  `json:"destination,omitempty"`
+	Items         []DeliveryNoteBatchItem `json:"items" validate:"required,min=1"`
 }
 
-// DeliveryNoteBatchItem 批量创建明细项
 type DeliveryNoteBatchItem struct {
-	SalesOrderItemID uint    `json:"sales_order_item_id" binding:"required"`
-	Quantity         float64 `json:"quantity" binding:"required,gt=0"`
+	SalesOrderItemID uint    `json:"sales_order_item_id" validate:"required"`
+	Quantity         float64 `json:"quantity" validate:"required,gt=0"`
 	BatchNo          string  `json:"batch_no,omitempty"`
 	SerialNo         string  `json:"serial_no,omitempty"`
 	WarehouseID      *uint   `json:"warehouse_id,omitempty"`
@@ -138,9 +153,9 @@ type DeliveryTrendData struct {
 
 // DeliveryNoteStatisticsResponse 发货单统计响应
 type DeliveryNoteStatisticsResponse struct {
-	TotalDeliveries   int64   `json:"total_deliveries"`
-	PendingDeliveries int64   `json:"pending_deliveries"`
-	CompletedDeliveries int64 `json:"completed_deliveries"`
-	TotalQuantity     float64 `json:"total_quantity"`
+	TotalDeliveries     int64   `json:"total_deliveries"`
+	PendingDeliveries   int64   `json:"pending_deliveries"`
+	CompletedDeliveries int64   `json:"completed_deliveries"`
+	TotalQuantity       float64 `json:"total_quantity"`
 	AverageDeliveryTime float64 `json:"average_delivery_time"` // 平均发货时间（天）
 }

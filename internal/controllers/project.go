@@ -38,7 +38,7 @@ func NewProjectController(
 // CreateProject 创建项目
 func (c *ProjectController) CreateProject(ctx *gin.Context) {
 	var req dto.ProjectCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -75,7 +75,7 @@ func (c *ProjectController) UpdateProject(ctx *gin.Context) {
 	}
 
 	var req dto.ProjectUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -107,8 +107,7 @@ func (c *ProjectController) DeleteProject(ctx *gin.Context) {
 // ListProjects 获取项目列表
 func (c *ProjectController) ListProjects(ctx *gin.Context) {
 	var filter dto.ProjectFilter
-	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		c.utils.RespondBadRequest(ctx, "查询参数错误")
+	if !c.utils.BindAndValidateQuery(ctx, &filter) {
 		return
 	}
 
@@ -126,7 +125,7 @@ func (c *ProjectController) ListProjects(ctx *gin.Context) {
 // CreateTask 创建任务
 func (c *ProjectController) CreateTask(ctx *gin.Context) {
 	var req dto.TaskCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -163,7 +162,7 @@ func (c *ProjectController) UpdateTask(ctx *gin.Context) {
 	}
 
 	var req dto.TaskUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -195,8 +194,7 @@ func (c *ProjectController) DeleteTask(ctx *gin.Context) {
 // ListTasks 获取任务列表
 func (c *ProjectController) ListTasks(ctx *gin.Context) {
 	var filter dto.TaskFilter
-	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		c.utils.RespondBadRequest(ctx, "查询参数错误")
+	if !c.utils.BindAndValidateQuery(ctx, &filter) {
 		return
 	}
 
@@ -214,7 +212,7 @@ func (c *ProjectController) ListTasks(ctx *gin.Context) {
 // CreateMilestone 创建里程碑
 func (c *ProjectController) CreateMilestone(ctx *gin.Context) {
 	var req dto.MilestoneCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -251,7 +249,7 @@ func (c *ProjectController) UpdateMilestone(ctx *gin.Context) {
 	}
 
 	var req dto.MilestoneUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -301,7 +299,7 @@ func (c *ProjectController) ListMilestones(ctx *gin.Context) {
 // CreateTimeEntry 创建工时记录
 func (c *ProjectController) CreateTimeEntry(ctx *gin.Context) {
 	var req dto.TimeEntryCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -338,7 +336,7 @@ func (c *ProjectController) UpdateTimeEntry(ctx *gin.Context) {
 	}
 
 	var req dto.TimeEntryUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 

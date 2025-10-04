@@ -14,6 +14,23 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+// 后端实际返回的分页响应格式
+export interface BackendPaginatedResponse<T> {
+  success: boolean;
+  message?: string;
+  data: T[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+  timestamp: string;
+  request_id?: string;
+}
+
 // 认证相关类型
 export interface LoginRequest {
   username: string;

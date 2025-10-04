@@ -6,21 +6,21 @@ import (
 
 // AccountCreateRequest 账户创建请求
 type AccountCreateRequest struct {
-	Code     string  `json:"code" binding:"required,max=50"`
-	Name     string  `json:"name" binding:"required,max=100"`
-	Type     string  `json:"type" binding:"required,oneof=asset liability equity revenue expense"`
+	Code     string  `json:"code" validate:"required,max=50,account_code"`
+	Name     string  `json:"name" validate:"required,max=100"`
+	Type     string  `json:"type" validate:"required,oneof=asset liability equity revenue expense"`
 	ParentID *uint   `json:"parent_id,omitempty"`
-	Balance  float64 `json:"balance,omitempty"`
-	Status   string  `json:"status" binding:"required,oneof=active inactive"`
+	Balance  float64 `json:"balance,omitempty" validate:"min=0"`
+	Status   string  `json:"status" validate:"required,oneof=active inactive"`
 }
 
 // AccountUpdateRequest 账户更新请求
 type AccountUpdateRequest struct {
-	Name     string   `json:"name,omitempty" binding:"omitempty,max=100"`
-	Type     string   `json:"type,omitempty" binding:"omitempty,oneof=asset liability equity revenue expense"`
+	Name     string   `json:"name,omitempty" validate:"omitempty,max=100"`
+	Type     string   `json:"type,omitempty" validate:"omitempty,oneof=asset liability equity revenue expense"`
 	ParentID *uint    `json:"parent_id,omitempty"`
-	Balance  *float64 `json:"balance,omitempty"`
-	Status   string   `json:"status,omitempty" binding:"omitempty,oneof=active inactive"`
+	Balance  *float64 `json:"balance,omitempty" validate:"omitempty,min=0"`
+	Status   string   `json:"status,omitempty" validate:"omitempty,oneof=active inactive"`
 }
 
 // AccountResponse 账户响应
@@ -51,17 +51,17 @@ type AccountListResponse struct {
 
 // JournalEntryCreateRequest 日记账分录创建请求
 type JournalEntryCreateRequest struct {
-	Date        time.Time                 `json:"date" binding:"required"`
+	Date        time.Time                 `json:"date" validate:"required"`
 	Reference   string                    `json:"reference,omitempty"`
-	Description string                    `json:"description" binding:"required"`
-	Items       []JournalEntryItemRequest `json:"items" binding:"required,min=2"`
+	Description string                    `json:"description" validate:"required"`
+	Items       []JournalEntryItemRequest `json:"items" validate:"required,min=2"`
 }
 
 // JournalEntryItemRequest 日记账分录项请求
 type JournalEntryItemRequest struct {
-	AccountID    uint    `json:"account_id" binding:"required"`
-	DebitAmount  float64 `json:"debit_amount,omitempty" binding:"min=0"`
-	CreditAmount float64 `json:"credit_amount,omitempty" binding:"min=0"`
+	AccountID    uint    `json:"account_id" validate:"required"`
+	DebitAmount  float64 `json:"debit_amount,omitempty" validate:"min=0"`
+	CreditAmount float64 `json:"credit_amount,omitempty" validate:"min=0"`
 	Description  string  `json:"description,omitempty"`
 }
 
@@ -92,13 +92,15 @@ type JournalEntryItemResponse struct {
 
 // PaymentCreateRequest 付款创建请求
 type PaymentCreateRequest struct {
-	Type          string    `json:"type" binding:"required,oneof=payment receipt"`
-	Amount        float64   `json:"amount" binding:"required,gt=0"`
-	Date          time.Time `json:"date" binding:"required"`
+	Type          string    `json:"type" validate:"required,oneof=payment receipt"`
+	Amount        float64   `json:"amount" validate:"required,gt=0"`
+	Date          time.Time `json:"date" validate:"required"`
 	Reference     string    `json:"reference,omitempty"`
 	Description   string    `json:"description,omitempty"`
-	AccountID     uint      `json:"account_id" binding:"required"`
-	PaymentMethod string    `json:"payment_method" binding:"required,oneof=cash bank_transfer check credit_card"`
+	AccountID     uint      `json:"account_id" validate:"required"`
+	PaymentMethod string    `json:"payment_method" validate:"required,oneof=cash bank_transfer check credit_card"`
+	CheckNumber   string    `json:"check_number,omitempty"`
+	BankAccount   string    `json:"bank_account,omitempty"`
 	CustomerID    *uint     `json:"customer_id,omitempty"`
 	SupplierID    *uint     `json:"supplier_id,omitempty"`
 }
@@ -144,9 +146,9 @@ type PaymentSearchRequest struct {
 }
 
 // FinancialReportRequest 财务报表请求
-type FinancialReportRequest struct {
-	Type      string    `json:"type" binding:"required,oneof=balance_sheet income_statement cash_flow"`
-	StartDate time.Time `json:"start_date" binding:"required"`
-	EndDate   time.Time `json:"end_date" binding:"required"`
-	Format    string    `json:"format" form:"format" binding:"required,oneof=excel pdf csv"`
+type ReportGenerateRequest struct {
+	Type      string    `json:"type" validate:"required,oneof=balance_sheet income_statement cash_flow"`
+	StartDate time.Time `json:"start_date" validate:"required"`
+	EndDate   time.Time `json:"end_date" validate:"required"`
+	Format    string    `json:"format" form:"format" validate:"required,oneof=excel pdf csv"`
 }

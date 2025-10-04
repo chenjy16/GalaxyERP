@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ItemService } from '@/services/item';
 import { InventoryService } from '@/services/inventory';
 import { WarehouseService } from '@/services/warehouse';
@@ -109,7 +109,7 @@ function InventoryPage() {
   const [warehousesSearch, setWarehousesSearch] = useState('');
 
   // 数据加载函数
-  const loadItems = async (page = 1, search = '', pageSize?: number, category?: string, status?: string) => {
+  const loadItems = useCallback(async (page = 1, search = '', pageSize?: number, category?: string, status?: string) => {
     try {
       setLoading(true);
       const pageSizeValue = pageSize || itemsPagination.pageSize;
@@ -133,9 +133,9 @@ function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [itemsPagination.pageSize]);
 
-  const loadStocks = async (page = 1, search = '', pageSize?: number) => {
+  const loadStocks = useCallback(async (page = 1, search = '', pageSize?: number) => {
     try {
       setLoading(true);
       const limit = pageSize || stocksPagination.pageSize;
@@ -157,9 +157,9 @@ function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [stocksPagination.pageSize]);
 
-  const loadStockMovements = async (page = 1, search = '', pageSize?: number) => {
+  const loadStockMovements = useCallback(async (page = 1, search = '', pageSize?: number) => {
     try {
       setLoading(true);
       const limit = pageSize || movementsPagination.pageSize;
@@ -181,9 +181,9 @@ function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [movementsPagination.pageSize]);
 
-  const loadWarehouses = async (page = 1, search = '', pageSize?: number) => {
+  const loadWarehouses = useCallback(async (page = 1, search = '', pageSize?: number) => {
     try {
       setLoading(true);
       const limit = pageSize || warehousesPagination.pageSize;
@@ -205,7 +205,7 @@ function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [warehousesPagination.pageSize]);
 
   // 初始化数据加载
   useEffect(() => {
@@ -213,7 +213,7 @@ function InventoryPage() {
     loadStocks();
     loadStockMovements();
     loadWarehouses();
-  }, []);
+  }, [loadItems, loadStocks, loadStockMovements, loadWarehouses]);
 
 
 

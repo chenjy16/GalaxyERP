@@ -526,7 +526,7 @@ export default function ProductionPage() {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
-      console.log('Form values:', values);
+      // 表单提交处理
       message.success(`${modalType === 'workOrder' ? '工单' : modalType === 'bom' ? '物料清单' : '生产计划'}创建成功！`);
       setIsModalVisible(false);
       form.resetFields();

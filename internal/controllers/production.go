@@ -33,7 +33,7 @@ func NewProductionController(productService services.ProductService) *Production
 // @Router /api/v1/products [post]
 func (c *ProductionController) CreateProduct(ctx *gin.Context) {
 	var req dto.ProductCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -93,7 +93,7 @@ func (c *ProductionController) UpdateProduct(ctx *gin.Context) {
 	}
 
 	var req dto.ProductUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -141,7 +141,7 @@ func (c *ProductionController) DeleteProduct(ctx *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Success 200 {object} dto.ProductListResponse
+// @Success 200 {object} dto.PaginatedResponse[dto.ProductResponse]
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/products [get]
@@ -154,7 +154,9 @@ func (c *ProductionController) ListProducts(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	pagination := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, pagination)
 }
 
 // SearchProducts 搜索产品
@@ -168,7 +170,7 @@ func (c *ProductionController) ListProducts(ctx *gin.Context) {
 // @Param status query string false "产品状态"
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(10)
-// @Success 200 {object} dto.ProductListResponse
+// @Success 200 {object} dto.PaginatedResponse[dto.ProductResponse]
 // @Failure 400 {object} dto.ErrorResponse
 // @Failure 500 {object} dto.ErrorResponse
 // @Router /api/v1/products/search [get]
@@ -193,5 +195,7 @@ func (c *ProductionController) SearchProducts(ctx *gin.Context) {
 		return
 	}
 
-	c.utils.RespondOK(ctx, response)
+	// 转换为统一的分页响应格式
+	paginationResp := c.utils.CreatePagination(response.Page, response.Limit, response.Total)
+	c.utils.RespondPaginated(ctx, response.Data, paginationResp)
 }

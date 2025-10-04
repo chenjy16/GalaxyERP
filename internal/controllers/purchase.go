@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/galaxyerp/galaxyErp/internal/dto"
@@ -37,7 +36,7 @@ func NewPurchaseController(
 // CreateSupplier 创建供应商
 func (c *PurchaseController) CreateSupplier(ctx *gin.Context) {
 	var req dto.SupplierCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -74,7 +73,7 @@ func (c *PurchaseController) UpdateSupplier(ctx *gin.Context) {
 	}
 
 	var req dto.SupplierUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -103,10 +102,22 @@ func (c *PurchaseController) DeleteSupplier(ctx *gin.Context) {
 }
 
 // ListSuppliers 获取供应商列表
+// @Summary 获取供应商列表
+// @Description 获取供应商列表，支持分页和过滤
+// @Tags 采购管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Param search query string false "搜索关键词"
+// @Param is_active query bool false "是否激活"
+// @Success 200 {object} dto.PaginatedResponse[dto.SupplierResponse] "成功"
+// @Failure 400 {object} dto.ErrorResponse "请求参数错误"
+// @Failure 500 {object} dto.ErrorResponse "服务器内部错误"
+// @Router /api/suppliers [get]
 func (c *PurchaseController) ListSuppliers(ctx *gin.Context) {
 	var filter dto.SupplierFilter
-	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		c.utils.RespondBadRequest(ctx, "查询参数无效")
+	if !c.utils.BindAndValidateQuery(ctx, &filter) {
 		return
 	}
 
@@ -116,10 +127,8 @@ func (c *PurchaseController) ListSuppliers(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    suppliers,
-	})
+	pagination := c.utils.CreatePagination(suppliers.Page, suppliers.Limit, suppliers.Total)
+	c.utils.RespondPaginated(ctx, suppliers.Data, pagination)
 }
 
 // ===== 采购申请管理 =====
@@ -127,7 +136,7 @@ func (c *PurchaseController) ListSuppliers(ctx *gin.Context) {
 // CreatePurchaseRequest 创建采购申请
 func (c *PurchaseController) CreatePurchaseRequest(ctx *gin.Context) {
 	var req dto.PurchaseRequestCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -164,7 +173,7 @@ func (c *PurchaseController) UpdatePurchaseRequest(ctx *gin.Context) {
 	}
 
 	var req dto.PurchaseRequestUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -193,10 +202,23 @@ func (c *PurchaseController) DeletePurchaseRequest(ctx *gin.Context) {
 }
 
 // ListPurchaseRequests 获取采购申请列表
+// @Summary 获取采购申请列表
+// @Description 获取采购申请列表，支持分页和过滤
+// @Tags 采购管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Param search query string false "搜索关键词"
+// @Param status query string false "状态"
+// @Param department query string false "部门"
+// @Success 200 {object} dto.PaginatedResponse[dto.PurchaseRequestResponse] "成功"
+// @Failure 400 {object} dto.ErrorResponse "请求参数错误"
+// @Failure 500 {object} dto.ErrorResponse "服务器内部错误"
+// @Router /api/purchase-requests [get]
 func (c *PurchaseController) ListPurchaseRequests(ctx *gin.Context) {
 	var filter dto.PurchaseSearchRequest
-	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		c.utils.RespondBadRequest(ctx, "查询参数无效")
+	if !c.utils.BindAndValidateQuery(ctx, &filter) {
 		return
 	}
 
@@ -206,10 +228,8 @@ func (c *PurchaseController) ListPurchaseRequests(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    purchaseRequests,
-	})
+	pagination := c.utils.CreatePagination(purchaseRequests.Page, purchaseRequests.Limit, purchaseRequests.Total)
+	c.utils.RespondPaginated(ctx, purchaseRequests.Data, pagination)
 }
 
 // SubmitPurchaseRequest 提交采购申请
@@ -253,9 +273,9 @@ func (c *PurchaseController) RejectPurchaseRequest(ctx *gin.Context) {
 	}
 
 	var req struct {
-		Reason string `json:"reason" binding:"required"`
+		Reason string `json:"reason" validate:"required"`
 	}
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -275,7 +295,7 @@ func (c *PurchaseController) RejectPurchaseRequest(ctx *gin.Context) {
 // CreatePurchaseOrder 创建采购订单
 func (c *PurchaseController) CreatePurchaseOrder(ctx *gin.Context) {
 	var req dto.PurchaseOrderCreateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -312,7 +332,7 @@ func (c *PurchaseController) UpdatePurchaseOrder(ctx *gin.Context) {
 	}
 
 	var req dto.PurchaseOrderUpdateRequest
-	if !c.utils.BindJSON(ctx, &req) {
+	if !c.utils.BindAndValidateJSON(ctx, &req) {
 		return
 	}
 
@@ -341,10 +361,23 @@ func (c *PurchaseController) DeletePurchaseOrder(ctx *gin.Context) {
 }
 
 // ListPurchaseOrders 获取采购订单列表
+// @Summary 获取采购订单列表
+// @Description 获取采购订单列表，支持分页和过滤
+// @Tags 采购管理
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param page_size query int false "每页数量" default(10)
+// @Param search query string false "搜索关键词"
+// @Param status query string false "状态"
+// @Param supplier_id query int false "供应商ID"
+// @Success 200 {object} dto.PaginatedResponse[dto.PurchaseOrderResponse] "成功"
+// @Failure 400 {object} dto.ErrorResponse "请求参数错误"
+// @Failure 500 {object} dto.ErrorResponse "服务器内部错误"
+// @Router /api/purchase-orders [get]
 func (c *PurchaseController) ListPurchaseOrders(ctx *gin.Context) {
 	var filter dto.PurchaseOrderFilter
-	if err := ctx.ShouldBindQuery(&filter); err != nil {
-		c.utils.RespondBadRequest(ctx, "无效的查询参数")
+	if !c.utils.BindAndValidateQuery(ctx, &filter) {
 		return
 	}
 
@@ -354,10 +387,8 @@ func (c *PurchaseController) ListPurchaseOrders(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    result,
-	})
+	pagination := c.utils.CreatePagination(result.Page, result.Limit, result.Total)
+	c.utils.RespondPaginated(ctx, result.Data, pagination)
 }
 
 // ConfirmPurchaseOrder 确认采购订单

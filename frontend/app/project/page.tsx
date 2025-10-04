@@ -573,7 +573,7 @@ export default function ProjectPage() {
 
   const handleModalOk = () => {
     form.validateFields().then(values => {
-      console.log('Form values:', values);
+      // 表单提交处理
       message.success(`${modalType === 'project' ? '项目' : modalType === 'task' ? '任务' : '里程碑'}创建成功！`);
       setIsModalVisible(false);
       form.resetFields();

@@ -70,13 +70,23 @@ type ApprovalStep struct {
 // AuditLog 审计日志模型
 type AuditLog struct {
 	BaseModel
-	UserID      uint   `json:"user_id" gorm:"index;not null"`
-	Action      string `json:"action" gorm:"size:50;not null;index"`
-	Resource    string `json:"resource" gorm:"size:100;not null;index"`
-	ResourceID  uint   `json:"resource_id,omitempty" gorm:"index"`
-	Description string `json:"description,omitempty" gorm:"type:text"`
-	IPAddress   string `json:"ip_address,omitempty" gorm:"size:45"`
-	UserAgent   string `json:"user_agent,omitempty" gorm:"type:text"`
+	UserID       uint   `json:"user_id" gorm:"index;not null"`
+	Username     string `json:"username" gorm:"size:100;not null;index"`
+	Action       string `json:"action" gorm:"size:50;not null;index"`
+	Resource     string `json:"resource" gorm:"size:100;not null;index"`
+	ResourceType string `json:"resource_type" gorm:"size:100;not null;index"`
+	ResourceID   string `json:"resource_id,omitempty" gorm:"size:100;index"`
+	Method       string `json:"method,omitempty" gorm:"size:10"`
+	Path         string `json:"path,omitempty" gorm:"size:500"`
+	Description  string `json:"description,omitempty" gorm:"type:text"`
+	IPAddress    string `json:"ip_address,omitempty" gorm:"size:45"`
+	UserAgent    string `json:"user_agent,omitempty" gorm:"type:text"`
+	OldValues    string `json:"old_values,omitempty" gorm:"type:text"`
+	NewValues    string `json:"new_values,omitempty" gorm:"type:text"`
+	Changes      string `json:"changes,omitempty" gorm:"type:text"`
+	Status       string `json:"status" gorm:"size:20;default:'success'"`
+	ErrorMsg     string `json:"error_msg,omitempty" gorm:"type:text"`
+	Duration     int64  `json:"duration,omitempty"` // 操作耗时（毫秒）
 
 	// 关联
 	User *User `json:"user,omitempty" gorm:"foreignKey:UserID"`

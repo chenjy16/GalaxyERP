@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/galaxyerp/galaxyErp/internal/common"
 	"github.com/galaxyerp/galaxyErp/internal/dto"
 	"github.com/galaxyerp/galaxyErp/internal/models"
 	"github.com/galaxyerp/galaxyErp/internal/repositories"
@@ -238,8 +239,10 @@ func (s *EmployeeServiceImpl) GetByDepartmentID(ctx context.Context, departmentI
 
 // List 获取员工列表
 func (s *EmployeeServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.EmployeeListResponse], error) {
-	offset := (req.Page - 1) * req.PageSize
-	employees, total, err := s.employeeRepo.List(ctx, offset, req.PageSize)
+	options := &common.QueryOptions{
+		Pagination: req,
+	}
+	employees, total, err := s.employeeRepo.List(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("获取员工列表失败: %w", err)
 	}
@@ -474,8 +477,10 @@ func (s *AttendanceServiceImpl) Delete(ctx context.Context, id uint) error {
 
 // List 获取考勤记录列表
 func (s *AttendanceServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.AttendanceResponse], error) {
-	offset := (req.Page - 1) * req.PageSize
-	attendances, total, err := s.attendanceRepo.List(ctx, offset, req.PageSize)
+	options := &common.QueryOptions{
+		Pagination: req,
+	}
+	attendances, total, err := s.attendanceRepo.List(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("获取考勤记录列表失败: %w", err)
 	}
@@ -734,8 +739,10 @@ func (s *PayrollServiceImpl) Delete(ctx context.Context, id uint) error {
 
 // List 获取薪资记录列表
 func (s *PayrollServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.PayrollResponse], error) {
-	offset := (req.Page - 1) * req.PageSize
-	payrolls, total, err := s.payrollRepo.List(ctx, offset, req.PageSize)
+	options := &common.QueryOptions{
+		Pagination: req,
+	}
+	payrolls, total, err := s.payrollRepo.List(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("获取薪资记录列表失败: %w", err)
 	}
@@ -1087,8 +1094,10 @@ func (s *LeaveServiceImpl) Cancel(ctx context.Context, id uint, employeeID uint)
 
 // List 获取请假申请列表
 func (s *LeaveServiceImpl) List(ctx context.Context, req *dto.PaginationRequest) (*dto.PaginatedResponse[dto.LeaveListResponse], error) {
-	offset := (req.Page - 1) * req.PageSize
-	leaves, total, err := s.leaveRepo.List(ctx, offset, req.PageSize)
+	options := &common.QueryOptions{
+		Pagination: req,
+	}
+	leaves, total, err := s.leaveRepo.List(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("获取请假申请列表失败: %w", err)
 	}
